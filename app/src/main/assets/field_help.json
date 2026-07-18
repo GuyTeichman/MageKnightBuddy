@@ -1,0 +1,54 @@
+{
+  "Fame": {
+    "text": "Your Fame total at the end of the game — the base of your score, before any Achievements or scenario bonuses.",
+    "source": "Solo Conquest scoring, rulebook p.19"
+  },
+  "Greatest Knowledge": {
+    "text": "2 Fame per Spell in your deck, plus 1 Fame per Advanced Action in your deck.",
+    "source": "Standard Achievements Scoring, rulebook p.15"
+  },
+  "Greatest Leader": {
+    "text": "The total level of all your Units. A wounded Unit only counts half its level, rounded down.",
+    "source": "Standard Achievements Scoring, rulebook p.15"
+  },
+  "Greatest Adventurer": {
+    "text": "2 Fame per Shield token you placed on an adventure site (dungeons, tombs, monster dens, ziggurats/pyramids, etc.).",
+    "source": "Standard Achievements Scoring, rulebook p.15"
+  },
+  "Greatest Loot": {
+    "text": "2 Fame per Artifact (in your deck or on a Unit), plus 1 Fame for every 2 crystals in your Inventory.",
+    "source": "Standard Achievements Scoring, rulebook p.15"
+  },
+  "Greatest Conqueror": {
+    "text": "2 Fame per Shield token you placed on a keep, mage tower, or monastery.",
+    "source": "Standard Achievements Scoring, rulebook p.15"
+  },
+  "Greatest Beating": {
+    "text": "Minus 2 Fame per Wound card in your deck. Wounds attached to a Unit don't count.",
+    "source": "Standard Achievements Scoring, rulebook p.15"
+  },
+  "Greatest Quester": {
+    "text": "1 Fame per Quest Point you scored from completed Quest card steps (Apocalypse Dragon expansion).",
+    "source": "Apocalypse Dragon Variant Rules, rulebook p.43"
+  },
+  "Cities Conquered": {
+    "text": "+10 Fame for each city you conquered this game.",
+    "source": "Solo Conquest scoring, rulebook p.19"
+  },
+  "All Cities Conquered": {
+    "text": "+15 Fame bonus if you conquered every city in the game — this is also what determines whether you Won or Lost.",
+    "source": "Solo Conquest scoring, rulebook p.19"
+  },
+  "Rounds Finished Early": {
+    "text": "+30 Fame for each Round you finished before the 6-Round limit — i.e. you beat the clock.",
+    "source": "Solo Conquest scoring, rulebook p.19"
+  },
+  "Dummy Player's Deck": {
+    "text": "+1 Fame for each card still unflipped in the Dummy Player's Deed deck at game end — a fuller deck means you finished with time to spare.",
+    "source": "Solo Conquest scoring, rulebook p.19"
+  },
+  "End of Round": {
+    "text": "+5 Fame if \"End of the Round\" had not yet been announced during your final Round.",
+    "source": "Solo Conquest scoring, rulebook p.19"
+  }
+}

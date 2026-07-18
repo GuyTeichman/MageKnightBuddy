@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -23,6 +24,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
@@ -47,22 +49,23 @@ import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.Outcome
 import com.guyteichman.mageknightbuddy.domain.Scenario
+import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-private enum class WizardPage(val title: String) {
+private enum class WizardPage(val title: String, val helpKeys: List<String> = emptyList()) {
     SETUP("Setup"),
-    FAME("Fame"),
-    GREATEST_KNOWLEDGE("Greatest Knowledge"),
-    GREATEST_LEADER("Greatest Leader"),
-    GREATEST_ADVENTURER("Greatest Adventurer"),
-    GREATEST_LOOT("Greatest Loot"),
-    GREATEST_CONQUEROR("Greatest Conqueror"),
-    GREATEST_BEATING("Greatest Beating"),
-    GREATEST_QUESTER("Greatest Quester"),
-    CITIES_CONQUERED("Cities Conquered"),
-    ROUNDS_FINISHED_EARLY("Rounds Finished Early"),
-    DUMMY_PLAYER_STATUS("Dummy Player Status"),
+    FAME("Fame", listOf("Fame")),
+    GREATEST_KNOWLEDGE("Greatest Knowledge", listOf("Greatest Knowledge")),
+    GREATEST_LEADER("Greatest Leader", listOf("Greatest Leader")),
+    GREATEST_ADVENTURER("Greatest Adventurer", listOf("Greatest Adventurer")),
+    GREATEST_LOOT("Greatest Loot", listOf("Greatest Loot")),
+    GREATEST_CONQUEROR("Greatest Conqueror", listOf("Greatest Conqueror")),
+    GREATEST_BEATING("Greatest Beating", listOf("Greatest Beating")),
+    GREATEST_QUESTER("Greatest Quester", listOf("Greatest Quester")),
+    CITIES_CONQUERED("Cities Conquered", listOf("Cities Conquered", "All Cities Conquered")),
+    ROUNDS_FINISHED_EARLY("Rounds Finished Early", listOf("Rounds Finished Early")),
+    DUMMY_PLAYER_STATUS("Dummy Player Status", listOf("Dummy Player's Deck", "End of Round")),
     RESULT("Result"),
 }
 
@@ -71,6 +74,7 @@ private val wizardPages = WizardPage.entries
 @Composable
 fun ScoreCalculatorScreen(
     repository: ScoringSessionRepository,
+    fieldHelp: Map<String, FieldHelp>,
     onDone: () -> Unit,
 ) {
     val viewModel: ScoreCalculatorViewModel = viewModel(factory = ScoreCalculatorViewModel.factory(repository))
@@ -79,7 +83,7 @@ fun ScoreCalculatorScreen(
     var showResetConfirmation by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        WizardContent(viewModel = viewModel, currentPage = currentPage, scope = scope, onDone = onDone)
+        WizardContent(viewModel = viewModel, currentPage = currentPage, fieldHelp = fieldHelp, scope = scope, onDone = onDone)
 
         ExtendedFloatingActionButton(
             onClick = { showResetConfirmation = true },
@@ -117,15 +121,22 @@ fun ScoreCalculatorScreen(
 private fun WizardContent(
     viewModel: ScoreCalculatorViewModel,
     currentPage: WizardPage,
+    fieldHelp: Map<String, FieldHelp>,
     scope: CoroutineScope,
     onDone: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                "Step ${viewModel.pageIndex + 1} of ${wizardPages.size}: ${currentPage.title}",
-                style = MaterialTheme.typography.titleMedium,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Step ${viewModel.pageIndex + 1} of ${wizardPages.size}: ${currentPage.title}",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                if (currentPage.helpKeys.isNotEmpty()) {
+                    HelpButton(keys = currentPage.helpKeys, fieldHelp = fieldHelp)
+                }
+            }
             LinearProgressIndicator(
                 progress = { (viewModel.pageIndex + 1) / wizardPages.size.toFloat() },
                 modifier = Modifier.fillMaxWidth(),
@@ -364,6 +375,43 @@ private fun UnitLevelRow(
                 modifier = Modifier.weight(1f),
             )
         }
+    }
+}
+
+@Composable
+private fun HelpButton(keys: List<String>, fieldHelp: Map<String, FieldHelp>) {
+    var showHelp by remember { mutableStateOf(false) }
+
+    IconButton(onClick = { showHelp = true }) {
+        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Rule details")
+    }
+
+    if (showHelp) {
+        AlertDialog(
+            onDismissRequest = { showHelp = false },
+            title = { Text("Rule details") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    keys.forEach { key ->
+                        fieldHelp[key]?.let { help ->
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(help.text)
+                                Text(
+                                    help.source,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showHelp = false }) {
+                    Text("Close")
+                }
+            },
+        )
     }
 }
 

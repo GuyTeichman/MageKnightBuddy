@@ -11,10 +11,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val repository = (application as MageKnightBuddyApplication).scoringSessionRepository
+        val app = application as MageKnightBuddyApplication
         setContent {
             MageKnightBuddyTheme {
-                MageKnightBuddyApp(repository = repository)
+                MageKnightBuddyApp(repository = app.scoringSessionRepository, fieldHelp = app.fieldHelp)
             }
         }
     }

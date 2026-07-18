@@ -26,6 +26,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.guyteichman.mageknightbuddy.R
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
+import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.scoreboard.ScoreboardTab
 import com.guyteichman.mageknightbuddy.ui.scorecalculator.ScoreCalculatorScreen
 
@@ -38,7 +39,7 @@ private sealed class Tab(val route: String, val labelRes: Int, val icon: ImageVe
 private val tabs = listOf(Tab.Scoreboard, Tab.ScoreCalculator, Tab.DummyPlayer)
 
 @Composable
-fun MageKnightBuddyApp(repository: ScoringSessionRepository) {
+fun MageKnightBuddyApp(repository: ScoringSessionRepository, fieldHelp: Map<String, FieldHelp>) {
     val navController = rememberNavController()
 
     fun navigateToTab(route: String) {
@@ -80,6 +81,7 @@ fun MageKnightBuddyApp(repository: ScoringSessionRepository) {
             composable(Tab.ScoreCalculator.route) {
                 ScoreCalculatorScreen(
                     repository = repository,
+                    fieldHelp = fieldHelp,
                     onDone = { navigateToTab(Tab.Scoreboard.route) },
                 )
             }
