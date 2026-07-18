@@ -42,9 +42,9 @@ A specific Skill token is also set aside per Knight, for use in the "First Level
 - **First Level Up** (reaching level 2): instead of flipping two Skill tokens and choosing one, take the Skill token set aside during setup directly (the other flip goes to the Common Skills area). You still take one Advanced Action card as usual.
 - **Subsequent Level Ups to even levels** (4, 6, 8, 10): you must take one of the two flipped Skill tokens — you may not take from the Common Skills area on these levels.
 
-## Victory condition
+## Outcome (Won/Lost)
 
-Defeat both cities **and** complete your Knight's additional objective (below). If not, you've failed — but a score is still counted either way.
+Won iff both cities were conquered **and** your Knight's additional objective (below) is met; Lost otherwise — a score is still counted either way. The objective check reads from the same raw tallies already entered for scoring (e.g. Arythea's objective is a Wound-card count, the same count that feeds her Greatest Beating override below) — no separate input needed.
 
 | Knight | Additional objective |
 |---|---|

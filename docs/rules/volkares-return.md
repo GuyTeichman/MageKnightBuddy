@@ -61,6 +61,10 @@ Difficulty here is two independent axes, chosen before setup, that scale everyth
 - Round 6 (Epic) / Round 4 (Blitz) ends with Volkare's army not fully destroyed → **players lose**.
 - Volkare's entire army is destroyed → **players win**.
 
+### Outcome (Won/Lost)
+
+Won iff Volkare was defeated — the same yes/no already needed for the Volkare combat bonus in scoring (step 4 below); Lost on any of the other three end conditions. No separate input needed.
+
 ## Scoring
 
 The rulebook is explicit that the real goal is just to defeat Volkare — scoring is a secondary "how well did you do" measure, using the same shape as other cooperative scenarios:

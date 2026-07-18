@@ -6,7 +6,7 @@ Native Android: Kotlin + Jetpack Compose. See [ADR-0001](../adr/0001-domain-logi
 
 ## Module layout
 
-- **`domain`** — plain Kotlin, no Android dependencies. Scenario definitions, scoring rule implementations, `Knight`, `ScoringSession`. This is the module that would move to Kotlin Multiplatform if iOS is ever built.
+- **`domain`** — plain Kotlin, no Android dependencies. Scenario definitions, scoring rule implementations, `Knight`, `ScoringSession`, and each Scenario's Outcome (win/loss) rule. This is the module that would move to Kotlin Multiplatform if iOS is ever built.
 - **`data`** — persistence. Stores completed `ScoringSession`s locally (planned: Room) so the player can review past games and stats (e.g. "I win more with Arythea, but Wounds cost me more Fame than with Tovak"). Not implemented in this docs-only pass.
 - **`app`** — Compose UI, navigation between tabs, Android wiring. Depends on `domain` and `data`.
 
@@ -25,8 +25,8 @@ Native Android: Kotlin + Jetpack Compose. See [ADR-0001](../adr/0001-domain-logi
    - Fame (base score)
    - Standard Achievements Scoring categories (Knowledge, Leader, Adventurer, Loot, Conqueror, Beating) — see `docs/rules/solo-scoring-overview.md`. No titles awarded in solo.
    - Solo Conquest–specific bonuses — see `docs/rules/solo-conquest.md`.
-4. Show computed total.
-5. Save the `ScoringSession` to history.
+4. Show computed total and Outcome (Won/Lost) — Outcome is *derived* from the same tallies entered in step 3 per the scenario's victory condition (e.g. Solo Conquest: all cities conquered), never a separate manual input.
+5. Save the `ScoringSession`, including the computed Outcome, to history.
 
 This is a **post-game wizard only** — it does not track anything live during play. That's a deliberately separate, harder problem (would require mirroring full game state) and isn't in scope.
 

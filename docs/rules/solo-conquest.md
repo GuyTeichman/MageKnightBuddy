@@ -40,7 +40,9 @@ When all cities are conquered, the player has one last turn (the Dummy Player do
    - +1 point for each card remaining in the Dummy Player's Deed deck that was not yet flipped this Round (a fuller deck = more time to spare).
    - +5 points if "End of the Round" had not yet been announced in your final Round.
 
-Whether or not you conquered all cities, the total score above is your result — victory/failure is about whether all cities were conquered, but a score is always computed.
+## Outcome (Won/Lost)
+
+Won iff both cities were conquered (i.e. the "conquered all cities" bonus above applies); Lost otherwise. This is derived from the same city-conquered tally used for scoring — no separate input needed. A score is always computed either way.
 
 ## Note: other scenarios playable solo
 

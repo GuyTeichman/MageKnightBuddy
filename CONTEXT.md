@@ -13,8 +13,12 @@ The Hero character a player plays as (e.g. Tovak, Arythea, Wolfhawk). Recorded o
 _Avoid_: Hero, character, player
 
 **Scoring Session**:
-One completed solo play-through of a Scenario by a given Knight, entered into the Score Calculator after the game ends. Holds the raw tallies the player enters (Fame, Spells in deck, Artifacts, etc.) and the computed total.
+One completed solo play-through of a Scenario by a given Knight, entered into the Score Calculator after the game ends. Holds the raw tallies the player enters (Fame, Spells in deck, Artifacts, etc.), the computed total, and the computed Outcome.
 _Avoid_: Game, run, playthrough
+
+**Outcome**:
+Whether a Scoring Session was Won or Lost. Always **derived** from the same raw tallies already entered for scoring, per the Scenario's own victory condition (e.g. Solo Conquest: all cities conquered; Volkare's Return: Volkare defeated) — never a separate manual input. Computed once and stored on the Scoring Session so history/stats can filter by it directly.
+_Avoid_: Result, victory (Outcome is the stored Won/Lost value; "victory condition" is the rule that computes it)
 
 **Standard Achievements Scoring**:
 The fixed six scoring categories used by every scenario: Greatest Knowledge, Greatest Leader, Greatest Adventurer, Greatest Loot, Greatest Conqueror, Greatest Beating. Each has its own point formula based on deck/inventory/unit contents. Matches the rulebook's own "STANDARD ACHIEVEMENTS SCORING" heading (p.15) exactly — always in play, no expansions or Settings required. See `docs/rules/solo-scoring-overview.md`.
