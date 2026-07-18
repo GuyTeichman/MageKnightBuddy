@@ -7,28 +7,39 @@ Native Android: Kotlin + Jetpack Compose. See [ADR-0001](../adr/0001-domain-logi
 ## Module layout
 
 - **`domain`** — plain Kotlin, no Android dependencies. Scenario definitions, scoring rule implementations, `Knight`, `ScoringSession`, and each Scenario's Outcome (win/loss) rule. This is the module that would move to Kotlin Multiplatform if iOS is ever built.
-- **`data`** — persistence. Stores completed `ScoringSession`s locally (planned: Room) so the player can review past games and stats (e.g. "I win more with Arythea, but Wounds cost me more Fame than with Tovak"). Not implemented in this docs-only pass.
-- **`app`** — Compose UI, navigation between tabs, Android wiring. Depends on `domain` and `data`.
+- **`data`** — persistence. Room, mapping the plain-Kotlin `ScoringSession` to/from a Room `@Entity` so `domain` stays Android-free (per [ADR-0001](../adr/0001-domain-logic-as-plain-kotlin-module.md)). DAO tests run on plain JVM via `BundledSQLiteDriver` — see [ADR-0003](../adr/0003-room-tests-via-bundled-sqlite-driver.md) — no emulator required.
+- **`app`** — Compose UI, navigation between tabs, Android wiring, `ViewModel`s. Depends on `domain` and `data`.
 
 ## Tab roadmap
 
-1. **Score Calculator** (current focus) — Solo Conquest only for v1.
-2. Additional solo scenarios (later) — same engine, new `Scenario` + scoring-rule implementations per scenario.
-3. **Dummy Player tab** (later) — tracks the Dummy Player's deck and draws; buttons for "run Dummy's turn" and "end round / new round".
-4. **Proxy Player tab** (later, deferred) — Apocalypse Dragon's more complex solo-simulation mechanic. Not designed yet.
+1. **Scoreboard** (start destination) — table of every saved `ScoringSession` on this device (Knight / Score / Outcome, most recent first). A FAB ("Score new scenario") navigates to the Score tab. Tapping a row pushes a full-screen category breakdown (its own nested `NavHost` scoped to this tab) — see Scoreboard flow below.
+2. **Score** (current focus) — the Score Calculator wizard. Solo Conquest only for v1.
+3. Additional solo scenarios (later) — same engine, new `Scenario` + scoring-rule implementations per scenario.
+4. **Dummy Player tab** (later) — tracks the Dummy Player's deck and draws; buttons for "run Dummy's turn" and "end round / new round".
+5. **Proxy Player tab** (later, deferred) — Apocalypse Dragon's more complex solo-simulation mechanic. Not designed yet.
 
 ## Score Calculator flow (v1: Solo Conquest)
 
-1. Select scenario (only Solo Conquest available in v1).
-2. Select Knight (played this game) — stored as metadata on the `ScoringSession`; not used in the Solo Conquest formula itself, but the domain model treats it as a first-class input to scoring in general, since a future Apocalypse Dragon variant of Solo Conquest uses Knight to change the scoring rules.
-3. Step through scoring categories in rulebook order, entering final tallies:
-   - Fame (base score)
-   - Standard Achievements Scoring categories (Knowledge, Leader, Adventurer, Loot, Conqueror, Beating) — see `docs/rules/solo-scoring-overview.md`. No titles awarded in solo.
-   - Solo Conquest–specific bonuses — see `docs/rules/solo-conquest.md`.
-4. Show computed total and Outcome (Won/Lost) — Outcome is *derived* from the same tallies entered in step 3 per the scenario's victory condition (e.g. Solo Conquest: all cities conquered), never a separate manual input.
-5. Save the `ScoringSession`, including the computed Outcome, to history.
+A **paginated wizard** — one page per scoring category, in rulebook order, with Next/Previous navigation. State lives in a `ViewModel` (not `remember`), so it survives switching tabs and back — see [ADR-0002](../adr/0002-viewmodel-backed-wizard-state.md):
+
+1. **Setup** — select Scenario (dropdown; only Solo Conquest available in v1, but always shown as a picker) and Knight (played this game). Both stored as metadata on the `ScoringSession` — Knight isn't used in the Solo Conquest formula itself, but the domain model treats it as a first-class scoring input in general, since a future Apocalypse Dragon variant of Solo Conquest uses Knight to change the scoring rules. Also an optional **Player** name field (see `CONTEXT.md`) — free text, for telling multiple people's sessions apart later.
+2. **Fame** (base score).
+3. One page per Standard Achievements Scoring category — Greatest Knowledge, Greatest Leader, Greatest Adventurer, Greatest Loot, Greatest Conqueror, Greatest Beating (see `docs/rules/solo-scoring-overview.md`). No titles awarded in solo. Greatest Leader's Unit input is a per-level tally (count of healthy and wounded Units at each level 1–4), not a list of individual Units.
+4. **Greatest Quester** page (Quest Points → Fame) — Apocalypse Dragon variant category. Scored unconditionally for now, ahead of the Settings/expansion-toggle work (see `CONTEXT.md`'s Achievements Scoring and Settings entries for the "every expansion enabled by default" reasoning).
+5. Solo Conquest–specific bonus pages, one per bonus type — Cities Conquered, Rounds Finished Early, Dummy Player Status (cards remaining + whether "End of the Round" was announced) — see `docs/rules/solo-conquest.md`.
+6. **Result** page — computed total and Outcome (Won/Lost). Outcome is *derived* from the same tallies entered above per the scenario's victory condition (e.g. Solo Conquest: all cities conquered), never a separate manual input.
+7. Tapping **Done** saves the `ScoringSession` (every raw tally entered, plus the computed total and Outcome) and navigates back to the Scoreboard tab, where the new row appears at the top.
+
+Every field defaults to a sensible value (0 / false / first item) rather than starting blank — there is no required-input validation and Next is always enabled. Every field tied to a rulebook mechanic (Fame, the six Standard Achievements categories, Greatest Quester, and the five Solo Conquest bonuses — 14 in total) has a "?" button opening a dialog with beginner-friendly help text, sourced from a JSON file bundled with the app. Each entry always stores both the explanation and its rulebook page citation; whether the citation is shown is a single decision point in the rendering code, not a user-facing setting (a real toggle would need a Settings screen, which is still out of scope — see below).
 
 This is a **post-game wizard only** — it does not track anything live during play. That's a deliberately separate, harder problem (would require mirroring full game state) and isn't in scope.
+
+## Scoreboard flow
+
+1. Lists every saved `ScoringSession` on this device as a table — Knight / Score / Outcome — most recent first.
+2. A FAB ("Score new scenario") navigates to the Score tab to start a new wizard run.
+3. Tapping a row pushes a full-screen breakdown (via a nested `NavHost` scoped to this tab, with a back arrow): two columns, Category and Score, one row per individual scoring rule (Fame, the six Standard Achievements categories, Greatest Quester, and the five Solo Conquest bonuses — 13 rows) plus a Total row.
+4. Player name is stored on every `ScoringSession` already (see `CONTEXT.md`) but not yet shown on the Scoreboard table or breakdown — deferred until the shape of "compare multiple players" is actually decided.
 
 ## Explicitly out of scope for now
 
@@ -36,4 +47,6 @@ This is a **post-game wizard only** — it does not track anything live during p
 - Live/in-game tracking during the Score Calculator flow.
 - Dummy Player tab implementation.
 - Proxy Player tab (Apocalypse Dragon) — not even designed yet.
-- Actual Room/persistence implementation — noted as a requirement here, not built in this pass.
+- The Settings screen itself (expansion/variant toggles, help-citation visibility) — Greatest Quester is scored unconditionally in the meantime; see `CONTEXT.md`.
+- Surfacing Player name on the Scoreboard, and any actual multi-player comparison view.
+- Global Scoreboard (stub) — see `CONTEXT.md`; not designed.

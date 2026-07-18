@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Scoreboard
 import androidx.compose.material3.Icon
@@ -14,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -23,17 +25,31 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.guyteichman.mageknightbuddy.R
+import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
+import com.guyteichman.mageknightbuddy.ui.scoreboard.ScoreboardTab
+import com.guyteichman.mageknightbuddy.ui.scorecalculator.ScoreCalculatorScreen
 
-private sealed class Tab(val route: String, val labelRes: Int) {
-    data object ScoreCalculator : Tab("score_calculator", R.string.tab_score_calculator)
-    data object DummyPlayer : Tab("dummy_player", R.string.tab_dummy_player)
+private sealed class Tab(val route: String, val labelRes: Int, val icon: ImageVector) {
+    data object Scoreboard : Tab("scoreboard", R.string.tab_scoreboard, Icons.Filled.Scoreboard)
+    data object ScoreCalculator : Tab("score_calculator", R.string.tab_score_calculator, Icons.Filled.Calculate)
+    data object DummyPlayer : Tab("dummy_player", R.string.tab_dummy_player, Icons.Filled.Groups)
 }
 
-private val tabs = listOf(Tab.ScoreCalculator, Tab.DummyPlayer)
+private val tabs = listOf(Tab.Scoreboard, Tab.ScoreCalculator, Tab.DummyPlayer)
 
 @Composable
-fun MageKnightBuddyApp() {
+fun MageKnightBuddyApp(repository: ScoringSessionRepository) {
     val navController = rememberNavController()
+
+    fun navigateToTab(route: String) {
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -42,21 +58,8 @@ fun MageKnightBuddyApp() {
                 tabs.forEach { tab ->
                     NavigationBarItem(
                         selected = currentDestination?.hierarchy?.any { it.route == tab.route } == true,
-                        onClick = {
-                            navController.navigate(tab.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = if (tab == Tab.ScoreCalculator) Icons.Filled.Scoreboard else Icons.Filled.Groups,
-                                contentDescription = null,
-                            )
-                        },
+                        onClick = { navigateToTab(tab.route) },
+                        icon = { Icon(imageVector = tab.icon, contentDescription = null) },
                         label = { Text(stringResource(tab.labelRes)) },
                     )
                 }
@@ -65,10 +68,21 @@ fun MageKnightBuddyApp() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Tab.ScoreCalculator.route,
+            startDestination = Tab.Scoreboard.route,
             modifier = Modifier.padding(innerPadding),
         ) {
-            composable(Tab.ScoreCalculator.route) { PlaceholderScreen("Score Calculator — coming soon") }
+            composable(Tab.Scoreboard.route) {
+                ScoreboardTab(
+                    repository = repository,
+                    onScoreNewScenario = { navigateToTab(Tab.ScoreCalculator.route) },
+                )
+            }
+            composable(Tab.ScoreCalculator.route) {
+                ScoreCalculatorScreen(
+                    repository = repository,
+                    onDone = { navigateToTab(Tab.Scoreboard.route) },
+                )
+            }
             composable(Tab.DummyPlayer.route) { PlaceholderScreen("Dummy Player — coming soon") }
         }
     }
