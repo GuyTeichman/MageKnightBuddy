@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">MageKnightBuddy</string>
+    <string name="tab_score_calculator">Score Calculator</string>
+    <string name="tab_dummy_player">Dummy Player</string>
+</resources>

@@ -1,1 +1,15 @@
-.claude/settings.local.json
+.claude/
+
+# Gradle / Android build outputs
+.gradle/
+build/
+*/build/
+local.properties
+.cxx/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
