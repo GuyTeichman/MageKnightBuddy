@@ -6,6 +6,7 @@ Android companion app for the *Mage Knight* board game: a solo score calculator 
 
 - `CONTEXT.md` — domain glossary (Scenario, Knight, Achievements Scoring, Quest Point, etc). Check it before introducing a new domain term, and update it the moment a term gets resolved or sharpened — don't let it drift out of sync with the code.
 - `docs/design/architecture.md` — module layout, tab roadmap, Score Calculator flow, and what's explicitly out of scope right now.
+- `docs/design/workflow.md` — the GitHub issue → branch → PR → CI → merge loop, including the standing authorization for Claude to push branches and open PRs when pointed at a specific issue.
 - `docs/adr/` — architecture decision records. Only hard-to-reverse, non-obvious, real-trade-off decisions get one (see `docs/adr/0001-*.md` for the template in use).
 - `docs/rules/` — scoring rules extracted from the rulebook PDFs, with page citations back to the source. Treat these as ground truth for scoring logic instead of re-reading the PDFs each time; if a rule looks wrong here, verify against the PDF and fix the doc, don't silently code around it.
 - `domain/` — pure Kotlin, zero Android dependencies. Keep it that way. This is the module that would move to Kotlin Multiplatform if iOS ever happens — any Android import here defeats the point.
@@ -18,6 +19,7 @@ Android companion app for the *Mage Knight* board game: a solo score calculator 
 - Domain logic must be testable without an emulator — that's the reason it's isolated in a pure Kotlin module. If a `domain` class needs an Android SDK type to test, it belongs in the wrong module.
 - Stay in scope: v1 is Solo Conquest only. Don't build out other scenarios, the Dummy Player tab, Settings/expansion toggles, or the Proxy Player simulator unless explicitly asked — they're deliberately stubbed in the docs, not forgotten.
 - Before calling scoring logic done, cross-check the formula against the matching `docs/rules/*.md` file rather than trusting memory of the rulebook.
+- `main` is branch-protected: work happens on a branch, merges via PR, and requires the `test` and `build` CI checks (`.github/workflows/ci.yml`) to pass. See `docs/design/workflow.md` for the full issue → PR → merge loop.
 
 ## Build
 
