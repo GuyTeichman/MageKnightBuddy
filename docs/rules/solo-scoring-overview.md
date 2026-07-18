@@ -49,7 +49,7 @@ The Apocalypse Dragon expansion introduces **Quest cards** — optional objectiv
 |---|---|
 | **Greatest Quester** | 1 Fame per quest point scored (from completed Quest card steps) |
 
-Like the other six categories, Greatest Quester's Title (+3 Fame to whoever scored the most quest points, +1 if tied) only applies in multiplayer. It's an optional category — it only applies when the scenario/session is using Quest cards, unlike the base six categories, which are always in play.
+Like the other six categories, Greatest Quester's Title (+3 Fame to whoever scored the most quest points, +1 if tied) only applies in multiplayer. Per the rulebook it's an optional category, gated on whether the scenario/session is using Quest cards — unlike the base six, which are always in play. The app doesn't have a Settings screen to gate it yet, though: until that exists, the Score Calculator scores it unconditionally (see `CONTEXT.md`'s Achievements Scoring and Settings entries).
 
 ## Solo play: no Titles
 
