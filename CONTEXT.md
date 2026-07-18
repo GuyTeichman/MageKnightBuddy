@@ -17,11 +17,22 @@ One completed solo play-through of a Scenario by a given Knight, entered into th
 _Avoid_: Game, run, playthrough
 
 **Standard Achievements Scoring**:
-The six scoring categories shared across most scenarios: Greatest Knowledge, Greatest Leader, Greatest Adventurer, Greatest Loot, Greatest Conqueror, Greatest Beating. Each has its own point formula based on deck/inventory/unit contents. See `docs/rules/solo-scoring-overview.md`.
+The fixed six scoring categories used by every scenario: Greatest Knowledge, Greatest Leader, Greatest Adventurer, Greatest Loot, Greatest Conqueror, Greatest Beating. Each has its own point formula based on deck/inventory/unit contents. Matches the rulebook's own "STANDARD ACHIEVEMENTS SCORING" heading (p.15) exactly — always in play, no expansions or Settings required. See `docs/rules/solo-scoring-overview.md`.
+
+**Achievements Scoring**:
+The umbrella for a Scoring Session's full set of scoring categories: Standard Achievements Scoring plus whichever optional variant categories are currently enabled (e.g. Greatest Quester). Which variants are enabled will eventually be driven by Settings.
+_Avoid_: Standard Achievements Scoring (that term is reserved for the fixed six; use this term when variants may also be included)
+
+**Quest Point**:
+A unit of progress gained by completing a step on a Quest Card (Apocalypse Dragon expansion). Feeds the optional Greatest Quester category of Achievements Scoring (1 Fame per Quest Point). Distinct from Fame itself.
+_Avoid_: Quest score, quest fame
 
 **Title**:
-The bonus (typically +3 Fame) Standard Achievements Scoring awards to whichever player scored highest in a category, in multiplayer games. **Not awarded in solo play** — with only one player there's nothing to compare against, so each category is just summed directly.
+The bonus (typically +3 Fame) an Achievements Scoring category awards to whichever player scored highest in it, in multiplayer games. **Not awarded in solo play** — with only one player there's nothing to compare against, so each category is just summed directly.
 _Avoid_: Bonus, achievement (Title is the comparison bonus; "Achievement" is the category itself)
+
+**Settings** (stub):
+The eventual place a player chooses which expansions and optional scoring variants (e.g. Greatest Quester) are in effect. Not designed yet — deferred to a later phase.
 
 **Dummy Player**:
 The automated non-player character used to pace solo and cooperative games — it takes a simplified turn each round by flipping cards from its own deck. Some scenarios' scoring (e.g. Solo Conquest) counts cards remaining in the Dummy Player's deck.
