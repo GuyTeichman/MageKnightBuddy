@@ -14,7 +14,11 @@ class MainActivity : ComponentActivity() {
         val app = application as MageKnightBuddyApplication
         setContent {
             MageKnightBuddyTheme {
-                MageKnightBuddyApp(repository = app.scoringSessionRepository, fieldHelp = app.fieldHelp)
+                MageKnightBuddyApp(
+                    repository = app.scoringSessionRepository,
+                    dummyPlayerRepository = app.dummyPlayerSessionRepository,
+                    fieldHelp = app.fieldHelp,
+                )
             }
         }
     }
