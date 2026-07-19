@@ -15,7 +15,7 @@ Native Android: Kotlin + Jetpack Compose. See [ADR-0001](../adr/0001-domain-logi
 1. **Scoreboard** (start destination) — table of every saved `ScoringSession` on this device (Knight / Score / Outcome, most recent first). A FAB ("Score new scenario") navigates to the Score tab. Tapping a row pushes a full-screen category breakdown (its own nested `NavHost` scoped to this tab) — see Scoreboard flow below.
 2. **Score** (current focus) — the Score Calculator wizard. Solo Conquest only for v1.
 3. Additional solo scenarios (later) — same engine, new `Scenario` + scoring-rule implementations per scenario.
-4. **Dummy Player tab** (later) — tracks the active player-simulation's deck and draws; buttons for "run turn" and "end round / new round". Hosts a mode selector between standard Dummy Player, Volkare (The Lost Legion's Volkare's Return/Volkare's Quest), and Proxy Player (Apocalypse Dragon) — one tab, one mode active per scenario, not three separate tabs. Volkare and Proxy Player modes are not designed yet.
+4. **Dummy Player tab** (later) — tracks the active player-simulation's deck and draws; buttons for "run turn" and "end round / new round". Hosts a mode selector between standard Dummy Player, Volkare (The Lost Legion's Volkare's Return/Volkare's Quest), and Proxy Player (a more elaborate, interactive Dummy Player replacement introduced in Apocalypse Dragon, but usable in any solo/coop scenario, not just the ones that expansion added) — one tab, one mode active per scenario, not three separate tabs. Volkare and Proxy Player modes are not designed yet.
 
 ## Score Calculator flow (v1: Solo Conquest)
 

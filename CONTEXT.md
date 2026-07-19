@@ -1,6 +1,6 @@
 # MageKnightBuddy
 
-An Android companion app for the *Mage Knight* board game. Helps a player run solo games: calculating end-of-game scores, and (later) operating the automated Dummy Player and Apocalypse Dragon's Proxy Player.
+An Android companion app for the *Mage Knight* board game. Helps a player run solo games: calculating end-of-game scores, and (later) operating the automated Dummy Player and its more elaborate Proxy Player variant.
 
 ## Language
 
@@ -61,5 +61,5 @@ The antagonist from The Lost Legion expansion who replaces the Dummy Player in *
 _Avoid_: Dummy Player (Volkare replaces the Dummy Player in his scenarios but has distinct, more elaborate turn logic — don't conflate the two)
 
 **Proxy Player**:
-A more elaborate solo-simulation mechanic introduced in the Apocalypse Dragon expansion, driving the Dragon/Horsemen AI in scenarios like Against the Dragon and Apocalypse is Here. A mode of the Dummy Player tab, not a separate tab. Not yet modeled; deferred to a later phase.
+A more elaborate, interactive drop-in replacement for the Dummy Player, introduced in the Apocalypse Dragon expansion. Not limited to Apocalypse Dragon scenarios — like Volkare, it's usable as the Dummy Player substitute in any solo/coop scenario that calls for one, not just scenarios the expansion added (e.g. Against the Dragon, Apocalypse is Here). A mode of the Dummy Player tab, not a separate tab. Not yet modeled; deferred to a later phase.
 _Avoid_: Dummy player (they are different mechanics from different rulebooks, even though both now live under the same tab)
