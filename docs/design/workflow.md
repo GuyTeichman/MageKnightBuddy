@@ -18,3 +18,7 @@ Pushing branches and opening PRs are normally actions Claude confirms before tak
 ## Required CI checks
 
 Branch protection on `main` requires the `test` and `build` jobs defined in `.github/workflows/ci.yml` to pass before a PR can merge. Both must be added as required status checks in the repo's branch protection settings (GitHub only offers a check for selection after it has run at least once, or it can be typed in manually).
+
+## Publishing a build
+
+Pushing a version tag matching `v*.*.*` (e.g. `v0.1.0`) triggers `.github/workflows/publish.yml`, which runs the unit tests, builds the **debug** APK (auto-signed with the debug keystore — no release signing config exists yet, so an unsigned release build wouldn't be installable), and attaches it to a GitHub Release created for that tag. This is separate from `ci.yml`'s per-PR checks and isn't required for merging.
