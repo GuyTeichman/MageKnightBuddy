@@ -15,8 +15,7 @@ Native Android: Kotlin + Jetpack Compose. See [ADR-0001](../adr/0001-domain-logi
 1. **Scoreboard** (start destination) — table of every saved `ScoringSession` on this device (Knight / Score / Outcome, most recent first). A FAB ("Score new scenario") navigates to the Score tab. Tapping a row pushes a full-screen category breakdown (its own nested `NavHost` scoped to this tab) — see Scoreboard flow below.
 2. **Score** (current focus) — the Score Calculator wizard. Solo Conquest only for v1.
 3. Additional solo scenarios (later) — same engine, new `Scenario` + scoring-rule implementations per scenario.
-4. **Dummy Player tab** (later) — tracks the Dummy Player's deck and draws; buttons for "run Dummy's turn" and "end round / new round".
-5. **Proxy Player tab** (later, deferred) — Apocalypse Dragon's more complex solo-simulation mechanic. Not designed yet.
+4. **Dummy Player tab** (later) — tracks the active player-simulation's deck and draws; buttons for "run turn" and "end round / new round". Hosts a mode selector between standard Dummy Player, Volkare (The Lost Legion's Volkare's Return/Volkare's Quest), and Proxy Player (a more elaborate, interactive Dummy Player replacement introduced in Apocalypse Dragon, but usable in any solo/coop scenario, not just the ones that expansion added) — one tab, one mode active per scenario, not three separate tabs. Volkare and Proxy Player modes are not designed yet.
 
 ## Score Calculator flow (v1: Solo Conquest)
 
@@ -45,8 +44,7 @@ This is a **post-game wizard only** — it does not track anything live during p
 
 - Any scenario other than Solo Conquest.
 - Live/in-game tracking during the Score Calculator flow.
-- Dummy Player tab implementation.
-- Proxy Player tab (Apocalypse Dragon) — not even designed yet.
+- Dummy Player tab implementation, including its Volkare and Proxy Player modes — neither is designed yet.
 - The Settings screen itself (expansion/variant toggles, help-citation visibility) — Greatest Quester is scored unconditionally in the meantime; see `CONTEXT.md`.
 - Surfacing Player name on the Scoreboard, and any actual multi-player comparison view.
 - Global Scoreboard (stub) — see `CONTEXT.md`; not designed.

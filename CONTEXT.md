@@ -1,6 +1,6 @@
 # MageKnightBuddy
 
-An Android companion app for the *Mage Knight* board game. Helps a player run solo games: calculating end-of-game scores, and (later) operating the automated Dummy Player and Apocalypse Dragon's Proxy Player.
+An Android companion app for the *Mage Knight* board game. Helps a player run solo games: calculating end-of-game scores, and (later) operating the automated Dummy Player and its more elaborate Proxy Player variant.
 
 ## Language
 
@@ -50,9 +50,16 @@ _Avoid_: Bonus, achievement (Title is the comparison bonus; "Achievement" is the
 The eventual place a player chooses which expansions and optional scoring variants (e.g. Greatest Quester) are in effect. Not designed yet — deferred to a later phase. Until it exists, the app behaves as if its default will be "every expansion enabled" (see Achievements Scoring) — so Apocalypse Dragon content like Greatest Quester is scored unconditionally rather than gated behind a toggle that doesn't exist yet.
 
 **Dummy Player**:
-The automated non-player character used to pace solo and cooperative games — it takes a simplified turn each round by flipping cards from its own deck. Some scenarios' scoring (e.g. Solo Conquest) counts cards remaining in the Dummy Player's deck.
+The automated non-player character used to pace solo and cooperative games — it takes a simplified turn each round by flipping cards from its own deck. Some scenarios' scoring (e.g. Solo Conquest) counts cards remaining in the Dummy Player's deck. The default mode of the Dummy Player tab (below); most scenarios use this mode.
 _Avoid_: AI player, bot, opponent
 
+**Dummy Player tab** (stub):
+The tab (not yet built — see architecture.md's tab roadmap) that runs whichever player-simulation mode the current scenario needs: Dummy Player, Volkare, or Proxy Player. Exactly one mode is active per scenario, chosen via a mode selector on this one tab — not three separate tabs.
+
+**Volkare**:
+The antagonist from The Lost Legion expansion who replaces the Dummy Player in **Volkare's Return** and **Volkare's Quest** — his own deck (an unused Hero's Basic Actions + removed competitive Spells + Wounds) and a movement/combat-driving AI more elaborate than the standard Dummy Player's simple card-flip turn (exploring, pacing toward his target, attacking, retreating). A mode of the Dummy Player tab, not a separate mechanic from it.
+_Avoid_: Dummy Player (Volkare replaces the Dummy Player in his scenarios but has distinct, more elaborate turn logic — don't conflate the two)
+
 **Proxy Player**:
-A more elaborate solo-simulation mechanic introduced in the Apocalypse Dragon expansion. Distinct from Dummy Player — not yet modeled; deferred to a later phase.
-_Avoid_: Dummy player (they are different mechanics from different rulebooks)
+A more elaborate, interactive drop-in replacement for the Dummy Player, introduced in the Apocalypse Dragon expansion. Not limited to Apocalypse Dragon scenarios — like Volkare, it's usable as the Dummy Player substitute in any solo/coop scenario that calls for one, not just scenarios the expansion added (e.g. Against the Dragon, Apocalypse is Here). A mode of the Dummy Player tab, not a separate tab. Not yet modeled; deferred to a later phase.
+_Avoid_: Dummy player (they are different mechanics from different rulebooks, even though both now live under the same tab)
