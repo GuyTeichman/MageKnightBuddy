@@ -211,4 +211,28 @@ class DummyPlayerSessionTest {
 
         assertEquals(2, next.round)
     }
+
+    @Test
+    fun `restore reconstructs a session with the exact same state it was given`() {
+        val original = DummyPlayerSession.start(
+            Knight.CORAL,
+            deckOrder = listOf(CardColor.RED, CardColor.GREEN),
+        ).playTurn().endRound(
+            advancedActionOfferColor = CardColor.WHITE,
+            spellOfferColor = CardColor.BLUE,
+        )
+
+        val restored = DummyPlayerSession.restore(
+            knight = original.knight,
+            wasRandom = original.wasRandom,
+            deckOrder = original.deckOrder,
+            discardPile = original.discardPile,
+            crystals = original.crystals,
+            round = original.round,
+            roundEnded = original.roundEnded,
+            log = original.log,
+        )
+
+        assertEquals(original, restored)
+    }
 }

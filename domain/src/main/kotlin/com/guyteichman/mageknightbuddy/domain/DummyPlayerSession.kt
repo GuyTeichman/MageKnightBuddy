@@ -81,5 +81,30 @@ data class DummyPlayerSession private constructor(
             val knight = Knight.entries.toList().random(random)
             return start(knight, wasRandom = true)
         }
+
+        /**
+         * Reconstructs a session from its full persisted state (used by the persistence layer to
+         * restore a saved game). Not for general use - [start]/[startRandom] are the entry points
+         * for beginning a new session.
+         */
+        fun restore(
+            knight: Knight,
+            wasRandom: Boolean,
+            deckOrder: List<CardColor>,
+            discardPile: List<CardColor>,
+            crystals: Map<CardColor, Int>,
+            round: Int,
+            roundEnded: Boolean,
+            log: List<DummyPlayerEvent>,
+        ): DummyPlayerSession = DummyPlayerSession(
+            knight = knight,
+            wasRandom = wasRandom,
+            deckOrder = deckOrder,
+            discardPile = discardPile,
+            crystals = crystals,
+            round = round,
+            roundEnded = roundEnded,
+            log = log,
+        )
     }
 }

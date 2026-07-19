@@ -7,4 +7,5 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 fun createDatabase(context: Context): MageKnightBuddyDatabase =
     Room.databaseBuilder(context, MageKnightBuddyDatabase::class.java, "mageknightbuddy.db")
         .setDriver(BundledSQLiteDriver())
+        .fallbackToDestructiveMigration(dropAllTables = true)
         .build()
