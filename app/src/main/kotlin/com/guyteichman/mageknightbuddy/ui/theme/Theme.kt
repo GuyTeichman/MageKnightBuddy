@@ -23,6 +23,7 @@ private val LightColorScheme = lightColorScheme(
     tertiary = Color(0xFFE4B25C),
 )
 
+/** App-wide Material3 theme: picks a color scheme (dynamic, dark, or light) and applies it via MaterialTheme. */
 @Composable
 fun MageKnightBuddyTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -30,6 +31,7 @@ fun MageKnightBuddyTheme(
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
+        // Dynamic color (Material You, wallpaper-derived palette) only exists from Android 12 (S) onward.
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
