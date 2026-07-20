@@ -68,6 +68,10 @@ class DummyPlayerSetupViewModel(
      */
     suspend fun start() {
         repository.save(DummyPlayerSession.start(knight = knight, wasRandom = wasRandom))
+        // hasSavedSession is otherwise only set from the init-block check, which doesn't re-run
+        // when returning to this screen via a nested-NavHost back-pop (the ViewModel survives
+        // that pop) - so without this, Restore Game stays stale/disabled right after Start.
+        hasSavedSession = true
     }
 
     companion object {
