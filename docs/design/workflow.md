@@ -8,8 +8,9 @@ This project tracks work as GitHub issues and merges into `main` exclusively thr
 2. The author points Claude Code at a specific issue number for context.
 3. Claude creates a branch named `issue-<number>-<slug>` (e.g. `issue-42-fix-fame-rounding`), implements the change, and commits.
 4. Claude pushes the branch and opens a PR whose description includes `Closes #<number>`, so the issue auto-closes when the PR merges. If the change touches Compose UI (a new/changed screen or visible component), the PR includes 1-3 screenshots of the relevant feature — skip this for changes with no visual surface (domain logic, docs, CI config).
-5. CI (`.github/workflows/ci.yml`) runs two required checks on the PR: `test` (`./gradlew test`) and `build` (`./gradlew build`, gated behind `test` passing).
-6. Once both checks are green, the PR is merged into `main`, closing the linked issue.
+5. Immediately after opening the PR, Claude runs `/code-review` against it in a clean-context subagent, steered toward correctness, YAGNI, and security rather than the skill's default simplification/efficiency lens. Findings are reported back in the conversation for the author to read before their own review — nothing is posted to GitHub. This is a pre-review pass for the author, not a substitute for their review.
+6. CI (`.github/workflows/ci.yml`) runs two required checks on the PR: `test` (`./gradlew test`) and `build` (`./gradlew build`, gated behind `test` passing).
+7. Once both checks are green, the PR is merged into `main`, closing the linked issue.
 
 ## Standing authorization
 
