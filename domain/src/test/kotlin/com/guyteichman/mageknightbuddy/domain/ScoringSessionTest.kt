@@ -62,8 +62,8 @@ class ScoringSessionTest {
             playedAt = playedAt,
         )
 
-        // 12 quest points + 2 reputation modifier (Reputation +3 prints a +2 modifier) = 14
-        assertEquals(14, session.score)
+        // 12 quest points + 3 reputation modifier = 15
+        assertEquals(15, session.score)
         assertEquals(Outcome.WON, session.outcome)
         assertEquals(Scenario.ForTheCouncil, session.scenario)
         assertEquals(input, session.input)

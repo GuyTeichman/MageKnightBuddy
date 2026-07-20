@@ -376,8 +376,8 @@ private fun WizardContent(
                     onValueChange = { viewModel.questPoints = it },
                 )
                 WizardPage.COUNCIL_REPUTATION -> ReputationTrackPicker(
-                    selected = ReputationTrackSpace.fromPosition(viewModel.reputationTrackPosition),
-                    onSelect = { viewModel.reputationTrackPosition = it.position },
+                    selected = ReputationTrackSpace.valueOf(viewModel.reputationTrackSpaceName),
+                    onSelect = { viewModel.reputationTrackSpaceName = it.name },
                 )
                 WizardPage.ROUNDS_FINISHED_EARLY -> NumberField(
                     label = "Rounds finished before the Round 6 limit",
@@ -452,33 +452,17 @@ private fun NumberField(label: String, value: String, onValueChange: (String) ->
 
 /**
  * Which physical space on the Reputation track the player's Shield token sits on, shown as a
- * vertical list of all 13 spaces - a phone screen is much taller than it is wide, and a vertical
+ * vertical list of all 10 spaces - a phone screen is much taller than it is wide, and a vertical
  * list is a reasonable stand-in for the physical track's curved fan shape. Negative spaces are
  * tinted red, positive spaces gold, deepening toward each end, mirroring the real board's own
- * coloring. Each row aligns its position (what the rulebook calls e.g. "+2 Reputation") against
- * the modifier actually printed there, so the player just taps where their token is instead of
- * separately entering a modifier/X-space/raw-Reputation the game never asks them to compute by
- * hand. See [ReputationTrackSpace] for what those two numbers mean.
+ * coloring. Each row shows the one number the board actually prints there (see
+ * [ReputationTrackSpace] - there's no second "position" number to show, since the game never
+ * tracks one), so the player just taps where their token is.
  */
 @Composable
 private fun ReputationTrackPicker(selected: ReputationTrackSpace, onSelect: (ReputationTrackSpace) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("Reputation", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            Text(
-                "Position",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.width(56.dp),
-            )
-            Text(
-                "Modifier",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.End,
-            )
-        }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             ReputationTrackSpace.entries.forEach { space ->
                 ReputationTrackSpaceRow(space = space, selected = space == selected, onClick = { onSelect(space) })
@@ -503,11 +487,9 @@ private fun ReputationTrackSpaceRow(space: ReputationTrackSpace, selected: Boole
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(space.positionLabel, style = MaterialTheme.typography.titleMedium, modifier = Modifier.width(56.dp))
             Text(
                 space.modifierLabel,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.End,
             )
@@ -525,21 +507,21 @@ private const val REPUTATION_TRACK_MAX_TINT = 0.35f
 @Composable
 private fun ReputationTrackSpace.trackColor(): Color {
     val surface = MaterialTheme.colorScheme.surface
-    val fraction = (kotlin.math.abs(position) / 6f) * REPUTATION_TRACK_MAX_TINT
+    // The X space has no modifier - it's the track's most-negative space, so it's tinted as
+    // fully as the negative end gets.
+    val modifierValue = modifier ?: -5
+    val fraction = (kotlin.math.abs(modifierValue) / 5f) * REPUTATION_TRACK_MAX_TINT
     return when {
-        position < 0 -> lerp(surface, ReputationNegativeHue, fraction)
-        position > 0 -> lerp(surface, ReputationPositiveHue, fraction)
+        modifierValue < 0 -> lerp(surface, ReputationNegativeHue, fraction)
+        modifierValue > 0 -> lerp(surface, ReputationPositiveHue, fraction)
         else -> surface
     }
 }
 
-// "X" for the two end spaces (matching what's actually printed on the board there - see
-// ReputationTrackSpace), otherwise the signed position/modifier number. Explicit "+" for positive
-// values, since a plain Int.toString() has no sign and would read as ambiguous next to this same
-// row's negative cells.
-private val ReputationTrackSpace.positionLabel: String
-    get() = if (isXSpace) "X" else if (position > 0) "+$position" else position.toString()
-
+// "X" for the track's one end space (matching what's actually printed on the board there - see
+// ReputationTrackSpace), otherwise the signed modifier. Explicit "+" for positive values, since a
+// plain Int.toString() has no sign and would read as ambiguous next to this same row's negative
+// cells.
 private val ReputationTrackSpace.modifierLabel: String
     get() = modifier?.let { if (it > 0) "+$it" else it.toString() } ?: "X"
 

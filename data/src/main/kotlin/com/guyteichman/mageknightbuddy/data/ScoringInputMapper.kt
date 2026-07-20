@@ -57,7 +57,7 @@ fun ScoringInput.toDto(): ScoringInputDto = when (this) {
     )
     is ForTheCouncilScoringInput -> ScoringInputDto.ForTheCouncil(
         questPoints = questPoints,
-        reputationTrackPosition = reputationTrackSpace.position,
+        reputationTrackSpaceName = reputationTrackSpace.name,
     )
     is HiddenValleyScoringInput -> ScoringInputDto.HiddenValley(
         fame = fame,
@@ -99,7 +99,7 @@ fun ScoringInputDto.toDomain(): ScoringInput = when (this) {
     )
     is ScoringInputDto.ForTheCouncil -> ForTheCouncilScoringInput(
         questPoints = questPoints,
-        reputationTrackSpace = ReputationTrackSpace.fromPosition(reputationTrackPosition),
+        reputationTrackSpace = ReputationTrackSpace.valueOf(reputationTrackSpaceName),
     )
     is ScoringInputDto.HiddenValley -> HiddenValleyScoringInput(
         fame = fame,

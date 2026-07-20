@@ -65,10 +65,9 @@ sealed interface ScoringInputDto {
     @SerialName("for_the_council")
     data class ForTheCouncil(
         val questPoints: Int,
-        // The Reputation track space's `position` (see domain ReputationTrackSpace) - both the
-        // modifier and the raw Reputation value are derived from this one number via
-        // ReputationTrackSpace.fromPosition(), so there's nothing else to persist here.
-        val reputationTrackPosition: Int,
+        // The ReputationTrackSpace enum's name (see domain) - the space itself is the only thing
+        // that needs persisting, since its modifier is looked up from it directly.
+        val reputationTrackSpaceName: String,
     ) : ScoringInputDto
 
     @Serializable

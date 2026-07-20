@@ -68,7 +68,7 @@ class ScoringInputMapperTest {
     }
 
     @Test
-    fun `ForTheCouncilScoringInput round-trips through ScoringInputDto and JSON, including a negative track position`() {
+    fun `ForTheCouncilScoringInput round-trips through ScoringInputDto and JSON, including a negative modifier`() {
         val input = ForTheCouncilScoringInput(
             questPoints = 12,
             reputationTrackSpace = ReputationTrackSpace.MINUS_3,

@@ -125,21 +125,21 @@ class ScoreCalculatorViewModelTest {
     }
 
     @Test
-    fun `save builds a ForTheCouncilScoringInput from the selected Reputation track space, negative position included`() = runTest {
+    fun `save builds a ForTheCouncilScoringInput from the selected Reputation track space, negative modifier included`() = runTest {
         val fakeDao = FakeScoringSessionDao()
         val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
 
         viewModel.scenarioId = Scenario.ForTheCouncil.id
         viewModel.questPoints = "12"
-        viewModel.reputationTrackPosition = ReputationTrackSpace.MINUS_3.position
+        viewModel.reputationTrackSpaceName = ReputationTrackSpace.MINUS_3.name
 
         viewModel.save()
 
         val saved = fakeDao.inserted.single().toDomain()
         assertEquals(Scenario.ForTheCouncil, saved.scenario)
         assertEquals(Outcome.LOST, saved.outcome)
-        // 12 quest points - 2 reputation modifier (position -3 prints a -2 modifier) = 10
-        assertEquals(10, saved.score)
+        // 12 quest points - 3 reputation modifier = 9
+        assertEquals(9, saved.score)
         val input = assertIs<ForTheCouncilScoringInput>(saved.input)
         assertEquals(ReputationTrackSpace.MINUS_3, input.reputationTrackSpace)
     }
@@ -159,7 +159,7 @@ class ScoreCalculatorViewModelTest {
         viewModel.highPriestessDefeated = true
         viewModel.graveyardsSealed = "2"
         viewModel.necromancerDefeated = true
-        viewModel.reputationTrackPosition = ReputationTrackSpace.NEGATIVE_X.position
+        viewModel.reputationTrackSpaceName = ReputationTrackSpace.NEGATIVE_X.name
 
         viewModel.reset()
 
@@ -174,6 +174,6 @@ class ScoreCalculatorViewModelTest {
         assertEquals(false, viewModel.highPriestessDefeated)
         assertEquals("0", viewModel.graveyardsSealed)
         assertEquals(false, viewModel.necromancerDefeated)
-        assertEquals(0, viewModel.reputationTrackPosition)
+        assertEquals(ReputationTrackSpace.CENTER.name, viewModel.reputationTrackSpaceName)
     }
 }

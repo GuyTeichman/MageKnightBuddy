@@ -12,7 +12,7 @@ class ForTheCouncilScoringTest {
             reputationTrackSpace = ReputationTrackSpace.PLUS_3,
         )
 
-        assertEquals(7, ForTheCouncilScoring.score(input))
+        assertEquals(8, ForTheCouncilScoring.score(input))
         assertEquals(Outcome.WON, ForTheCouncilScoring.outcome(input))
     }
 
@@ -28,7 +28,7 @@ class ForTheCouncilScoringTest {
     }
 
     @Test
-    fun `a Shield token on the Reputation track's X space costs 10 Quest Points regardless of side`() {
+    fun `a Shield token on the Reputation track's X space costs 10 Quest Points and always loses`() {
         val input = ForTheCouncilScoringInput(
             questPoints = 3,
             reputationTrackSpace = ReputationTrackSpace.NEGATIVE_X,
@@ -36,16 +36,5 @@ class ForTheCouncilScoringTest {
 
         assertEquals(-7, ForTheCouncilScoring.score(input))
         assertEquals(Outcome.LOST, ForTheCouncilScoring.outcome(input))
-    }
-
-    @Test
-    fun `the positive X space still costs 10 Quest Points, even though its raw Reputation would otherwise win`() {
-        val input = ForTheCouncilScoringInput(
-            questPoints = 3,
-            reputationTrackSpace = ReputationTrackSpace.POSITIVE_X,
-        )
-
-        assertEquals(-7, ForTheCouncilScoring.score(input))
-        assertEquals(Outcome.WON, ForTheCouncilScoring.outcome(input))
     }
 }
