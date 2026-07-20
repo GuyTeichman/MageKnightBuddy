@@ -12,12 +12,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Shield
@@ -52,7 +56,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -359,7 +368,14 @@ private fun TableauCard(session: DummyPlayerSession) {
                 )
             }
 
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            // heightIn(min) reserves 2 rows' worth of space always, so the card shrinks/grows
+            // by at most a few dp as the pile empties instead of visibly collapsing row-by-row
+            // (a 16-card starting deck wraps to 2 rows on a typical phone width).
+            FlowRow(
+                modifier = Modifier.heightIn(min = 61.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
                 session.deckOrder.sortedBy { it.ordinal }.forEach { color -> MiniCard(color = color) }
             }
 
@@ -391,20 +407,29 @@ private fun TableauCard(session: DummyPlayerSession) {
 }
 
 /** The alternate, denser per-color tile grid (Variant A of the prototype), shown when "Summary" is toggled on. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StatGridCard(session: DummyPlayerSession) {
     Card {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 CardColor.entries.forEach { color ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.widthIn(max = 56.dp),
+                    ) {
                         CardColorDot(color = color)
                         Text(session.remainingByColor.getValue(color).toString(), style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "${session.crystals.getValue(color)} crystal${if (session.crystals.getValue(color) == 1) "" else "s"}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        // Crystal icons instead of a "N crystal(s)" caption - matches how
+                        // TableauCard shows crystals, so the count is read the same way in both views.
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            modifier = Modifier.widthIn(max = 56.dp),
+                        ) {
+                            repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
+                        }
                     }
                 }
             }
@@ -468,51 +493,107 @@ private fun LogRow(event: DummyPlayerEvent) {
                 Text(title, style = MaterialTheme.typography.labelLarge)
                 Text(meta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(description, style = MaterialTheme.typography.bodyMedium)
+            // buildAnnotatedString + inlineContent renders the CardColorDot spans inline with the
+            // surrounding text, wrapping naturally as part of the paragraph rather than as a
+            // separate row - the same "color indicators inside the sentence" the prototype used.
+            Text(
+                text = buildAnnotatedString {
+                    description.forEach { span ->
+                        when (span) {
+                            is DescriptionSpan.Words -> append(span.text)
+                            is DescriptionSpan.ColorDot -> appendInlineContent(colorDotInlineContentId(span.color), span.color.label)
+                        }
+                    }
+                },
+                inlineContent = colorDotInlineContent,
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
     }
 }
 
 /** The four pieces of text/icon a [LogRow] needs - title/meta/description phrased from `docs/rules/dummy-player.md`'s terms. */
-private data class LogEntryText(val icon: String, val title: String, val meta: String, val description: String)
+private data class LogEntryText(val icon: String, val title: String, val meta: String, val description: List<DescriptionSpan>)
+
+/** One chunk of a [LogEntryText.description]: either plain words, or an inline [CardColorDot] for a specific color. */
+private sealed interface DescriptionSpan {
+    data class Words(val text: String) : DescriptionSpan
+    data class ColorDot(val color: CardColor) : DescriptionSpan
+}
+
+private fun colorDotInlineContentId(color: CardColor) = "color_dot_${color.name}"
+
+/**
+ * The inline-content map [LogRow]'s [Text] needs to render [DescriptionSpan.ColorDot]s - one entry
+ * per [CardColor], built once since there are only 4 and their appearance never changes.
+ */
+private val colorDotInlineContent: Map<String, InlineTextContent> = CardColor.entries.associate { color ->
+    colorDotInlineContentId(color) to InlineTextContent(
+        placeholder = Placeholder(width = 12.sp, height = 12.sp, placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter),
+    ) {
+        CardColorDot(color = color)
+    }
+}
 
 private fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
     is DummyPlayerEvent.RoundStarted -> LogEntryText(
         icon = "◆",
         title = "Round started",
         meta = "Round $round",
-        description = "The Dummy Player's deck is shuffled and ready.",
+        description = listOf(DescriptionSpan.Words("The Dummy Player's deck is shuffled and ready.")),
     )
     is DummyPlayerEvent.TurnPlayed -> {
-        val revealed = (initialReveal + additionalReveal).joinToString { it.label }
-        val chained = if (additionalReveal.isEmpty()) {
-            "no crystal match, turn ended."
-        } else {
-            "${initialReveal.last().label} crystal matched, +${additionalReveal.size} revealed: ${additionalReveal.joinToString { it.label }}."
+        val allRevealed = initialReveal + additionalReveal
+        val description = buildList {
+            add(DescriptionSpan.Words("Revealed "))
+            allRevealed.forEachIndexed { index, color ->
+                if (index > 0) add(DescriptionSpan.Words(" "))
+                add(DescriptionSpan.ColorDot(color))
+            }
+            add(DescriptionSpan.Words(" — "))
+            if (additionalReveal.isEmpty()) {
+                add(DescriptionSpan.Words("no crystal match, turn ended."))
+            } else {
+                add(DescriptionSpan.ColorDot(initialReveal.last()))
+                add(DescriptionSpan.Words(" ${initialReveal.last().label} crystal matched, +${additionalReveal.size} revealed: "))
+                additionalReveal.forEachIndexed { index, color ->
+                    if (index > 0) add(DescriptionSpan.Words(", "))
+                    add(DescriptionSpan.ColorDot(color))
+                    add(DescriptionSpan.Words(" ${color.label}"))
+                }
+                add(DescriptionSpan.Words("."))
+            }
         }
-        LogEntryText(
-            icon = "▶",
-            title = "Turn played",
-            meta = "Round $round",
-            description = "Revealed $revealed — $chained",
-        )
+        LogEntryText(icon = "▶", title = "Turn played", meta = "Round $round", description = description)
     }
     is DummyPlayerEvent.EndOfRoundAnnounced -> LogEntryText(
         icon = "⚑",
         title = "End of Round announced",
         meta = "Round $round",
-        description = "The deck ran out - other players get one more turn each, then the Round ends.",
+        description = listOf(DescriptionSpan.Words("The deck ran out - other players get one more turn each, then the Round ends.")),
     )
     is DummyPlayerEvent.RoundEnded -> LogEntryText(
         icon = "⚑",
         title = "Round ended",
         meta = "Round $round",
-        description = "Advanced Action offer discard (${advancedActionOfferColor.label}) added to the deck. " +
-            "Spell offer discard (${spellOfferColor.label}) granted +1 crystal.",
+        // Describes only the round-prep offer swap, which happens every Round regardless of why
+        // it ended (per docs/rules/dummy-player.md) - accurate whether or not the deck actually
+        // ran out first, so it never claims "the deck ran out" itself.
+        description = listOf(
+            DescriptionSpan.Words("Advanced Action offer discard ("),
+            DescriptionSpan.ColorDot(advancedActionOfferColor),
+            DescriptionSpan.Words(" ${advancedActionOfferColor.label}) added to the deck. Spell offer discard ("),
+            DescriptionSpan.ColorDot(spellOfferColor),
+            DescriptionSpan.Words(" ${spellOfferColor.label}) granted +1 crystal."),
+        ),
     )
 }
 
-/** Prompts for the two round-prep offer-discard colors before calling [DummyPlayerAiViewModel.endRound]. */
+/**
+ * Prompts for the two round-prep offer-discard colors before calling [DummyPlayerAiViewModel.endRound].
+ * Tapping Cancel (or dismissing the dialog any other way) just closes it - [onConfirm] is the only
+ * path that calls [DummyPlayerAiViewModel.endRound], so nothing has mutated yet for Cancel to undo.
+ */
 @Composable
 private fun EndRoundDialog(onDismiss: () -> Unit, onConfirm: (advancedActionColor: CardColor, spellColor: CardColor) -> Unit) {
     var advancedActionColor by remember { mutableStateOf(CardColor.entries.first()) }
@@ -520,12 +601,16 @@ private fun EndRoundDialog(onDismiss: () -> Unit, onConfirm: (advancedActionColo
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        // usePlatformDefaultWidth = false + an explicit fillMaxWidth lets the dialog use most of
+        // the screen's width instead of Material's narrow default, which was forcing the color
+        // chips (and the intro paragraph) into awkward mid-word line wraps.
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.fillMaxWidth(fraction = 0.94f),
         title = { Text("End Round") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
-                    "Pick the color of the card removed from each offer during round-prep " +
-                        "(see docs/rules/dummy-player.md).",
+                    "Pick the color removed from each offer during round-prep (see docs/rules/dummy-player.md).",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 ColorPickerRow(label = "Advanced Action offer", selected = advancedActionColor, onSelect = { advancedActionColor = it })
