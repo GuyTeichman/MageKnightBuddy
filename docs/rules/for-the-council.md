@@ -2,7 +2,7 @@
 
 Source: `Mage-Knight-The-Apocalypse-Dragon---Rulebook-WEB.pdf`, pages 24–25.
 
-A short scenario built entirely around Quests: the Council of the Void tests you, and your score is driven by quest points, Reputation, and Titles rather than combat/conquest. Not a v1 target (v1 is Solo Conquest only) — captured here as reference for when this scenario gets implemented.
+A short scenario built entirely around Quests: the Council of the Void tests you, and your score is driven by quest points, Reputation, and Titles rather than combat/conquest.
 
 ## Overview
 
@@ -47,6 +47,15 @@ To set up the Countryside tile stack: shuffle all Countryside tiles with a villa
 ## Scenario end (all variants)
 
 At the end of the second day.
+
+## Reputation vs. Reputation modifier
+
+These two terms below are **not** the same number - both matter for this scenario's scoring, so don't conflate them:
+
+- **Reputation** is the raw position of your Shield token on the Reputation track (e.g. "+2 Reputation") - this is what the Outcome thresholds below check.
+- **Reputation modifier** is the (usually smaller) value *printed* at that track position, per the base rulebook's Reputation track illustration (`Mage-Knight-Board-Game-Ultimate-Edition-Rule-Book-September-2018.pdf`, p.2, p.7) - this is what actually gets added to (or subtracted from) your score below. E.g. Reputation +2 prints a +1 modifier; Reputation -2 prints a -1 modifier.
+
+The track's spaces, center-out, are: `X, -5, -3, -2, -1, -1, 0, +1, +1, +2, +2, +3, +5`. The two "X" spaces are their own case (see the -10 quest-point line below), not a modifier value - a Shield token can't sit on a numbered space and an X space at once.
 
 ## Scoring
 

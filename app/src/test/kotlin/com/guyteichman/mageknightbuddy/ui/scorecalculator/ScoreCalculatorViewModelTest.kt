@@ -130,7 +130,7 @@ class ScoreCalculatorViewModelTest {
 
         viewModel.scenarioId = Scenario.ForTheCouncil.id
         viewModel.questPoints = "12"
-        viewModel.reputationModifier = "-3"
+        viewModel.reputationModifier = -3
         viewModel.shieldOnXSpace = false
         viewModel.reputation = "-1"
 
@@ -161,7 +161,7 @@ class ScoreCalculatorViewModelTest {
         viewModel.highPriestessDefeated = true
         viewModel.graveyardsSealed = "2"
         viewModel.necromancerDefeated = true
-        viewModel.reputationModifier = "-3"
+        viewModel.reputationModifier = -3
         viewModel.shieldOnXSpace = true
         viewModel.reputation = "-1"
 
@@ -178,7 +178,7 @@ class ScoreCalculatorViewModelTest {
         assertEquals(false, viewModel.highPriestessDefeated)
         assertEquals("0", viewModel.graveyardsSealed)
         assertEquals(false, viewModel.necromancerDefeated)
-        assertEquals("0", viewModel.reputationModifier)
+        assertEquals(0, viewModel.reputationModifier)
         assertEquals(false, viewModel.shieldOnXSpace)
         assertEquals("0", viewModel.reputation)
     }

@@ -2,8 +2,6 @@
 
 Source: `Mage-Knight-Board-Game-Ultimate-Edition-Expansion-Rule-Books-September-2018.pdf` (Shades of Tezla expansion, Scenario Book), pages 25–26.
 
-Not a v1 target (v1 is Solo Conquest only) — captured here as reference for when this scenario gets implemented.
-
 ## Overview
 
 - Length: Four Rounds (2 days and 2 nights).
