@@ -2,7 +2,6 @@ package com.guyteichman.mageknightbuddy.domain
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class FracturedLandsScoringTest {
 
@@ -74,14 +73,15 @@ class FracturedLandsScoringTest {
     }
 
     @Test
-    fun `outcome is always null, since The Fractured Lands has no win-lose condition`() {
+    fun `outcome is always Won, since The Fractured Lands has no lose condition`() {
         val wellScoredInput = minimalInput(fame = 100, questPoints = 20)
         val poorlyScoredInput = minimalInput(fame = 0, questPoints = 0)
 
-        // Unlike every other scenario in this app's scope, a high score doesn't imply a Won
-        // Outcome here - the rulebook defines no victory condition at all for The Fractured Lands.
-        assertNull(FracturedLandsScoring.outcome(wellScoredInput))
-        assertNull(FracturedLandsScoring.outcome(poorlyScoredInput))
+        // Unlike every other scenario in this app's scope, the rulebook defines no lose
+        // condition at all for The Fractured Lands - every session that's played through counts
+        // as a Won, regardless of how well it scored.
+        assertEquals(Outcome.WON, FracturedLandsScoring.outcome(wellScoredInput))
+        assertEquals(Outcome.WON, FracturedLandsScoring.outcome(poorlyScoredInput))
     }
 
     private fun minimalInput(

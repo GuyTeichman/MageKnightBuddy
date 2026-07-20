@@ -18,7 +18,7 @@ data class FracturedLandsScoringInput(
  * Scoring engine for the Solo variant of The Fractured Lands
  * (docs/rules/the-fractured-lands.md, "Scoring" > "Solo" and "Outcome" sections): Fame plus the
  * Standard Achievements (summed directly, no Titles - solo play has nobody to compare against)
- * plus Greatest Quester. This scenario has no win/lose condition at all (see [outcome]).
+ * plus Greatest Quester. This scenario has no lose condition at all (see [outcome]).
  */
 object FracturedLandsScoring {
     /** Total score for the session: the sum of every line in [breakdown]. */
@@ -47,10 +47,11 @@ object FracturedLandsScoring {
     }
 
     /**
-     * The Fractured Lands has no win/lose condition (docs/rules/the-fractured-lands.md,
-     * "Outcome" section: "no definitive goal... there's no Outcome to derive"), unlike every
-     * other scenario in this app's scope. Always returns null rather than an [Outcome] so
-     * callers can't mistake a missing Outcome for a Loss - only [score] is meaningful here.
+     * The Fractured Lands has no lose condition (docs/rules/the-fractured-lands.md, "Outcome"
+     * section: "no definitive goal... there's no Outcome to derive"), unlike every other
+     * scenario in this app's scope. Rather than leave Outcome undefined, every session is scored
+     * a Won for having played it through to the end - only [score] actually differentiates one
+     * session from another here.
      */
-    fun outcome(input: FracturedLandsScoringInput): Outcome? = null
+    fun outcome(input: FracturedLandsScoringInput): Outcome = Outcome.WON
 }

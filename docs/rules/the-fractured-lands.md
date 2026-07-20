@@ -57,4 +57,6 @@ Note: unlike every other scenario extracted so far, this one explicitly excludes
 
 ## Outcome (Won/Lost)
 
-The rulebook defines no win/lose condition for this scenario — it has "no definitive goal." Only a score is computed; there's no Outcome to derive. If this scenario is ever implemented, its `Scenario` definition will need to either omit Outcome or treat it as always-undefined, unlike every other scenario in this app's scope.
+The rulebook defines no win/lose condition for this scenario — it has "no definitive goal." Only a score is computed; the rulebook itself gives no Outcome to derive.
+
+App behavior: since there's no lose condition either, `FracturedLandsScoring.outcome()` scores every session a Won — playing it through to the end is treated as success, unlike every other scenario in this app's scope where Lost is a real possibility.
