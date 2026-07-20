@@ -9,8 +9,19 @@ import com.guyteichman.mageknightbuddy.domain.StandardAchievements
 import com.guyteichman.mageknightbuddy.domain.UnitTally
 import java.time.Instant
 
+/**
+ * Converts a domain [ScoringSession] to its Room-persistable [ScoringSessionEntity] form. The
+ * domain module can't depend on Room (see docs/adr/0001-domain-logic-as-plain-kotlin-module.md),
+ * so this is where the nested [com.guyteichman.mageknightbuddy.domain.StandardAchievements] and
+ * the per-unit-level tallies get flattened out into the entity's individual columns.
+ */
 fun ScoringSession.toEntity(): ScoringSessionEntity {
+    // Kotlin's associateBy turns the units list into a Map keyed by level (1-4), so the
+    // healthy()/wounded() lookups below don't have to search the list each time.
     val unitsByLevel = input.standardAchievements.units.associateBy { it.level }
+    // Local helper functions (scoped to this call only) that look up a level's tally and
+    // default to 0 if that level has no entry, since the entity needs one column per level
+    // rather than a list.
     fun healthy(level: Int) = unitsByLevel[level]?.healthyCount ?: 0
     fun wounded(level: Int) = unitsByLevel[level]?.woundedCount ?: 0
 
@@ -41,10 +52,19 @@ fun ScoringSession.toEntity(): ScoringSessionEntity {
         endOfRoundAnnounced = input.endOfRoundAnnounced,
         score = score,
         outcome = outcome.name,
+        // Room columns are plain Kotlin/Java types, so Instant (not natively storable) is
+        // converted to a Long of milliseconds-since-epoch here, and back to an Instant in
+        // toDomain() below.
         playedAtEpochMillis = playedAt.toEpochMilli(),
     )
 }
 
+/**
+ * Converts a persisted [ScoringSessionEntity] back into the domain [ScoringSession] the rest of
+ * the app works with, reversing [toEntity]: rebuilding the nested [StandardAchievements] and
+ * the unit tallies from their flattened columns, and re-parsing the enum/scenario ids that were
+ * stored as plain strings.
+ */
 fun ScoringSessionEntity.toDomain(): ScoringSession {
     val standardAchievements = StandardAchievements(
         spellsInDeck = spellsInDeck,
@@ -72,6 +92,9 @@ fun ScoringSessionEntity.toDomain(): ScoringSession {
     )
     return ScoringSession(
         scenario = Scenario.fromId(scenario),
+        // valueOf(name) is the enum counterpart to Scenario.fromId: it looks up the enum
+        // constant whose name matches the stored string, throwing if it no longer exists
+        // (e.g. after a rename), which is why knight/outcome are stored by .name in toEntity().
         knight = Knight.valueOf(knight),
         playerName = playerName,
         input = input,
