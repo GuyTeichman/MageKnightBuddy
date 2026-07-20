@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
@@ -54,7 +55,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
@@ -466,21 +466,31 @@ private fun CardColorDot(color: CardColor, size: Dp = 10.dp) {
 }
 
 /**
- * A small diamond standing in for one crystal in the Inventory. [size] is the diamond's tip-to-tip
- * width/height (its visual footprint) - NOT the underlying square's edge before rotation, so a
- * [CrystalIcon] and a [CardColorDot] given the same [size] read as the same size on screen. A
- * rotated square's diagonal is its edge * sqrt(2), so the pre-rotation edge is [size] / sqrt(2).
+ * A small diamond standing in for one crystal in the Inventory, sized to fill exactly a [size] x
+ * [size] box - same as [CardColorDot] - so the two read as the same size given the same [size].
+ * Drawn as an explicit [DiamondShape] rather than a rotated square: a rotated square's rendered
+ * pixels extend past its own layout bounds (rotate() doesn't change reported layout size), which
+ * left it up to whatever container this sits in (e.g. FilterChip's icon slot) whether that
+ * overflow is visible or clipped - too fragile to guarantee matching [CardColorDot] reliably.
  */
 @Composable
 private fun CrystalIcon(color: CardColor, size: Dp = 17.dp) {
     Box(
         modifier = Modifier
-            .size(size / 1.4142f)
-            .rotate(45f)
-            .clip(RoundedCornerShape(2.dp))
+            .size(size)
+            .clip(DiamondShape)
             .background(color.swatch)
-            .then(if (color == CardColor.WHITE) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(2.dp)) else Modifier),
+            .then(if (color == CardColor.WHITE) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, DiamondShape) else Modifier),
     )
+}
+
+/** A diamond/rhombus shape filling its full bounding box - the [CrystalIcon] glyph. */
+private val DiamondShape = GenericShape { size, _ ->
+    moveTo(size.width / 2f, 0f)
+    lineTo(size.width, size.height / 2f)
+    lineTo(size.width / 2f, size.height)
+    lineTo(0f, size.height / 2f)
+    close()
 }
 
 /** One row of the event log: an icon standing in for the event kind, then its title/meta/description. */
