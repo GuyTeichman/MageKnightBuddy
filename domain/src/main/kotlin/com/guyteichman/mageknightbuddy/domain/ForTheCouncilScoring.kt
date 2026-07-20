@@ -18,7 +18,7 @@ data class ForTheCouncilScoringInput(
     val reputationModifier: Int,
     val shieldOnXSpace: Boolean,
     val reputation: Int,
-)
+) : ScoringInput
 
 /**
  * Scoring engine for the solo variant of For the Council (docs/rules/for-the-council.md,

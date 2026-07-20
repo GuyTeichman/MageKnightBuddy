@@ -16,7 +16,7 @@ data class HiddenValleyScoringInput(
     val roundsFinishedEarly: Int,
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
-)
+) : ScoringInput
 
 /**
  * Scoring engine for the solo variant of The Hidden Valley (docs/rules/hidden-valley.md,

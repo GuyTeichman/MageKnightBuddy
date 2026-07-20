@@ -16,7 +16,7 @@ data class FirstReconnaissanceScoringInput(
     val roundsFinishedEarly: Int,
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
-)
+) : ScoringInput
 
 /**
  * Scoring engine for the solo variant of First Reconnaissance

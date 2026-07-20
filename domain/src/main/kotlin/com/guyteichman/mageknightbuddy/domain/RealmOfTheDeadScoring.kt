@@ -29,7 +29,7 @@ data class RealmOfTheDeadScoringInput(
     val roundsFinishedEarly: Int,
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
-) {
+) : ScoringInput {
     // A custom getter (not a stored field): this recomputes from graveyardsSealed every time
     // it's read, rather than being set once. Keeps "both Graveyards sealed" as a single
     // derived fact instead of repeating the == SOLO_GRAVEYARDS_TOTAL check at each call site.

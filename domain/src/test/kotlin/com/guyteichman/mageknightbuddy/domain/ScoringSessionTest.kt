@@ -45,4 +45,29 @@ class ScoringSessionTest {
         assertEquals(playedAt, session.playedAt)
         assertEquals(input, session.input)
     }
+
+    @Test
+    fun `create dispatches to the matching scenario's Scoring object regardless of which input type is supplied`() {
+        val input = ForTheCouncilScoringInput(
+            questPoints = 12,
+            reputationModifier = -2,
+            shieldOnXSpace = false,
+            reputation = 3,
+        )
+        val playedAt = Instant.parse("2026-07-18T12:00:00Z")
+
+        val session = ScoringSession.create(
+            scenario = Scenario.ForTheCouncil,
+            knight = Knight.NOROWAS,
+            playerName = null,
+            input = input,
+            playedAt = playedAt,
+        )
+
+        // 12 quest points - 2 reputation modifier = 10
+        assertEquals(10, session.score)
+        assertEquals(Outcome.WON, session.outcome)
+        assertEquals(Scenario.ForTheCouncil, session.scenario)
+        assertEquals(input, session.input)
+    }
 }
