@@ -20,7 +20,11 @@ class MainActivity : ComponentActivity() {
         // setContent replaces the traditional XML layout with a Compose UI tree.
         setContent {
             MageKnightBuddyTheme {
-                MageKnightBuddyApp(repository = app.scoringSessionRepository, fieldHelp = app.fieldHelp)
+                MageKnightBuddyApp(
+                    repository = app.scoringSessionRepository,
+                    dummyPlayerRepository = app.dummyPlayerSessionRepository,
+                    fieldHelp = app.fieldHelp,
+                )
             }
         }
     }

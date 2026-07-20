@@ -1,7 +1,5 @@
 package com.guyteichman.mageknightbuddy.ui
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
@@ -13,11 +11,9 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -25,7 +21,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.guyteichman.mageknightbuddy.R
+import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
+import com.guyteichman.mageknightbuddy.ui.dummyplayer.DummyPlayerTab
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.scoreboard.ScoreboardTab
 import com.guyteichman.mageknightbuddy.ui.scorecalculator.ScoreCalculatorScreen
@@ -50,7 +48,11 @@ private val tabs = listOf(Tab.Scoreboard, Tab.ScoreCalculator, Tab.DummyPlayer)
  * whole UI tree, set as the content of MainActivity.
  */
 @Composable
-fun MageKnightBuddyApp(repository: ScoringSessionRepository, fieldHelp: Map<String, FieldHelp>) {
+fun MageKnightBuddyApp(
+    repository: ScoringSessionRepository,
+    dummyPlayerRepository: DummyPlayerSessionRepository,
+    fieldHelp: Map<String, FieldHelp>,
+) {
     // rememberNavController creates the NavController once and keeps the same instance
     // across recompositions (Compose's "remember" idiom), so navigation state survives
     // re-renders caused by other state changes.
@@ -110,18 +112,7 @@ fun MageKnightBuddyApp(repository: ScoringSessionRepository, fieldHelp: Map<Stri
                     onDone = { navigateToTab(Tab.Scoreboard.route) },
                 )
             }
-            composable(Tab.DummyPlayer.route) { PlaceholderScreen("Dummy Player — coming soon") }
+            composable(Tab.DummyPlayer.route) { DummyPlayerTab(repository = dummyPlayerRepository) }
         }
-    }
-}
-
-/** Temporary stand-in for a not-yet-built screen; shows a centered message and nothing else. */
-@Composable
-private fun PlaceholderScreen(message: String) {
-    Box(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text = message)
     }
 }
