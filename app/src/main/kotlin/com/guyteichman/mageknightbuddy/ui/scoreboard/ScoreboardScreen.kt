@@ -38,7 +38,7 @@ import androidx.navigation.navArgument
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.domain.Outcome
 import com.guyteichman.mageknightbuddy.domain.ScoringSession
-import com.guyteichman.mageknightbuddy.domain.SoloConquestScoring
+import com.guyteichman.mageknightbuddy.domain.breakdown
 
 private const val SCOREBOARD_LIST_ROUTE = "scoreboard_list"
 
@@ -182,7 +182,9 @@ private fun ScoreboardDetailsScreen(session: ScoringSession, onBack: () -> Unit)
     ) { padding ->
         // Re-derives the row-by-row breakdown from the session's raw input, rather than
         // storing it, so the shown breakdown always matches the current scoring rules.
-        val breakdown = SoloConquestScoring.breakdown(session.input)
+        // session.input.breakdown() dispatches to whichever scenario's *Scoring object matches
+        // the input's actual runtime type - see ScoringInput.breakdown() in domain.
+        val breakdown = session.input.breakdown()
         Column(
             modifier = Modifier
                 .fillMaxSize()

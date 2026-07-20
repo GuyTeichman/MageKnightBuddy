@@ -18,7 +18,7 @@ data class SoloConquestScoringInput(
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
     val questPoints: Int,
-)
+) : ScoringInput
 
 /**
  * One row of a score breakdown, e.g. ("Fame", 12) - the display-friendly unit every scenario's

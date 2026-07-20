@@ -7,7 +7,7 @@ private const val CITY_REVEALED_BONUS = 10
  * Inputs for scoring a solo First Reconnaissance session (docs/rules/first-reconnaissance.md,
  * "Scoring" > "Solo"): Fame, the six Standard Achievements, whether the capital city was
  * revealed, Rounds finished early, Dummy deck cards left, and whether "End of the Round" had
- * already been announced. Not a v1 target - kept here as reference for when it's implemented.
+ * already been announced.
  */
 data class FirstReconnaissanceScoringInput(
     val fame: Int,
@@ -16,7 +16,7 @@ data class FirstReconnaissanceScoringInput(
     val roundsFinishedEarly: Int,
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
-)
+) : ScoringInput
 
 /**
  * Scoring engine for the solo variant of First Reconnaissance

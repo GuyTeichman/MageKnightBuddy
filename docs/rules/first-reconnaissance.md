@@ -2,7 +2,7 @@
 
 Source: `Mage-Knight-The-Apocalypse-Dragon---Rulebook-WEB.pdf`, pages 22–23.
 
-A training scenario: locate and reveal the map's capital city before running out of Rounds. The competitive version of this scenario is in the base game rulebook (not extracted here); this expansion adds Cooperative and Solo variants for introducing new players to the game. Not a v1 target (v1 is Solo Conquest only) — captured here as reference for when this scenario gets implemented.
+A training scenario: locate and reveal the map's capital city before running out of Rounds. The competitive version of this scenario is in the base game rulebook (not extracted here); this expansion adds Cooperative and Solo variants for introducing new players to the game.
 
 ## Overview
 

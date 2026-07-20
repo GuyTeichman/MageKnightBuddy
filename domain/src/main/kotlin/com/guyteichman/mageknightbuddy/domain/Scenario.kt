@@ -18,9 +18,32 @@ sealed interface Scenario {
         override val displayName = "Solo Conquest"
     }
 
+    // Titles below match each scenario's docs/rules/*.md title exactly, so the picker's
+    // display names line up with the rules documentation.
+    data object FirstReconnaissance : Scenario {
+        override val id = "first_reconnaissance"
+        override val displayName = "First Reconnaissance"
+    }
+
+    data object ForTheCouncil : Scenario {
+        override val id = "for_the_council"
+        override val displayName = "For the Council"
+    }
+
+    data object HiddenValley : Scenario {
+        override val id = "hidden_valley"
+        override val displayName = "The Hidden Valley"
+    }
+
+    data object RealmOfTheDead : Scenario {
+        override val id = "realm_of_the_dead"
+        override val displayName = "The Realm of the Dead"
+    }
+
     companion object {
-        // All known scenarios. v1 only ever has one, but new scenarios get added here.
-        val entries: List<Scenario> = listOf(SoloConquest)
+        // All known scenarios with a working scoring engine (see the matching *Scoring object
+        // in this package for each one's rules).
+        val entries: List<Scenario> = listOf(SoloConquest, FirstReconnaissance, ForTheCouncil, HiddenValley, RealmOfTheDead)
 
         /** Looks up a [Scenario] by its stored [id] (e.g. when reading back from persistence). */
         fun fromId(id: String): Scenario = entries.first { it.id == id }

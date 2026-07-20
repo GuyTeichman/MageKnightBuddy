@@ -38,6 +38,10 @@ The fixed six scoring categories used by every scenario: Greatest Knowledge, Gre
 The umbrella for a Scoring Session's full set of scoring categories: Standard Achievements Scoring plus whichever optional variant categories are currently enabled (e.g. Greatest Quester). Which variants are enabled will eventually be driven by Settings; until Settings exists, Greatest Quester is scored unconditionally, on the assumption that Settings' eventual default will be "every expansion enabled."
 _Avoid_: Standard Achievements Scoring (that term is reserved for the fixed six; use this term when variants may also be included)
 
+**Reputation Track Space**:
+One of the 13 spaces a Knight's Shield token can occupy on the Reputation track, modeled as `ReputationTrackSpace`. Each space bundles two numbers that are easy to conflate: its **position** (how many steps from center, e.g. "+2 Reputation" - what the rulebook's Outcome thresholds check) and its **modifier** (the different, usually smaller value actually printed there, e.g. position +2 prints a +1 modifier - what gets added to/subtracted from a score). The two end spaces are marked "X" instead of a modifier. Currently only consumed by **For the Council**'s scoring (`ForTheCouncilScoringInput.reputationTrackSpace`) - the player picks the space their token is on, and both numbers are derived from that one choice rather than entered separately. See `docs/rules/for-the-council.md`'s "Reputation vs. Reputation modifier" section for the full track table.
+_Avoid_: Fame (a separate track entirely, despite sharing a physical board with Reputation); "Reputation" alone (ambiguous between the space's position and its modifier - say which)
+
 **Quest Point**:
 A unit of progress gained by completing a step on a Quest Card (Apocalypse Dragon expansion). Feeds the optional Greatest Quester category of Achievements Scoring (1 Fame per Quest Point). Distinct from Fame itself.
 _Avoid_: Quest score, quest fame

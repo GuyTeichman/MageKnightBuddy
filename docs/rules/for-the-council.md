@@ -2,7 +2,7 @@
 
 Source: `Mage-Knight-The-Apocalypse-Dragon---Rulebook-WEB.pdf`, pages 24–25.
 
-A short scenario built entirely around Quests: the Council of the Void tests you, and your score is driven by quest points, Reputation, and Titles rather than combat/conquest. Not a v1 target (v1 is Solo Conquest only) — captured here as reference for when this scenario gets implemented.
+A short scenario built entirely around Quests: the Council of the Void tests you, and your score is driven by quest points, Reputation, and Titles rather than combat/conquest.
 
 ## Overview
 
@@ -47,6 +47,17 @@ To set up the Countryside tile stack: shuffle all Countryside tiles with a villa
 ## Scenario end (all variants)
 
 At the end of the second day.
+
+## Reputation modifier
+
+Every "Reputation" figure below - the scoring bonus/penalty and the Outcome thresholds alike - refers to the single **Reputation modifier** number: the physical Reputation track prints exactly one number per space (per the base rulebook's Reputation track illustration, `Mage-Knight-Board-Game-Ultimate-Edition-Rule-Book-September-2018.pdf`, p.2, p.7), and that's it - there's no separate raw step-count printed anywhere on the board, and no rule ever asks a player to count how many spaces they've moved from center. "Reputation +2" and "a Reputation modifier of +2" are the same thing.
+
+The track, most-negative to most-positive (`ReputationTrackSpace` in `domain/` encodes this table exactly):
+
+| Modifier | X | -5 | -3 | -2 | -1 | 0 | +1 | +2 | +3 | +5 |
+|---|---|---|---|---|---|---|---|---|---|---|
+
+The **X** space is at the negative end only (see the -10 quest-point line below) - the positive end has no X space, it simply tops out at +5. A Shield token sitting on X has no modifier at all, which is its own case for both scoring and the Outcome check. The app's Reputation step of the Score wizard shows this whole track as one tappable list - pick the space your token is actually on.
 
 ## Scoring
 
