@@ -38,6 +38,13 @@ The fixed six scoring categories used by every scenario: Greatest Knowledge, Gre
 The umbrella for a Scoring Session's full set of scoring categories: Standard Achievements Scoring plus whichever optional variant categories are currently enabled (e.g. Greatest Quester). Which variants are enabled will eventually be driven by Settings; until Settings exists, Greatest Quester is scored unconditionally, on the assumption that Settings' eventual default will be "every expansion enabled."
 _Avoid_: Standard Achievements Scoring (that term is reserved for the fixed six; use this term when variants may also be included)
 
+**Reputation**:
+A Knight's raw position on the Reputation track (e.g. "+2 Reputation"), tracked by their Shield token. Currently only consumed by **For the Council**'s scoring (`ForTheCouncilScoringInput.reputation`), where it's the Outcome (Won/Lost) threshold. Distinct from **Reputation Modifier** below - don't conflate them, they're usually different numbers for the same track position.
+_Avoid_: Fame (a separate track entirely, despite sharing a physical board with Reputation)
+
+**Reputation Modifier**:
+The (usually smaller) value *printed* at a given Reputation track position - what actually gets added to or subtracted from a score, as opposed to **Reputation** (the raw position) above. E.g. Reputation +2 prints a +1 modifier; Reputation -2 prints a -1 modifier. `ForTheCouncilScoringInput.reputationModifier` holds this. See `docs/rules/for-the-council.md`'s "Reputation vs. Reputation modifier" section for the full track/value table.
+
 **Quest Point**:
 A unit of progress gained by completing a step on a Quest Card (Apocalypse Dragon expansion). Feeds the optional Greatest Quester category of Achievements Scoring (1 Fame per Quest Point). Distinct from Fame itself.
 _Avoid_: Quest score, quest fame

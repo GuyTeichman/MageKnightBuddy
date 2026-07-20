@@ -11,7 +11,12 @@ private const val X_SPACE_PENALTY = -10
  * Inputs for scoring a solo For the Council session (docs/rules/for-the-council.md,
  * "Scoring" > "Solo"): quest points, your Reputation modifier, whether your Shield token sits
  * on the Reputation track's X space, and your final Reputation (used for the Outcome check).
- * Not a v1 target - kept here as reference for when this scenario is implemented.
+ *
+ * [reputationModifier] and [reputation] are deliberately two separate fields, not a duplicate:
+ * the Reputation track prints a *modifier* value at each space (used here for scoring) that is
+ * usually different from the space's own position (the raw *Reputation* count, used only for the
+ * Outcome threshold) - e.g. Reputation +2 prints a +1 modifier. See CONTEXT.md's "Reputation" /
+ * "Reputation Modifier" glossary entries and the base rulebook's Reputation track (p.2, p.7).
  */
 data class ForTheCouncilScoringInput(
     val questPoints: Int,

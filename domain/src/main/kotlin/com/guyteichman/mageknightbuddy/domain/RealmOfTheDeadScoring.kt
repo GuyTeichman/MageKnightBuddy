@@ -18,8 +18,7 @@ private const val BOTH_ACHIEVED_BONUS = 10
  * Inputs for scoring a solo Realm of the Dead session (docs/rules/realm-of-the-dead.md,
  * "Solo" > "Scoring"): Fame, the six Standard Achievements, how many Graveyards were sealed,
  * whether the Necromancer was defeated, Rounds finished early, Dummy deck cards left, and
- * whether "End of the Round" had already been announced. Not a v1 target - kept here as
- * reference for when this scenario is implemented.
+ * whether "End of the Round" had already been announced.
  */
 data class RealmOfTheDeadScoringInput(
     val fame: Int,

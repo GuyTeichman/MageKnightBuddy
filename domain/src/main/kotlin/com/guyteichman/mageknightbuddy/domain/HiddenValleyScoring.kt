@@ -7,7 +7,7 @@ private const val HIGH_PRIESTESS_DEFEATED_BONUS = 20
  * Inputs for scoring a solo Hidden Valley session (docs/rules/hidden-valley.md,
  * "Solo" > "Scoring"): Fame, the six Standard Achievements, whether the High Priestess was
  * defeated, Rounds finished early, Dummy deck cards left, and whether "End of the Round" had
- * already been announced. Not a v1 target - kept here as reference for when it's implemented.
+ * already been announced.
  */
 data class HiddenValleyScoringInput(
     val fame: Int,
