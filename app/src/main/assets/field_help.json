@@ -50,5 +50,29 @@
   "End of Round": {
     "text": "+5 Fame if \"End of the Round\" had not yet been announced during your final Round.",
     "source": "Solo Conquest scoring, rulebook p.19"
+  },
+  "City Revealed": {
+    "text": "+10 Fame if you revealed the map's capital city by the end of the game — this is also what determines whether you Won or Lost.",
+    "source": "First Reconnaissance scoring, Solo, Apocalypse Dragon rulebook p.23"
+  },
+  "High Priestess Defeated": {
+    "text": "+20 Fame if you defeated the High Priestess — this is also what determines whether you Won or Lost.",
+    "source": "The Hidden Valley scoring, Solo, Shades of Tezla Scenario Book p.26"
+  },
+  "Graveyards Sealed": {
+    "text": "+5 Fame for each Graveyard you sealed, plus +10 more if you sealed both Graveyards and also defeated the Necromancer.",
+    "source": "The Realm of the Dead scoring, Solo, Shades of Tezla Scenario Book p.25"
+  },
+  "Necromancer Defeated": {
+    "text": "+10 Fame if you defeated the Necromancer — sealing both Graveyards and defeating the Necromancer is also what determines whether you Won or Lost.",
+    "source": "The Realm of the Dead scoring, Solo, Shades of Tezla Scenario Book p.25"
+  },
+  "For the Council: Quest Points": {
+    "text": "Your total Quest Points scored — the base of your score in this Quest-driven scenario. There's no Fame or Standard Achievements scoring in For the Council.",
+    "source": "For the Council scoring, Solo, Apocalypse Dragon rulebook p.25"
+  },
+  "For the Council: Reputation": {
+    "text": "You score (or lose) Quest Points equal to your Reputation modifier — or −10 instead if your Shield token sits on the Reputation track's X space. Your final Reputation (+2 or higher) determines whether you Won or Lost.",
+    "source": "For the Council scoring, Solo, Apocalypse Dragon rulebook p.25"
   }
 }

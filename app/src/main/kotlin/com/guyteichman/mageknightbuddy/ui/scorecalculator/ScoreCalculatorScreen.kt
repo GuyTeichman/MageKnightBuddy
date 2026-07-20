@@ -53,6 +53,10 @@ import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+// Every page kind used by any scenario's wizard. Not every scenario visits every page - see
+// wizardPagesFor(), which picks the ordered subset that matches a given Scenario's *ScoringInput
+// shape (e.g. CITIES_CONQUERED only applies to Solo Conquest, CITY_REVEALED only to First
+// Reconnaissance).
 private enum class WizardPage(val title: String, val helpKeys: List<String> = emptyList()) {
     SETUP("Setup"),
     FAME("Fame", listOf("Fame")),
@@ -64,12 +68,72 @@ private enum class WizardPage(val title: String, val helpKeys: List<String> = em
     GREATEST_BEATING("Greatest Beating", listOf("Greatest Beating")),
     GREATEST_QUESTER("Greatest Quester", listOf("Greatest Quester")),
     CITIES_CONQUERED("Cities Conquered", listOf("Cities Conquered", "All Cities Conquered")),
+    CITY_REVEALED("City Revealed", listOf("City Revealed")),
+    HIGH_PRIESTESS_DEFEATED("High Priestess Defeated", listOf("High Priestess Defeated")),
+    GRAVEYARDS_SEALED("Graveyards Sealed", listOf("Graveyards Sealed", "Necromancer Defeated")),
     ROUNDS_FINISHED_EARLY("Rounds Finished Early", listOf("Rounds Finished Early")),
     DUMMY_PLAYER_STATUS("Dummy Player Status", listOf("Dummy Player's Deck", "End of Round")),
+    COUNCIL_QUEST_POINTS("Quest Points", listOf("For the Council: Quest Points")),
+    COUNCIL_REPUTATION("Reputation", listOf("For the Council: Reputation")),
     RESULT("Result"),
 }
 
-private val wizardPages = WizardPage.entries
+// The 6 Standard Achievements pages, shared by every scenario that has a Standard Achievements
+// section (every scenario except For the Council).
+private val standardAchievementPages = listOf(
+    WizardPage.GREATEST_KNOWLEDGE,
+    WizardPage.GREATEST_LEADER,
+    WizardPage.GREATEST_ADVENTURER,
+    WizardPage.GREATEST_LOOT,
+    WizardPage.GREATEST_CONQUEROR,
+    WizardPage.GREATEST_BEATING,
+)
+
+/**
+ * The ordered page sequence for [scenario]'s wizard, built from its `*ScoringInput`'s actual
+ * field shape (see the matching domain data class) rather than one fixed sequence for every
+ * scenario. Exhaustive `when` over the sealed [Scenario] - the compiler flags it if a new
+ * Scenario is added without a page sequence for it.
+ */
+private fun wizardPagesFor(scenario: Scenario): List<WizardPage> = when (scenario) {
+    Scenario.SoloConquest -> listOf(WizardPage.SETUP, WizardPage.FAME) + standardAchievementPages +
+        listOf(
+            WizardPage.GREATEST_QUESTER,
+            WizardPage.CITIES_CONQUERED,
+            WizardPage.ROUNDS_FINISHED_EARLY,
+            WizardPage.DUMMY_PLAYER_STATUS,
+            WizardPage.RESULT,
+        )
+    Scenario.FirstReconnaissance -> listOf(WizardPage.SETUP, WizardPage.FAME) + standardAchievementPages +
+        listOf(
+            WizardPage.CITY_REVEALED,
+            WizardPage.ROUNDS_FINISHED_EARLY,
+            WizardPage.DUMMY_PLAYER_STATUS,
+            WizardPage.RESULT,
+        )
+    Scenario.HiddenValley -> listOf(WizardPage.SETUP, WizardPage.FAME) + standardAchievementPages +
+        listOf(
+            WizardPage.HIGH_PRIESTESS_DEFEATED,
+            WizardPage.ROUNDS_FINISHED_EARLY,
+            WizardPage.DUMMY_PLAYER_STATUS,
+            WizardPage.RESULT,
+        )
+    Scenario.RealmOfTheDead -> listOf(WizardPage.SETUP, WizardPage.FAME) + standardAchievementPages +
+        listOf(
+            WizardPage.GRAVEYARDS_SEALED,
+            WizardPage.ROUNDS_FINISHED_EARLY,
+            WizardPage.DUMMY_PLAYER_STATUS,
+            WizardPage.RESULT,
+        )
+    // For the Council has no Fame/Standard Achievements at all (docs/rules/for-the-council.md,
+    // Scoring > Solo) - it's Quest-driven, so its sequence is built from scratch.
+    Scenario.ForTheCouncil -> listOf(
+        WizardPage.SETUP,
+        WizardPage.COUNCIL_QUEST_POINTS,
+        WizardPage.COUNCIL_REPUTATION,
+        WizardPage.RESULT,
+    )
+}
 
 @Composable
 fun ScoreCalculatorScreen(
@@ -79,11 +143,24 @@ fun ScoreCalculatorScreen(
 ) {
     val viewModel: ScoreCalculatorViewModel = viewModel(factory = ScoreCalculatorViewModel.factory(repository))
     val scope = rememberCoroutineScope()
-    val currentPage = wizardPages[viewModel.pageIndex]
+    // Recomputed on every recomposition (cheap - a handful of enum values), so switching the
+    // Scenario dropdown on the SETUP page immediately reflects the new scenario's page sequence.
+    val wizardPages = wizardPagesFor(viewModel.scenario)
+    // Defensive clamp: pageIndex is restored from SavedStateHandle across process death, and a
+    // shorter sequence (e.g. switching from Solo Conquest's 13 pages to For the Council's 4)
+    // could otherwise leave it pointing past the end of the new list.
+    val currentPage = wizardPages[viewModel.pageIndex.coerceIn(wizardPages.indices)]
     var showResetConfirmation by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        WizardContent(viewModel = viewModel, currentPage = currentPage, fieldHelp = fieldHelp, scope = scope, onDone = onDone)
+        WizardContent(
+            viewModel = viewModel,
+            wizardPages = wizardPages,
+            currentPage = currentPage,
+            fieldHelp = fieldHelp,
+            scope = scope,
+            onDone = onDone,
+        )
 
         ExtendedFloatingActionButton(
             onClick = { showResetConfirmation = true },
@@ -120,6 +197,7 @@ fun ScoreCalculatorScreen(
 @Composable
 private fun WizardContent(
     viewModel: ScoreCalculatorViewModel,
+    wizardPages: List<WizardPage>,
     currentPage: WizardPage,
     fieldHelp: Map<String, FieldHelp>,
     scope: CoroutineScope,
@@ -230,6 +308,50 @@ private fun WizardContent(
                         onCheckedChange = { viewModel.city2Conquered = it },
                     )
                 }
+                WizardPage.CITY_REVEALED -> LabeledSwitch(
+                    label = "Capital city revealed",
+                    checked = viewModel.cityRevealed,
+                    onCheckedChange = { viewModel.cityRevealed = it },
+                )
+                WizardPage.HIGH_PRIESTESS_DEFEATED -> LabeledSwitch(
+                    label = "High Priestess defeated",
+                    checked = viewModel.highPriestessDefeated,
+                    onCheckedChange = { viewModel.highPriestessDefeated = it },
+                )
+                WizardPage.GRAVEYARDS_SEALED -> {
+                    NumberField(
+                        label = "Graveyards sealed (0-2)",
+                        value = viewModel.graveyardsSealed,
+                        onValueChange = { viewModel.graveyardsSealed = it },
+                    )
+                    LabeledSwitch(
+                        label = "Necromancer defeated",
+                        checked = viewModel.necromancerDefeated,
+                        onCheckedChange = { viewModel.necromancerDefeated = it },
+                    )
+                }
+                WizardPage.COUNCIL_QUEST_POINTS -> NumberField(
+                    label = "Quest Points scored",
+                    value = viewModel.questPoints,
+                    onValueChange = { viewModel.questPoints = it },
+                )
+                WizardPage.COUNCIL_REPUTATION -> {
+                    SignedNumberField(
+                        label = "Reputation modifier",
+                        value = viewModel.reputationModifier,
+                        onValueChange = { viewModel.reputationModifier = it },
+                    )
+                    LabeledSwitch(
+                        label = "Shield token on the Reputation track's X space",
+                        checked = viewModel.shieldOnXSpace,
+                        onCheckedChange = { viewModel.shieldOnXSpace = it },
+                    )
+                    SignedNumberField(
+                        label = "Final Reputation",
+                        value = viewModel.reputation,
+                        onValueChange = { viewModel.reputation = it },
+                    )
+                }
                 WizardPage.ROUNDS_FINISHED_EARLY -> NumberField(
                     label = "Rounds finished before the Round 6 limit",
                     value = viewModel.roundsFinishedEarly,
@@ -259,7 +381,7 @@ private fun WizardContent(
             OutlinedButton(onClick = { viewModel.pageIndex-- }, enabled = viewModel.pageIndex > 0) {
                 Text("Previous")
             }
-            val isLastPage = viewModel.pageIndex == wizardPages.lastIndex
+            val isLastPage = viewModel.pageIndex >= wizardPages.lastIndex
             Button(onClick = {
                 if (isLastPage) {
                     scope.launch {
@@ -283,6 +405,25 @@ private fun NumberField(label: String, value: String, onValueChange: (String) ->
         onValueChange = { new -> if (new.all(Char::isDigit)) onValueChange(new) },
         label = { Text(label) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+// A regex, not just Char::isDigit, since this field also has to accept a leading "-" (Reputation
+// and its modifier can legitimately be negative, unlike every other numeric field in this
+// wizard). Empty string and a lone "-" are both allowed transiently while the player is typing.
+private val signedIntegerRegex = Regex("-?\\d*")
+
+@Composable
+private fun SignedNumberField(label: String, value: String, onValueChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { new -> if (signedIntegerRegex.matches(new)) onValueChange(new) },
+        label = { Text(label) },
+        // KeyboardType.Number's IME usually has no "-" key, so this field asks for the full
+        // text keyboard instead - the regex filter above still keeps input digits-and-minus-only.
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
