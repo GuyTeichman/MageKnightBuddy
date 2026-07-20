@@ -103,7 +103,10 @@ data class DummyPlayerSession private constructor(
         /**
          * Starting crystal dots per Knight, from docs/rules/dummy-player.md ("Setup"): the Dummy
          * Player starts with one crystal per colored dot on the bottom of its Hero card (e.g.
-         * Goldyx's dots are green, green, blue, so it starts with 2 green + 1 blue crystal). Feeds
+         * Goldyx's dots are green, green, blue, so it starts with 2 green + 1 blue crystal). The
+         * base rulebook only shows Goldyx as its worked example - the other 7 Knights' values were
+         * sourced by visually reading their actual Hero cards (see the full per-Knight table and
+         * source citations in docs/rules/dummy-player.md, or research tickets #31/#66/#70). Feeds
          * [startingCrystals] below.
          */
         private val STARTING_CRYSTAL_DOTS: Map<Knight, List<CardColor>> = mapOf(

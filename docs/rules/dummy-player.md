@@ -8,6 +8,21 @@ The Dummy Player is the automated pacing opponent used by every cooperative and 
 
 - After players choose their Heroes, randomly choose one of the Heroes **not** in the game to be the Dummy Player. Take only that Hero's Hero card, Round Order token, and starting deck of 16 Basic Action cards.
 - Give the Dummy Player 3 crystals in its Inventory, matching the 3 colored dots on the bottom of its Hero card (one crystal per dot — e.g. Goldyx's dots are green, green, blue, so the Dummy starts with 2 green + 1 blue crystal). Only the Dummy Player starts with crystals this way — real players start with none.
+
+  This base rulebook only ever shows Goldyx's dots as its worked example — it doesn't print a full per-Knight table. The dots for every other Knight this app models were sourced by visually reading their Hero cards from other materials (research tickets #31, #66, #70): official card photos for Wolfhawk, Arythea, and Coral (Expansion/Apocalypse Dragon rulebooks); a third-party solo-play companion tool's hard-coded values for Tovak, Norowas, Krang, and Braevalar, independently cross-checked against clean card art from a Tabletop Simulator mod. Every one of the 8 Knights below is now confirmed from at least one direct visual source:
+
+  | Knight | Dots |
+  |---|---|
+  | Tovak | Red, Blue, Blue |
+  | Goldyx | Green, Green, Blue |
+  | Norowas | Green, White, White |
+  | Wolfhawk | White, White, Blue |
+  | Arythea | Red, Red, White |
+  | Krang | Red, Red, Green |
+  | Braevalar | Green, Blue, Blue |
+  | Coral | Blue, Blue, Red |
+
+  See `domain/src/main/kotlin/.../DummyPlayerSession.kt`'s `STARTING_CRYSTAL_DOTS` for where this table is actually consumed.
 - Shuffle that Hero's Deed deck (the 16 Basic Action cards). That shuffled deck is the Dummy Player's deck.
 - The Dummy Player does **not** count toward how many mana dice or Units are used in the scenario.
 
