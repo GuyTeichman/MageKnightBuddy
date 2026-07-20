@@ -1,15 +1,16 @@
 package com.guyteichman.mageknightbuddy.ui.scorecalculator
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,7 +25,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,13 +45,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.Outcome
+import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import kotlinx.coroutines.CoroutineScope
@@ -338,22 +343,10 @@ private fun WizardContent(
                     value = viewModel.questPoints,
                     onValueChange = { viewModel.questPoints = it },
                 )
-                WizardPage.COUNCIL_REPUTATION -> {
-                    ReputationModifierPicker(
-                        selected = viewModel.reputationModifier,
-                        onSelect = { viewModel.reputationModifier = it },
-                    )
-                    LabeledSwitch(
-                        label = "Shield token on the Reputation track's X space",
-                        checked = viewModel.shieldOnXSpace,
-                        onCheckedChange = { viewModel.shieldOnXSpace = it },
-                    )
-                    SignedNumberField(
-                        label = "Final Reputation",
-                        value = viewModel.reputation,
-                        onValueChange = { viewModel.reputation = it },
-                    )
-                }
+                WizardPage.COUNCIL_REPUTATION -> ReputationTrackPicker(
+                    selected = ReputationTrackSpace.fromPosition(viewModel.reputationTrackPosition),
+                    onSelect = { viewModel.reputationTrackPosition = it.position },
+                )
                 WizardPage.ROUNDS_FINISHED_EARLY -> NumberField(
                     label = "Rounds finished before the Round 6 limit",
                     value = viewModel.roundsFinishedEarly,
@@ -412,56 +405,98 @@ private fun NumberField(label: String, value: String, onValueChange: (String) ->
     )
 }
 
-// A regex, not just Char::isDigit, since this field also has to accept a leading "-" (Final
-// Reputation can legitimately be negative, unlike every other NumberField in this wizard). Empty
-// string and a lone "-" are both allowed transiently while the player is typing.
-private val signedIntegerRegex = Regex("-?\\d*")
-
-@Composable
-private fun SignedNumberField(label: String, value: String, onValueChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = { new -> if (signedIntegerRegex.matches(new)) onValueChange(new) },
-        label = { Text(label) },
-        // KeyboardType.Number's IME usually has no "-" key, so this field asks for the full
-        // text keyboard instead - the regex filter above still keeps input digits-and-minus-only.
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
-}
-
-// The fixed values printed at each space of the Reputation track (docs/rules/for-the-council.md's
-// "Reputation" note; base rulebook p.2's track illustration), excluding the two "X" spaces at
-// either end - a Shield token on an X space is its own distinct case, already covered by the
-// separate "Shield on X space" switch below, so it isn't one of this picker's choices.
-private val REPUTATION_MODIFIER_OPTIONS = listOf(-5, -3, -2, -1, 0, 1, 2, 3, 5)
-
 /**
- * Single-select chip row for [ScoreCalculatorViewModel.reputationModifier] - a plain number field
- * would let the player enter a value the Reputation track can't actually produce, so this only
- * offers the values the track prints. Same FilterChip-row pattern as `DummyPlayerScreen`'s
- * `ColorPickerRow`.
+ * Which physical space on the Reputation track the player's Shield token sits on, shown as a
+ * vertical list of all 13 spaces - a phone screen is much taller than it is wide, and a vertical
+ * list is a reasonable stand-in for the physical track's curved fan shape. Negative spaces are
+ * tinted red, positive spaces gold, deepening toward each end, mirroring the real board's own
+ * coloring. Each row aligns its position (what the rulebook calls e.g. "+2 Reputation") against
+ * the modifier actually printed there, so the player just taps where their token is instead of
+ * separately entering a modifier/X-space/raw-Reputation the game never asks them to compute by
+ * hand. See [ReputationTrackSpace] for what those two numbers mean.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ReputationModifierPicker(selected: Int, onSelect: (Int) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Reputation modifier", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            REPUTATION_MODIFIER_OPTIONS.forEach { modifier ->
-                FilterChip(
-                    selected = modifier == selected,
-                    onClick = { onSelect(modifier) },
-                    // Explicit "+" for positive values - plain OutlinedTextField.toString() on a
-                    // positive Int has no sign, which would read as ambiguous next to the negative
-                    // chips in this same row.
-                    label = { Text(if (modifier > 0) "+$modifier" else modifier.toString()) },
-                )
+private fun ReputationTrackPicker(selected: ReputationTrackSpace, onSelect: (ReputationTrackSpace) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Reputation", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Text(
+                "Position",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.width(56.dp),
+            )
+            Text(
+                "Modifier",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.End,
+            )
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            ReputationTrackSpace.entries.forEach { space ->
+                ReputationTrackSpaceRow(space = space, selected = space == selected, onClick = { onSelect(space) })
             }
         }
     }
 }
+
+@Composable
+private fun ReputationTrackSpaceRow(space: ReputationTrackSpace, selected: Boolean, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        color = space.trackColor(),
+        border = BorderStroke(
+            width = if (selected) 2.dp else 1.dp,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(space.positionLabel, style = MaterialTheme.typography.titleMedium, modifier = Modifier.width(56.dp))
+            Text(
+                space.modifierLabel,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.End,
+            )
+        }
+    }
+}
+
+// Deep red toward the negative end, gold toward the positive end - the real board's own Reputation
+// track coloring - fading to a neutral surface at the center. Capped well under full saturation
+// (maxTint) so body text stays legible on top without per-cell contrast calculation.
+private val ReputationNegativeHue = Color(0xFFB3261E)
+private val ReputationPositiveHue = Color(0xFFC9A227)
+private const val REPUTATION_TRACK_MAX_TINT = 0.35f
+
+@Composable
+private fun ReputationTrackSpace.trackColor(): Color {
+    val surface = MaterialTheme.colorScheme.surface
+    val fraction = (kotlin.math.abs(position) / 6f) * REPUTATION_TRACK_MAX_TINT
+    return when {
+        position < 0 -> lerp(surface, ReputationNegativeHue, fraction)
+        position > 0 -> lerp(surface, ReputationPositiveHue, fraction)
+        else -> surface
+    }
+}
+
+// "X" for the two end spaces (matching what's actually printed on the board there - see
+// ReputationTrackSpace), otherwise the signed position/modifier number. Explicit "+" for positive
+// values, since a plain Int.toString() has no sign and would read as ambiguous next to this same
+// row's negative cells.
+private val ReputationTrackSpace.positionLabel: String
+    get() = if (isXSpace) "X" else if (position > 0) "+$position" else position.toString()
+
+private val ReputationTrackSpace.modifierLabel: String
+    get() = modifier?.let { if (it > 0) "+$it" else it.toString() } ?: "X"
 
 @Composable
 private fun LabeledCheckbox(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {

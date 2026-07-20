@@ -18,6 +18,7 @@ import com.guyteichman.mageknightbuddy.domain.HiddenValleyScoringInput
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.Outcome
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
+import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.domain.ScoringInput
 import com.guyteichman.mageknightbuddy.domain.ScoringSession
@@ -77,13 +78,11 @@ class ScoreCalculatorViewModel(
     var graveyardsSealed: String by savedStateHandle.saveable("graveyardsSealed") { mutableStateOf("0") }
     var necromancerDefeated: Boolean by savedStateHandle.saveable("necromancerDefeated") { mutableStateOf(false) }
 
-    // Int, not the String-with-toIntOrZero() pattern every other field above uses: the
-    // Reputation track only ever prints REPUTATION_MODIFIER_OPTIONS at each space (see
-    // ScoreCalculatorScreen's ReputationModifierPicker), so there's no free-text parsing to do -
-    // this can only ever hold one of those fixed values.
-    var reputationModifier: Int by savedStateHandle.saveable("reputationModifier") { mutableStateOf(0) }
-    var shieldOnXSpace: Boolean by savedStateHandle.saveable("shieldOnXSpace") { mutableStateOf(false) }
-    var reputation: String by savedStateHandle.saveable("reputation") { mutableStateOf("0") }
+    // ReputationTrackSpace.position (-6..+6, see domain), not the modifier/X-space/raw-Reputation
+    // fields this used to be split across - the player just picks which physical space their
+    // Shield token sits on (ScoreCalculatorScreen's ReputationTrackPicker), and everything else
+    // For the Council's scoring needs is derived from that one number.
+    var reputationTrackPosition: Int by savedStateHandle.saveable("reputationTrackPosition") { mutableStateOf(0) }
 
     // Shared by every scenario except For the Council (which has no Standard Achievements at
     // all - see the `when` in [input]), so it's factored out instead of repeated 4 times.
@@ -148,9 +147,7 @@ class ScoreCalculatorViewModel(
             )
             Scenario.ForTheCouncil -> ForTheCouncilScoringInput(
                 questPoints = questPoints.toIntOrZero(),
-                reputationModifier = reputationModifier,
-                shieldOnXSpace = shieldOnXSpace,
-                reputation = reputation.toIntOrZero(),
+                reputationTrackSpace = ReputationTrackSpace.fromPosition(reputationTrackPosition),
             )
         }
 
@@ -185,9 +182,7 @@ class ScoreCalculatorViewModel(
         highPriestessDefeated = false
         graveyardsSealed = "0"
         necromancerDefeated = false
-        reputationModifier = 0
-        shieldOnXSpace = false
-        reputation = "0"
+        reputationTrackPosition = 0
     }
 
     // input.score()/.outcome() dispatch to whichever scenario's *Scoring object matches the
