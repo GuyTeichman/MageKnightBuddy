@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
@@ -452,24 +453,29 @@ private fun MiniCard(color: CardColor) {
     )
 }
 
-/** A small colored square used as a compact per-color legend marker. */
+/** A small colored square used as a compact per-color legend marker. [size] is the square's edge. */
 @Composable
-private fun CardColorDot(color: CardColor) {
+private fun CardColorDot(color: CardColor, size: Dp = 10.dp) {
     Box(
         modifier = Modifier
-            .size(10.dp)
+            .size(size)
             .clip(RoundedCornerShape(3.dp))
             .background(color.swatch)
             .then(if (color == CardColor.WHITE) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(3.dp)) else Modifier),
     )
 }
 
-/** A small diamond standing in for one crystal in the Inventory. */
+/**
+ * A small diamond standing in for one crystal in the Inventory. [size] is the diamond's tip-to-tip
+ * width/height (its visual footprint) - NOT the underlying square's edge before rotation, so a
+ * [CrystalIcon] and a [CardColorDot] given the same [size] read as the same size on screen. A
+ * rotated square's diagonal is its edge * sqrt(2), so the pre-rotation edge is [size] / sqrt(2).
+ */
 @Composable
-private fun CrystalIcon(color: CardColor) {
+private fun CrystalIcon(color: CardColor, size: Dp = 17.dp) {
     Box(
         modifier = Modifier
-            .size(12.dp)
+            .size(size / 1.4142f)
             .rotate(45f)
             .clip(RoundedCornerShape(2.dp))
             .background(color.swatch)
@@ -641,15 +647,17 @@ private fun EndRoundDialog(onDismiss: () -> Unit, onConfirm: (advancedActionColo
                     label = "Advanced Action offer",
                     selected = advancedActionColor,
                     onSelect = { advancedActionColor = it },
-                    // A card of this color is what's added to the deck - CardColorDot fits.
-                    chipIcon = { color -> CardColorDot(color = color) },
+                    // A card of this color is what's added to the deck - CardColorDot fits. Both
+                    // chipIcons here pass the same `size` (12.dp) so the square and the diamond
+                    // read as the same size in the chip, not just the same nominal Dp value.
+                    chipIcon = { color -> CardColorDot(color = color, size = 12.dp) },
                 )
                 ColorPickerRow(
                     label = "Spell offer",
                     selected = spellColor,
                     onSelect = { spellColor = it },
                     // A crystal of this color is what's granted, not a card - CrystalIcon fits better.
-                    chipIcon = { color -> CrystalIcon(color = color) },
+                    chipIcon = { color -> CrystalIcon(color = color, size = 12.dp) },
                 )
             }
         },
