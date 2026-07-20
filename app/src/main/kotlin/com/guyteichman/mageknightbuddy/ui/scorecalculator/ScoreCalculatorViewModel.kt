@@ -76,7 +76,12 @@ class ScoreCalculatorViewModel(
     var highPriestessDefeated: Boolean by savedStateHandle.saveable("highPriestessDefeated") { mutableStateOf(false) }
     var graveyardsSealed: String by savedStateHandle.saveable("graveyardsSealed") { mutableStateOf("0") }
     var necromancerDefeated: Boolean by savedStateHandle.saveable("necromancerDefeated") { mutableStateOf(false) }
-    var reputationModifier: String by savedStateHandle.saveable("reputationModifier") { mutableStateOf("0") }
+
+    // Int, not the String-with-toIntOrZero() pattern every other field above uses: the
+    // Reputation track only ever prints REPUTATION_MODIFIER_OPTIONS at each space (see
+    // ScoreCalculatorScreen's ReputationModifierPicker), so there's no free-text parsing to do -
+    // this can only ever hold one of those fixed values.
+    var reputationModifier: Int by savedStateHandle.saveable("reputationModifier") { mutableStateOf(0) }
     var shieldOnXSpace: Boolean by savedStateHandle.saveable("shieldOnXSpace") { mutableStateOf(false) }
     var reputation: String by savedStateHandle.saveable("reputation") { mutableStateOf("0") }
 
@@ -143,7 +148,7 @@ class ScoreCalculatorViewModel(
             )
             Scenario.ForTheCouncil -> ForTheCouncilScoringInput(
                 questPoints = questPoints.toIntOrZero(),
-                reputationModifier = reputationModifier.toIntOrZero(),
+                reputationModifier = reputationModifier,
                 shieldOnXSpace = shieldOnXSpace,
                 reputation = reputation.toIntOrZero(),
             )
@@ -180,7 +185,7 @@ class ScoreCalculatorViewModel(
         highPriestessDefeated = false
         graveyardsSealed = "0"
         necromancerDefeated = false
-        reputationModifier = "0"
+        reputationModifier = 0
         shieldOnXSpace = false
         reputation = "0"
     }

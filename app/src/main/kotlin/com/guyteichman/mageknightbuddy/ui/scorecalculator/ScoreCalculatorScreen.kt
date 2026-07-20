@@ -3,6 +3,8 @@ package com.guyteichman.mageknightbuddy.ui.scorecalculator
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +24,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -336,10 +339,9 @@ private fun WizardContent(
                     onValueChange = { viewModel.questPoints = it },
                 )
                 WizardPage.COUNCIL_REPUTATION -> {
-                    SignedNumberField(
-                        label = "Reputation modifier",
-                        value = viewModel.reputationModifier,
-                        onValueChange = { viewModel.reputationModifier = it },
+                    ReputationModifierPicker(
+                        selected = viewModel.reputationModifier,
+                        onSelect = { viewModel.reputationModifier = it },
                     )
                     LabeledSwitch(
                         label = "Shield token on the Reputation track's X space",
@@ -410,9 +412,9 @@ private fun NumberField(label: String, value: String, onValueChange: (String) ->
     )
 }
 
-// A regex, not just Char::isDigit, since this field also has to accept a leading "-" (Reputation
-// and its modifier can legitimately be negative, unlike every other numeric field in this
-// wizard). Empty string and a lone "-" are both allowed transiently while the player is typing.
+// A regex, not just Char::isDigit, since this field also has to accept a leading "-" (Final
+// Reputation can legitimately be negative, unlike every other NumberField in this wizard). Empty
+// string and a lone "-" are both allowed transiently while the player is typing.
 private val signedIntegerRegex = Regex("-?\\d*")
 
 @Composable
@@ -427,6 +429,38 @@ private fun SignedNumberField(label: String, value: String, onValueChange: (Stri
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
+}
+
+// The fixed values printed at each space of the Reputation track (docs/rules/for-the-council.md's
+// "Reputation" note; base rulebook p.2's track illustration), excluding the two "X" spaces at
+// either end - a Shield token on an X space is its own distinct case, already covered by the
+// separate "Shield on X space" switch below, so it isn't one of this picker's choices.
+private val REPUTATION_MODIFIER_OPTIONS = listOf(-5, -3, -2, -1, 0, 1, 2, 3, 5)
+
+/**
+ * Single-select chip row for [ScoreCalculatorViewModel.reputationModifier] - a plain number field
+ * would let the player enter a value the Reputation track can't actually produce, so this only
+ * offers the values the track prints. Same FilterChip-row pattern as `DummyPlayerScreen`'s
+ * `ColorPickerRow`.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ReputationModifierPicker(selected: Int, onSelect: (Int) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Reputation modifier", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            REPUTATION_MODIFIER_OPTIONS.forEach { modifier ->
+                FilterChip(
+                    selected = modifier == selected,
+                    onClick = { onSelect(modifier) },
+                    // Explicit "+" for positive values - plain OutlinedTextField.toString() on a
+                    // positive Int has no sign, which would read as ambiguous next to the negative
+                    // chips in this same row.
+                    label = { Text(if (modifier > 0) "+$modifier" else modifier.toString()) },
+                )
+            }
+        }
+    }
 }
 
 @Composable
