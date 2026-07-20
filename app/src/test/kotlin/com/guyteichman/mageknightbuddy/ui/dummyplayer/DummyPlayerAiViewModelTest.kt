@@ -10,11 +10,14 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 
@@ -65,6 +68,41 @@ class DummyPlayerAiViewModelTest {
         viewModel.playTurn()
 
         assertEquals(emptyList(), viewModel.session?.deckOrder)
+        assertEquals(viewModel.session, repository.restore())
+    }
+
+    @Test
+    fun `a second playTurn call while one is still in flight is ignored, like a double-tap`() = runTest {
+        val dao = FakeDummyPlayerSessionDao()
+        val repository = DummyPlayerSessionRepository(dao)
+        // GOLDYX starts with 0 WHITE/RED crystals (see STARTING_CRYSTAL_DOTS), so a turn's initial
+        // 3-card reveal ending on WHITE/RED never pulls the "additional reveal" bonus cards - one
+        // playTurn() always consumes exactly 3 of these 5, leaving [BLUE, RED] behind. That gives a
+        // deck state a second, wrongly-allowed playTurn() would visibly further drain (to empty),
+        // distinguishing "one play happened" from "two plays happened".
+        repository.save(
+            DummyPlayerSession.start(
+                Knight.GOLDYX,
+                deckOrder = listOf(CardColor.RED, CardColor.GREEN, CardColor.WHITE, CardColor.BLUE, CardColor.RED),
+            ),
+        )
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        // The gate holds the first playTurn() suspended inside its autosave, mid-flight - the same
+        // window a real double-tap would land in with Room's actual IO-dispatched upsert.
+        val gate = CompletableDeferred<Unit>()
+        dao.upsertGate = gate
+        launch { viewModel.playTurn() }
+        runCurrent()
+
+        launch { viewModel.playTurn() }
+        runCurrent()
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(listOf(CardColor.BLUE, CardColor.RED), viewModel.session?.deckOrder)
         assertEquals(viewModel.session, repository.restore())
     }
 

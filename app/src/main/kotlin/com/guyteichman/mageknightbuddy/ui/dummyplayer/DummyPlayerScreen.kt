@@ -255,13 +255,14 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, onBack
                 ) {
                     Button(
                         onClick = { scope.launch { viewModel.playTurn() } },
-                        enabled = !session.roundEnded,
+                        enabled = !session.roundEnded && !viewModel.isBusy,
                         modifier = Modifier.weight(1f),
                     ) {
                         Text("Play Turn")
                     }
                     OutlinedButton(
                         onClick = { showEndRoundDialog = true },
+                        enabled = !viewModel.isBusy,
                         modifier = Modifier.weight(1f),
                     ) {
                         Text("End Round")

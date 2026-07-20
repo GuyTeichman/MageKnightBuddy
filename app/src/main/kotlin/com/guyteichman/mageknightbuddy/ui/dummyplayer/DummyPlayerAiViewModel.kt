@@ -27,6 +27,11 @@ class DummyPlayerAiViewModel(private val repository: DummyPlayerSessionRepositor
     var session: DummyPlayerSession? by mutableStateOf(null)
         private set
 
+    // Guards playTurn/endRound against a double-tap firing two overlapping mutations - the button
+    // click handlers disable themselves on this flag, so it only needs to be read/written here.
+    var isBusy: Boolean by mutableStateOf(false)
+        private set
+
     init {
         // viewModelScope ties this coroutine's lifetime to the ViewModel, matching the one-shot
         // restore pattern in DummyPlayerSetupViewModel's init block.
@@ -41,9 +46,15 @@ class DummyPlayerAiViewModel(private val repository: DummyPlayerSessionRepositor
      * caller (the screen) supplies its own coroutine scope, e.g. tied to a button click.
      */
     suspend fun playTurn() {
-        val next = session?.playTurn() ?: return
-        session = next
-        repository.save(next)
+        if (isBusy) return
+        isBusy = true
+        try {
+            val next = session?.playTurn() ?: return
+            session = next
+            repository.save(next)
+        } finally {
+            isBusy = false
+        }
     }
 
     /**
@@ -54,9 +65,15 @@ class DummyPlayerAiViewModel(private val repository: DummyPlayerSessionRepositor
      * [DummyPlayerSession.roundEnded] to be true first.
      */
     suspend fun endRound(advancedActionOfferColor: CardColor, spellOfferColor: CardColor) {
-        val next = session?.endRound(advancedActionOfferColor, spellOfferColor) ?: return
-        session = next
-        repository.save(next)
+        if (isBusy) return
+        isBusy = true
+        try {
+            val next = session?.endRound(advancedActionOfferColor, spellOfferColor) ?: return
+            session = next
+            repository.save(next)
+        } finally {
+            isBusy = false
+        }
     }
 
     companion object {
