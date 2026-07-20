@@ -29,17 +29,35 @@ import com.guyteichman.mageknightbuddy.domain.outcome
 import com.guyteichman.mageknightbuddy.domain.score
 import java.time.Instant
 
+/** Kotlin extension function on `String`: treats a blank/non-numeric text field as 0 rather than crashing or nulling out. */
 private fun String.toIntOrZero() = toIntOrNull() ?: 0
 
-@OptIn(SavedStateHandleSaveableApi::class)
+/**
+ * Owns every field of the Score Calculator wizard (one property per scoring input, plus which
+ * page the wizard is on) and knows how to turn them into a saved [ScoringSession].
+ *
+ * State lives here instead of Compose `remember` specifically so it survives the player switching
+ * tabs and back - see docs/adr/0002-viewmodel-backed-wizard-state.md for why a `ViewModel` was
+ * chosen over the smaller `rememberSaveable` fix, and why it also owns the final `save()` step.
+ */
+@OptIn(SavedStateHandleSaveableApi::class) // saveable() is still an experimental Compose+ViewModel API.
 class ScoreCalculatorViewModel(
     private val savedStateHandle: SavedStateHandle,
     private val repository: ScoringSessionRepository,
 ) : ViewModel() {
 
+    // `by savedStateHandle.saveable("key") { mutableStateOf(...) }` is a Kotlin *property
+    // delegate*: reading/writing `pageIndex` actually reads/writes a Compose `MutableState` that
+    // is mirrored into the ViewModel's SavedStateHandle under "pageIndex", so the value survives
+    // both tab switches (ViewModel outlives the composition) and process death (SavedStateHandle
+    // is backed by a Bundle). Every property below follows this same pattern, one per wizard
+    // field, each with its own string key and default value.
     var pageIndex: Int by savedStateHandle.saveable("pageIndex") { mutableStateOf(0) }
 
     var scenarioId: String by savedStateHandle.saveable("scenarioId") { mutableStateOf(Scenario.SoloConquest.id) }
+
+    // Computed property (no backing field): re-derives the Scenario object from the stored id
+    // every time it's read, instead of storing the Scenario itself.
     val scenario: Scenario get() = Scenario.fromId(scenarioId)
 
     var knight: Knight by savedStateHandle.saveable("knight") { mutableStateOf(Knight.entries.first()) }
@@ -151,6 +169,11 @@ class ScoreCalculatorViewModel(
             )
         }
 
+    /**
+     * Clears every field back to its default, for the "New scoring session" action - the
+     * ViewModel would otherwise keep showing a finished session's data indefinitely, since its
+     * whole reason for existing (per ADR-0002) is to *not* reset itself on tab switches.
+     */
     fun reset() {
         pageIndex = 0
         scenarioId = Scenario.SoloConquest.id
@@ -185,11 +208,22 @@ class ScoreCalculatorViewModel(
         reputationTrackPosition = 0
     }
 
-    // input.score()/.outcome() dispatch to whichever scenario's *Scoring object matches the
-    // input's actual runtime type - see the ScoringInput dispatcher functions in domain.
+    /**
+     * Live total score for the Result page, computed from the current [input]. `input.score()`
+     * dispatches to whichever scenario's `*Scoring` object matches the input's actual runtime
+     * type - see the `ScoringInput` dispatcher functions in domain.
+     */
     val score: Int get() = input.score()
+
+    /** Live Won/Lost outcome for the Result page - derived from [input], never a separate manual field (see architecture.md). */
     val outcome: Outcome get() = input.outcome()
 
+    /**
+     * Builds the final [ScoringSession] from the wizard's current [input] and saves it via the
+     * repository, so it shows up on the Scoreboard tab. `suspend` because the repository write
+     * goes through Room, which requires calling off the main thread; callers launch this from a
+     * coroutine (see `ScoreCalculatorScreen`'s "Done" button).
+     */
     suspend fun save() {
         val session = ScoringSession.create(
             scenario = scenario,
@@ -202,6 +236,12 @@ class ScoreCalculatorViewModel(
     }
 
     companion object {
+        /**
+         * Builds a [ViewModelProvider.Factory] for this ViewModel. A factory is needed because
+         * this constructor takes a [ScoringSessionRepository] the default Compose `viewModel()`
+         * lookup can't supply on its own; `initializer { }` wires in `createSavedStateHandle()`
+         * so the ViewModel still gets its process-death-surviving `SavedStateHandle` as usual.
+         */
         fun factory(repository: ScoringSessionRepository): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 ScoreCalculatorViewModel(createSavedStateHandle(), repository)

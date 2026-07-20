@@ -41,12 +41,30 @@ import com.guyteichman.mageknightbuddy.domain.ScoringSession
 import com.guyteichman.mageknightbuddy.domain.breakdown
 
 private const val SCOREBOARD_LIST_ROUTE = "scoreboard_list"
+
+// "{index}" is a placeholder segment, filled in with the actual list index at navigation
+// time (see the "scoreboard_details/$index" call below) and parsed back out via the
+// navArgument declaration further down - the same way a path parameter works in a URL.
 private const val SCOREBOARD_DETAILS_ROUTE = "scoreboard_details/{index}"
 
+/**
+ * Root composable for the Scoreboard tab: shows the list of saved [ScoringSession]s and, on
+ * tapping a row, a full-screen per-category score breakdown for that session. Runs its own
+ * nested [NavHost] - separate from the app's top-level tab navigation - so that pushing the
+ * breakdown screen only affects this tab's own back stack. That keeps the tab's navigation
+ * state (list vs. breakdown) independent of, and unaffected by, switching to other tabs and
+ * back, rather than everything living in one flat, shared navigation graph.
+ */
 @Composable
 fun ScoreboardTab(repository: ScoringSessionRepository, onScoreNewScenario: () -> Unit) {
+    // A NavController scoped to this tab's own nested graph - distinct from whatever
+    // NavController drives the app's top-level tab switching.
     val nestedNavController = rememberNavController()
     val viewModel: ScoreboardViewModel = viewModel(factory = ScoreboardViewModel.factory(repository))
+    // `by` (a property delegate, needs the `getValue` import above) plus `collectAsState`
+    // turns the ViewModel's Flow into Compose State: `sessions` reads like a plain value but
+    // triggers recomposition whenever the Flow emits a new list. `initial` is what's shown
+    // before the Flow's first emission arrives.
     val sessions by viewModel.sessions.collectAsState(initial = emptyList())
 
     NavHost(navController = nestedNavController, startDestination = SCOREBOARD_LIST_ROUTE) {
@@ -59,9 +77,14 @@ fun ScoreboardTab(repository: ScoringSessionRepository, onScoreNewScenario: () -
         }
         composable(
             SCOREBOARD_DETAILS_ROUTE,
+            // Declares the "{index}" placeholder as an Int argument, so it can be read back
+            // out of the destination below via backStackEntry.arguments.
             arguments = listOf(navArgument("index") { type = NavType.IntType }),
         ) { backStackEntry ->
             val index = backStackEntry.arguments?.getInt("index") ?: 0
+            // getOrNull returns null instead of throwing if the index is out of bounds (e.g.
+            // a stale index after the session list changes); ?.let only runs the block - i.e.
+            // only renders the details screen - when a session actually exists at that index.
             sessions.getOrNull(index)?.let { session ->
                 ScoreboardDetailsScreen(session = session, onBack = { nestedNavController.popBackStack() })
             }
@@ -69,6 +92,8 @@ fun ScoreboardTab(repository: ScoringSessionRepository, onScoreNewScenario: () -
     }
 }
 
+// The list screen: a FAB to start a new scoring session, plus either an empty-state message
+// or the table of saved sessions (header row + one row per session).
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScoreboardListScreen(
@@ -90,8 +115,12 @@ private fun ScoreboardListScreen(
                 Text("No scored games yet")
             }
         } else {
+            // LazyColumn only composes/renders the rows currently on screen, unlike Column,
+            // which would lay out every row up front - matters once the session list grows.
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 item { ScoreboardHeaderRow() }
+                // itemsIndexed hands back each item together with its position in the list,
+                // which is needed here to pass the right index on to onRowClick.
                 itemsIndexed(sessions) { index, session ->
                     ScoreboardRow(session = session, onClick = { onRowClick(index) })
                 }
@@ -100,10 +129,13 @@ private fun ScoreboardListScreen(
     }
 }
 
+// Bold column-title row (Knight / Score / Outcome) drawn above the session list.
 @Composable
 private fun ScoreboardHeaderRow() {
     Column {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            // weight(1f) on every Text here splits the Row's width evenly across the three
+            // columns; it only works because Row is the parent (it's RowScope.weight).
             Text("Knight", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
             Text("Score", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
             Text("Outcome", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
@@ -112,6 +144,8 @@ private fun ScoreboardHeaderRow() {
     }
 }
 
+// One row per saved session; tapping anywhere in the row triggers onClick (wired up by the
+// caller to navigate to that session's breakdown screen).
 @Composable
 private fun ScoreboardRow(session: ScoringSession, onClick: () -> Unit) {
     Column {
@@ -129,6 +163,8 @@ private fun ScoreboardRow(session: ScoringSession, onClick: () -> Unit) {
     }
 }
 
+// Full-screen per-category score breakdown for one session, pushed by tapping a row in the
+// list screen; the back arrow in the top bar pops this off the nested NavHost's back stack.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScoreboardDetailsScreen(session: ScoringSession, onBack: () -> Unit) {
@@ -144,6 +180,8 @@ private fun ScoreboardDetailsScreen(session: ScoringSession, onBack: () -> Unit)
             )
         },
     ) { padding ->
+        // Re-derives the row-by-row breakdown from the session's raw input, rather than
+        // storing it, so the shown breakdown always matches the current scoring rules.
         // session.input.breakdown() dispatches to whichever scenario's *Scoring object matches
         // the input's actual runtime type - see ScoringInput.breakdown() in domain.
         val breakdown = session.input.breakdown()
@@ -151,6 +189,9 @@ private fun ScoreboardDetailsScreen(session: ScoringSession, onBack: () -> Unit)
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                // rememberScrollState() keeps the scroll position across recompositions of
+                // this composable (e.g. when the breakdown data changes); without `remember`
+                // the scroll position would reset on every recomposition.
                 .verticalScroll(rememberScrollState()),
         ) {
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {

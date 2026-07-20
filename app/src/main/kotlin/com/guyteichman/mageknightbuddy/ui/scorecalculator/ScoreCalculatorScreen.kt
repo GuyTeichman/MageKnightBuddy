@@ -61,10 +61,14 @@ import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-// Every page kind used by any scenario's wizard. Not every scenario visits every page - see
-// wizardPagesFor(), which picks the ordered subset that matches a given Scenario's *ScoringInput
-// shape (e.g. CITIES_CONQUERED only applies to Solo Conquest, CITY_REVEALED only to First
-// Reconnaissance).
+/**
+ * One entry per wizard page, in the fixed rulebook order the enum declares. Not every scenario
+ * visits every page - see [wizardPagesFor], which picks the ordered subset that matches a given
+ * [Scenario]'s `*ScoringInput` shape (e.g. CITIES_CONQUERED only applies to Solo Conquest,
+ * CITY_REVEALED only to First Reconnaissance). `title` is the page heading; `helpKeys` are the
+ * [FieldHelp] map keys whose entries should appear when the page's "?" button is tapped (a page
+ * can pull in more than one help entry, or none).
+ */
 private enum class WizardPage(val title: String, val helpKeys: List<String> = emptyList()) {
     SETUP("Setup"),
     FAME("Fame", listOf("Fame")),
@@ -143,13 +147,29 @@ private fun wizardPagesFor(scenario: Scenario): List<WizardPage> = when (scenari
     )
 }
 
+/**
+ * Top-level screen for the Score Calculator tab: the paginated Solo Conquest scoring wizard (see
+ * docs/design/architecture.md's "Score Calculator flow"). Hosts the reset FAB and confirmation
+ * dialog around [WizardContent], which renders the actual per-page fields.
+ *
+ * @param repository where a completed [com.guyteichman.mageknightbuddy.domain.ScoringSession] gets saved.
+ * @param fieldHelp the bundled "?" help text/citations (see [FieldHelp]), keyed by [WizardPage.helpKeys].
+ * @param onDone called after a successful save, to navigate back to the Scoreboard tab.
+ */
 @Composable
 fun ScoreCalculatorScreen(
     repository: ScoringSessionRepository,
     fieldHelp: Map<String, FieldHelp>,
     onDone: () -> Unit,
 ) {
+    // `viewModel(factory = ...)` is the Compose idiom for hoisting an Android ViewModel into a
+    // composable: it creates the ViewModel on first composition and hands back the *same*
+    // instance across recompositions (and, per ADR-0002, across this tab being navigated away
+    // from and back). The factory is needed because this ViewModel's constructor takes a
+    // repository the default lookup can't provide on its own.
     val viewModel: ScoreCalculatorViewModel = viewModel(factory = ScoreCalculatorViewModel.factory(repository))
+    // A CoroutineScope tied to this composable's lifecycle, used below to launch the suspend
+    // `viewModel.save()` call from a plain (non-suspend) button click handler.
     val scope = rememberCoroutineScope()
     // Recomputed on every recomposition (cheap - a handful of enum values), so switching the
     // Scenario dropdown on the SETUP page immediately reflects the new scenario's page sequence.
@@ -158,6 +178,9 @@ fun ScoreCalculatorScreen(
     // shorter sequence (e.g. switching from Solo Conquest's 13 pages to For the Council's 4)
     // could otherwise leave it pointing past the end of the new list.
     val currentPage = wizardPages[viewModel.pageIndex.coerceIn(wizardPages.indices)]
+    // `remember { mutableStateOf(false) }` is plain Compose state, scoped to this composition -
+    // fine here (unlike the wizard fields above) because a dismissed confirmation dialog isn't
+    // something that needs to survive a tab switch.
     var showResetConfirmation by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -202,6 +225,11 @@ fun ScoreCalculatorScreen(
     }
 }
 
+/**
+ * Renders the header (step counter, "?" help button, progress bar), the current page's fields,
+ * and the Previous/Next/Done navigation row. All page state (which page, every field's value)
+ * comes from [viewModel]; this composable itself holds no state of its own.
+ */
 @Composable
 private fun WizardContent(
     viewModel: ScoreCalculatorViewModel,
@@ -236,6 +264,10 @@ private fun WizardContent(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // `when` over the WizardPage enum picks which fields to show for the current page.
+            // Kotlin can check this `when` is exhaustive (every WizardPage handled) because the
+            // enum's full set of constants is known at compile time - the same exhaustiveness
+            // check you'd get dispatching over a sealed interface.
             when (currentPage) {
                 WizardPage.SETUP -> {
                     LabeledDropdown(
@@ -373,12 +405,17 @@ private fun WizardContent(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
+            // Page navigation is just moving viewModel.pageIndex up/down within wizardPages;
+            // Previous is disabled on the first page since there's nowhere to go back to.
             OutlinedButton(onClick = { viewModel.pageIndex-- }, enabled = viewModel.pageIndex > 0) {
                 Text("Previous")
             }
             val isLastPage = viewModel.pageIndex >= wizardPages.lastIndex
             Button(onClick = {
                 if (isLastPage) {
+                    // Button click handlers aren't suspend functions, so `scope.launch` starts a
+                    // coroutine to call the suspend `save()` and then navigate away once it
+                    // finishes.
                     scope.launch {
                         viewModel.save()
                         onDone()
@@ -393,10 +430,18 @@ private fun WizardContent(
     }
 }
 
+/**
+ * A single-line numeric input field, backed by a `String` (the ViewModel stores everything as
+ * strings - see [ScoreCalculatorViewModel]) so it can stay blank/partial while typing rather than
+ * forcing a valid Int at every keystroke.
+ */
 @Composable
 private fun NumberField(label: String, value: String, onValueChange: (String) -> Unit) {
     OutlinedTextField(
         value = value,
+        // `Char::isDigit` is a function reference (a callable pointer to that method), used here
+        // as shorthand for `{ c -> c.isDigit() }`: rejects the edit entirely if any character
+        // typed isn't a digit, so the field can never hold non-numeric text.
         onValueChange = { new -> if (new.all(Char::isDigit)) onValueChange(new) },
         label = { Text(label) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -498,6 +543,7 @@ private val ReputationTrackSpace.positionLabel: String
 private val ReputationTrackSpace.modifierLabel: String
     get() = modifier?.let { if (it > 0) "+$it" else it.toString() } ?: "X"
 
+/** A checkbox with its label as a clickable row, for simple yes/no wizard fields (e.g. a city being conquered). */
 @Composable
 private fun LabeledCheckbox(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(
@@ -509,6 +555,7 @@ private fun LabeledCheckbox(label: String, checked: Boolean, onCheckedChange: (B
     }
 }
 
+/** A toggle switch with its label, used for boolean fields phrased as a stateful condition (e.g. whether "End of the Round" was already announced) rather than a plain checkbox. */
 @Composable
 private fun LabeledSwitch(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(
@@ -521,6 +568,11 @@ private fun LabeledSwitch(label: String, checked: Boolean, onCheckedChange: (Boo
     }
 }
 
+/**
+ * A read-only text field that opens a dropdown of `options` when tapped (used for the Setup
+ * page's Scenario and Knight pickers). Generic over `T` so it works for any enum-like option
+ * type; `displayName` supplies the human-readable label for each option.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun <T> LabeledDropdown(
@@ -530,6 +582,8 @@ private fun <T> LabeledDropdown(
     displayName: (T) -> String,
     onSelected: (T) -> Unit,
 ) {
+    // Whether the dropdown is currently open - local UI state, not a wizard field, so plain
+    // `remember` (not the ViewModel) is the right home for it.
     var expanded by remember { mutableStateOf(false) }
 
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
@@ -557,6 +611,11 @@ private fun <T> LabeledDropdown(
     }
 }
 
+/**
+ * One row of the Greatest Leader page: a Unit level's healthy/wounded counts side by side. The
+ * ViewModel stores these as four separate per-level properties rather than a list, so each level
+ * gets its own row composable call (see `WizardPage.GREATEST_LEADER` in [WizardContent]).
+ */
 @Composable
 private fun UnitLevelRow(
     level: Int,
@@ -588,6 +647,11 @@ private fun UnitLevelRow(
     }
 }
 
+/**
+ * The "?" icon button shown next to a wizard page's title. Tapping it opens a dialog with the
+ * beginner-friendly rule text (and rulebook citation) for every help key that page declares in
+ * [WizardPage.helpKeys], looked up from the bundled [fieldHelp] map (see [FieldHelp]).
+ */
 @Composable
 private fun HelpButton(keys: List<String>, fieldHelp: Map<String, FieldHelp>) {
     var showHelp by remember { mutableStateOf(false) }
@@ -603,6 +667,9 @@ private fun HelpButton(keys: List<String>, fieldHelp: Map<String, FieldHelp>) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     keys.forEach { key ->
+                        // `map[key]?.let { }` is a safe-call + scope function combo: if the key
+                        // has no entry in fieldHelp, `fieldHelp[key]` is null and the `?.` short-
+                        // circuits, so nothing renders for that key instead of crashing.
                         fieldHelp[key]?.let { help ->
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(help.text)
@@ -625,6 +692,7 @@ private fun HelpButton(keys: List<String>, fieldHelp: Map<String, FieldHelp>) {
     }
 }
 
+/** The final Result page's summary card: the computed total score and derived Won/Lost outcome. */
 @Composable
 private fun ResultCard(score: Int, outcome: Outcome) {
     Card(modifier = Modifier.fillMaxWidth()) {
