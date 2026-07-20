@@ -1,5 +1,6 @@
 package com.guyteichman.mageknightbuddy.data
 
+import com.guyteichman.mageknightbuddy.domain.ForTheCouncilScoringInput
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.Outcome
 import com.guyteichman.mageknightbuddy.domain.Scenario
@@ -14,7 +15,7 @@ import kotlin.test.assertEquals
 class ScoringSessionMapperTest {
 
     @Test
-    fun `toEntity then toDomain round-trips every field`() {
+    fun `toEntity then toDomain round-trips every field for a SoloConquestScoringInput session`() {
         val session = ScoringSession(
             scenario = Scenario.SoloConquest,
             knight = Knight.ARYTHEA,
@@ -45,6 +46,31 @@ class ScoringSessionMapperTest {
             score = 216,
             outcome = Outcome.WON,
             playedAt = Instant.parse("2026-07-18T12:34:56Z"),
+        )
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+    }
+
+    @Test
+    fun `toEntity then toDomain round-trips a structurally different ForTheCouncilScoringInput session`() {
+        // For the Council has no fame/Standard Achievements at all, unlike the other 4
+        // scenarios - this exercises the JSON-column approach's whole reason for existing:
+        // one inputJson column has to hold every scenario's differently-shaped input.
+        val session = ScoringSession(
+            scenario = Scenario.ForTheCouncil,
+            knight = Knight.NOROWAS,
+            playerName = null,
+            input = ForTheCouncilScoringInput(
+                questPoints = 12,
+                reputationModifier = -3,
+                shieldOnXSpace = true,
+                reputation = -1,
+            ),
+            score = 9,
+            outcome = Outcome.LOST,
+            playedAt = Instant.parse("2026-07-19T08:00:00Z"),
         )
 
         val roundTripped = session.toEntity().toDomain()

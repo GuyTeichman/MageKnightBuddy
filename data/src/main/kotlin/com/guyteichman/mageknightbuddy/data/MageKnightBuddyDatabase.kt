@@ -18,7 +18,10 @@ import androidx.room.RoomDatabase
 // since this project isn't tracking schema history for migrations yet.
 @Database(
     entities = [ScoringSessionEntity::class, DummyPlayerSessionEntity::class],
-    version = 2,
+    // Bumped 2 -> 3: ScoringSessionEntity's ~22 wide columns collapsed into a single inputJson
+    // column (see ScoringInputDto). No hand-written migration - the app has never been
+    // published, so fallbackToDestructiveMigration (see createDatabase()) is fine pre-release.
+    version = 3,
     exportSchema = false,
 )
 abstract class MageKnightBuddyDatabase : RoomDatabase() {

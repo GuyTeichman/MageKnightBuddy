@@ -3,33 +3,18 @@ package com.guyteichman.mageknightbuddy.data
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+/**
+ * Room row for one scored session. [inputJson] holds the scenario's `*ScoringInput` encoded via
+ * [ScoringInputDto] (see that file for why) - one JSON column instead of a separate wide column
+ * per field of every scenario's differently-shaped input, which couldn't scale past Solo Conquest.
+ */
 @Entity(tableName = "scoring_sessions")
 data class ScoringSessionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val scenario: String,
     val knight: String,
     val playerName: String?,
-    val fame: Int,
-    val spellsInDeck: Int,
-    val advancedActionsInDeck: Int,
-    val unitsLevel1Healthy: Int,
-    val unitsLevel1Wounded: Int,
-    val unitsLevel2Healthy: Int,
-    val unitsLevel2Wounded: Int,
-    val unitsLevel3Healthy: Int,
-    val unitsLevel3Wounded: Int,
-    val unitsLevel4Healthy: Int,
-    val unitsLevel4Wounded: Int,
-    val shieldsOnAdventureSites: Int,
-    val artifacts: Int,
-    val crystalsInInventory: Int,
-    val shieldsOnConquerSites: Int,
-    val woundsInDeck: Int,
-    val questPoints: Int,
-    val citiesConquered: Int,
-    val roundsFinishedEarly: Int,
-    val cardsRemainingInDummyDeck: Int,
-    val endOfRoundAnnounced: Boolean,
+    val inputJson: String,
     val score: Int,
     val outcome: String,
     val playedAtEpochMillis: Long,
