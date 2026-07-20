@@ -4,6 +4,7 @@ import com.guyteichman.mageknightbuddy.domain.FirstReconnaissanceScoringInput
 import com.guyteichman.mageknightbuddy.domain.ForTheCouncilScoringInput
 import com.guyteichman.mageknightbuddy.domain.HiddenValleyScoringInput
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
+import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.ScoringInput
 import com.guyteichman.mageknightbuddy.domain.SoloConquestScoringInput
 import com.guyteichman.mageknightbuddy.domain.StandardAchievements
@@ -56,9 +57,7 @@ fun ScoringInput.toDto(): ScoringInputDto = when (this) {
     )
     is ForTheCouncilScoringInput -> ScoringInputDto.ForTheCouncil(
         questPoints = questPoints,
-        reputationModifier = reputationModifier,
-        shieldOnXSpace = shieldOnXSpace,
-        reputation = reputation,
+        reputationTrackPosition = reputationTrackSpace.position,
     )
     is HiddenValleyScoringInput -> ScoringInputDto.HiddenValley(
         fame = fame,
@@ -100,9 +99,7 @@ fun ScoringInputDto.toDomain(): ScoringInput = when (this) {
     )
     is ScoringInputDto.ForTheCouncil -> ForTheCouncilScoringInput(
         questPoints = questPoints,
-        reputationModifier = reputationModifier,
-        shieldOnXSpace = shieldOnXSpace,
-        reputation = reputation,
+        reputationTrackSpace = ReputationTrackSpace.fromPosition(reputationTrackPosition),
     )
     is ScoringInputDto.HiddenValley -> HiddenValleyScoringInput(
         fame = fame,

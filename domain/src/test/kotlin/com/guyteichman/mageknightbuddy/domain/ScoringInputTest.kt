@@ -61,9 +61,7 @@ class ScoringInputTest {
     fun `dispatches a ForTheCouncilScoringInput to ForTheCouncilScoring`() {
         val input = ForTheCouncilScoringInput(
             questPoints = 10,
-            reputationModifier = -1,
-            shieldOnXSpace = false,
-            reputation = 2,
+            reputationTrackSpace = ReputationTrackSpace.PLUS_2,
         )
 
         val scoringInput: ScoringInput = input

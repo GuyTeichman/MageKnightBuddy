@@ -4,6 +4,7 @@ import com.guyteichman.mageknightbuddy.domain.FirstReconnaissanceScoringInput
 import com.guyteichman.mageknightbuddy.domain.ForTheCouncilScoringInput
 import com.guyteichman.mageknightbuddy.domain.HiddenValleyScoringInput
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
+import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.ScoringInput
 import com.guyteichman.mageknightbuddy.domain.SoloConquestScoringInput
 import com.guyteichman.mageknightbuddy.domain.StandardAchievements
@@ -67,12 +68,20 @@ class ScoringInputMapperTest {
     }
 
     @Test
-    fun `ForTheCouncilScoringInput round-trips through ScoringInputDto and JSON, including negative fields`() {
+    fun `ForTheCouncilScoringInput round-trips through ScoringInputDto and JSON, including a negative track position`() {
         val input = ForTheCouncilScoringInput(
             questPoints = 12,
-            reputationModifier = -3,
-            shieldOnXSpace = true,
-            reputation = -1,
+            reputationTrackSpace = ReputationTrackSpace.MINUS_3,
+        )
+
+        assertRoundTrips(input)
+    }
+
+    @Test
+    fun `ForTheCouncilScoringInput round-trips an X space too`() {
+        val input = ForTheCouncilScoringInput(
+            questPoints = 12,
+            reputationTrackSpace = ReputationTrackSpace.NEGATIVE_X,
         )
 
         assertRoundTrips(input)

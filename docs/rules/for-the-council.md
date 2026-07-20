@@ -52,10 +52,16 @@ At the end of the second day.
 
 These two terms below are **not** the same number - both matter for this scenario's scoring, so don't conflate them:
 
-- **Reputation** is the raw position of your Shield token on the Reputation track (e.g. "+2 Reputation") - this is what the Outcome thresholds below check.
+- **Reputation** is the raw position of your Shield token on the Reputation track (e.g. "+2 Reputation") - this is what the Outcome thresholds below check. The board itself doesn't print these position numbers; they're only ever used in rules text as a count of steps from the center "0" space.
 - **Reputation modifier** is the (usually smaller) value *printed* at that track position, per the base rulebook's Reputation track illustration (`Mage-Knight-Board-Game-Ultimate-Edition-Rule-Book-September-2018.pdf`, p.2, p.7) - this is what actually gets added to (or subtracted from) your score below. E.g. Reputation +2 prints a +1 modifier; Reputation -2 prints a -1 modifier.
 
-The track's spaces, center-out, are: `X, -5, -3, -2, -1, -1, 0, +1, +1, +2, +2, +3, +5`. The two "X" spaces are their own case (see the -10 quest-point line below), not a modifier value - a Shield token can't sit on a numbered space and an X space at once.
+All 13 spaces, center-out (`ReputationTrackSpace` in `domain/` encodes this table exactly):
+
+| Position | -6 | -5 | -4 | -3 | -2 | -1 | 0 | +1 | +2 | +3 | +4 | +5 | +6 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Modifier | X | -5 | -3 | -2 | -1 | -1 | 0 | +1 | +1 | +2 | +3 | +5 | X |
+
+The two "X" spaces (positions -6/+6 here - the board prints no number there, this app just needs *a* consistent internal label) are their own case (see the -10 quest-point line below), not a modifier value - a Shield token can't sit on a numbered space and an X space at once. The app's Reputation step of the Score wizard shows this whole table as one tappable row - pick the space your token is actually on, and both numbers are read off automatically.
 
 ## Scoring
 

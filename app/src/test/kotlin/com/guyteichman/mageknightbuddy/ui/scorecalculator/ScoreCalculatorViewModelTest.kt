@@ -9,6 +9,7 @@ import com.guyteichman.mageknightbuddy.domain.HiddenValleyScoringInput
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.Outcome
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
+import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.domain.SoloConquestScoringInput
 import kotlin.test.Test
@@ -124,26 +125,23 @@ class ScoreCalculatorViewModelTest {
     }
 
     @Test
-    fun `save builds a ForTheCouncilScoringInput with negative fields when For the Council is selected`() = runTest {
+    fun `save builds a ForTheCouncilScoringInput from the selected Reputation track space, negative position included`() = runTest {
         val fakeDao = FakeScoringSessionDao()
         val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
 
         viewModel.scenarioId = Scenario.ForTheCouncil.id
         viewModel.questPoints = "12"
-        viewModel.reputationModifier = -3
-        viewModel.shieldOnXSpace = false
-        viewModel.reputation = "-1"
+        viewModel.reputationTrackPosition = ReputationTrackSpace.MINUS_3.position
 
         viewModel.save()
 
         val saved = fakeDao.inserted.single().toDomain()
         assertEquals(Scenario.ForTheCouncil, saved.scenario)
         assertEquals(Outcome.LOST, saved.outcome)
-        // 12 quest points - 3 reputation modifier = 9
-        assertEquals(9, saved.score)
+        // 12 quest points - 2 reputation modifier (position -3 prints a -2 modifier) = 10
+        assertEquals(10, saved.score)
         val input = assertIs<ForTheCouncilScoringInput>(saved.input)
-        assertEquals(-3, input.reputationModifier)
-        assertEquals(-1, input.reputation)
+        assertEquals(ReputationTrackSpace.MINUS_3, input.reputationTrackSpace)
     }
 
     @Test
@@ -161,9 +159,7 @@ class ScoreCalculatorViewModelTest {
         viewModel.highPriestessDefeated = true
         viewModel.graveyardsSealed = "2"
         viewModel.necromancerDefeated = true
-        viewModel.reputationModifier = -3
-        viewModel.shieldOnXSpace = true
-        viewModel.reputation = "-1"
+        viewModel.reputationTrackPosition = ReputationTrackSpace.NEGATIVE_X.position
 
         viewModel.reset()
 
@@ -178,8 +174,6 @@ class ScoreCalculatorViewModelTest {
         assertEquals(false, viewModel.highPriestessDefeated)
         assertEquals("0", viewModel.graveyardsSealed)
         assertEquals(false, viewModel.necromancerDefeated)
-        assertEquals(0, viewModel.reputationModifier)
-        assertEquals(false, viewModel.shieldOnXSpace)
-        assertEquals("0", viewModel.reputation)
+        assertEquals(0, viewModel.reputationTrackPosition)
     }
 }

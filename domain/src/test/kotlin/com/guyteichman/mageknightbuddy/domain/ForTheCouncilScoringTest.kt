@@ -9,9 +9,7 @@ class ForTheCouncilScoringTest {
     fun `score adds the Reputation modifier to Quest Points and outcome is Won at Reputation +2 or higher`() {
         val input = ForTheCouncilScoringInput(
             questPoints = 5,
-            reputationModifier = 2,
-            shieldOnXSpace = false,
-            reputation = 3,
+            reputationTrackSpace = ReputationTrackSpace.PLUS_3,
         )
 
         assertEquals(7, ForTheCouncilScoring.score(input))
@@ -22,25 +20,32 @@ class ForTheCouncilScoringTest {
     fun `outcome is Lost below Reputation plus 2, even when the score itself is positive`() {
         val input = ForTheCouncilScoringInput(
             questPoints = 5,
-            reputationModifier = 2,
-            shieldOnXSpace = false,
-            reputation = 1,
+            reputationTrackSpace = ReputationTrackSpace.PLUS_1,
         )
 
-        assertEquals(7, ForTheCouncilScoring.score(input))
+        assertEquals(6, ForTheCouncilScoring.score(input))
         assertEquals(Outcome.LOST, ForTheCouncilScoring.outcome(input))
     }
 
     @Test
-    fun `a Shield token on the Reputation track's X space costs 10 Quest Points regardless of the modifier`() {
+    fun `a Shield token on the Reputation track's X space costs 10 Quest Points regardless of side`() {
         val input = ForTheCouncilScoringInput(
             questPoints = 3,
-            reputationModifier = 5,
-            shieldOnXSpace = true,
-            reputation = -1,
+            reputationTrackSpace = ReputationTrackSpace.NEGATIVE_X,
         )
 
         assertEquals(-7, ForTheCouncilScoring.score(input))
         assertEquals(Outcome.LOST, ForTheCouncilScoring.outcome(input))
+    }
+
+    @Test
+    fun `the positive X space still costs 10 Quest Points, even though its raw Reputation would otherwise win`() {
+        val input = ForTheCouncilScoringInput(
+            questPoints = 3,
+            reputationTrackSpace = ReputationTrackSpace.POSITIVE_X,
+        )
+
+        assertEquals(-7, ForTheCouncilScoring.score(input))
+        assertEquals(Outcome.WON, ForTheCouncilScoring.outcome(input))
     }
 }

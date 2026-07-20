@@ -19,9 +19,14 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [ScoringSessionEntity::class, DummyPlayerSessionEntity::class],
     // Bumped 2 -> 3: ScoringSessionEntity's ~22 wide columns collapsed into a single inputJson
-    // column (see ScoringInputDto). No hand-written migration - the app has never been
+    // column (see ScoringInputDto). Bumped 3 -> 4: ScoringInputDto.ForTheCouncil's own shape
+    // changed (reputationModifier/shieldOnXSpace/reputation -> one reputationTrackPosition) -
+    // Room's column-level schema didn't change (inputJson is still just a String column), but the
+    // JSON *content* inside it did, and kotlinx.serialization fails to decode old-shaped JSON by
+    // default. Any ScoringInputDto shape change needs a version bump for this same reason, even
+    // when no entity/column actually changed. No hand-written migration - the app has never been
     // published, so fallbackToDestructiveMigration (see createDatabase()) is fine pre-release.
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class MageKnightBuddyDatabase : RoomDatabase() {
