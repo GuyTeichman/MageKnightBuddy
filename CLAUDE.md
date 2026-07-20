@@ -38,7 +38,8 @@ Existing pre-standard code is being brought up to this standard via dedicated, s
 ## Build
 
 - Local system JDK is too old for the Android Gradle Plugin (needs JDK 17+). Use Android Studio's bundled JBR:
-  `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew <task>`
+  `JAVA_HOME="/d/Guy_Teichman/Android/android-studio/jbr" ./gradlew <task>`
+- Android SDK lives at `C:/Users/guyte/android-sdk` (see `local.properties`); includes the `emulator` package and an `android-36;google_apis;x86_64` system image for local emulator testing.
 - `./gradlew build` — full build.
 - `./gradlew test` — unit tests (`domain`, `data`).
 - Package: `com.guyteichman.mageknightbuddy` · minSdk 26 · target/compileSdk 36.
