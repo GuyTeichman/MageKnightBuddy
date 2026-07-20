@@ -3,26 +3,21 @@ package com.guyteichman.mageknightbuddy.domain
 // Solo win condition: Reputation +2 or higher (docs/rules/for-the-council.md, Scoring > Solo).
 private const val SOLO_WINNING_REPUTATION = 2
 
-// A Shield token on the Reputation track's X space scores -10 quest points instead of the
-// normal Reputation modifier (docs/rules/for-the-council.md, Scoring > Solo).
+// A Shield token on the Reputation track's X space scores -10 quest points instead of a
+// Reputation modifier - the two X spaces have no modifier at all (ReputationTrackSpace.modifier
+// is null for both; docs/rules/for-the-council.md, Scoring > Solo).
 private const val X_SPACE_PENALTY = -10
 
 /**
  * Inputs for scoring a solo For the Council session (docs/rules/for-the-council.md,
- * "Scoring" > "Solo"): quest points, your Reputation modifier, whether your Shield token sits
- * on the Reputation track's X space, and your final Reputation (used for the Outcome check).
- *
- * [reputationModifier] and [reputation] are deliberately two separate fields, not a duplicate:
- * the Reputation track prints a *modifier* value at each space (used here for scoring) that is
- * usually different from the space's own position (the raw *Reputation* count, used only for the
- * Outcome threshold) - e.g. Reputation +2 prints a +1 modifier. See CONTEXT.md's "Reputation" /
- * "Reputation Modifier" glossary entries and the base rulebook's Reputation track (p.2, p.7).
+ * "Scoring" > "Solo"): quest points, and which [ReputationTrackSpace] your Shield token sits
+ * on. That one space determines both your Reputation modifier (for scoring) and your raw
+ * Reputation (for the Outcome check) - see [ReputationTrackSpace] - so this only needs to record
+ * the space itself, not the two derived values separately.
  */
 data class ForTheCouncilScoringInput(
     val questPoints: Int,
-    val reputationModifier: Int,
-    val shieldOnXSpace: Boolean,
-    val reputation: Int,
+    val reputationTrackSpace: ReputationTrackSpace,
 ) : ScoringInput
 
 /**
@@ -39,13 +34,13 @@ object ForTheCouncilScoring {
 
     /**
      * Itemized score breakdown for For the Council, per docs/rules/for-the-council.md's
-     * "Scoring" > "Solo" section: quest points, then Reputation - your Reputation modifier as
-     * a bonus, or the fixed X-space penalty if your Shield sits on the X space instead.
+     * "Scoring" > "Solo" section: quest points, then Reputation - the space's modifier as a
+     * bonus/penalty, or the fixed X-space penalty for the two spaces with no modifier.
      */
     fun breakdown(input: ForTheCouncilScoringInput): List<ScoreLineItem> {
-        // if/else as an expression: picks the X-space penalty or the normal Reputation
-        // modifier and assigns whichever applies straight to the val.
-        val reputationBonus = if (input.shieldOnXSpace) X_SPACE_PENALTY else input.reputationModifier
+        // ?: only substitutes X_SPACE_PENALTY when modifier is null (the two X spaces) - every
+        // other space always has a real modifier value, even 0 at the center.
+        val reputationBonus = input.reputationTrackSpace.modifier ?: X_SPACE_PENALTY
         return listOf(
             ScoreLineItem("Quest Points", input.questPoints),
             ScoreLineItem("Reputation", reputationBonus),
@@ -57,5 +52,5 @@ object ForTheCouncilScoring {
      * with Reputation +2 or higher; Lost otherwise. A score is always produced either way.
      */
     fun outcome(input: ForTheCouncilScoringInput): Outcome =
-        if (input.reputation >= SOLO_WINNING_REPUTATION) Outcome.WON else Outcome.LOST
+        if (input.reputationTrackSpace.position >= SOLO_WINNING_REPUTATION) Outcome.WON else Outcome.LOST
 }

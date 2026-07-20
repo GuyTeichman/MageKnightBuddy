@@ -3,6 +3,7 @@ package com.guyteichman.mageknightbuddy.data
 import com.guyteichman.mageknightbuddy.domain.ForTheCouncilScoringInput
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.Outcome
+import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.domain.ScoringSession
 import com.guyteichman.mageknightbuddy.domain.SoloConquestScoringInput
@@ -64,11 +65,9 @@ class ScoringSessionMapperTest {
             playerName = null,
             input = ForTheCouncilScoringInput(
                 questPoints = 12,
-                reputationModifier = -3,
-                shieldOnXSpace = true,
-                reputation = -1,
+                reputationTrackSpace = ReputationTrackSpace.NEGATIVE_X,
             ),
-            score = 9,
+            score = 2,
             outcome = Outcome.LOST,
             playedAt = Instant.parse("2026-07-19T08:00:00Z"),
         )
