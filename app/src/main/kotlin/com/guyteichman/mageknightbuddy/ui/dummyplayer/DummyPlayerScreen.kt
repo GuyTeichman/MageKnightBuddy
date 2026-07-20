@@ -357,7 +357,10 @@ private fun HeroRow(session: DummyPlayerSession) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TableauCard(session: DummyPlayerSession) {
-    Card {
+    // fillMaxWidth on the Card itself - without it, a Card sizes to wrap its widest child, which
+    // used to be the full-width mini-card row when the deck was full. As the deck (and that row)
+    // shrinks, nothing else here forces full width, so the whole card would visibly narrow too.
+    Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
@@ -502,10 +505,11 @@ private fun LogRow(event: DummyPlayerEvent) {
                         when (span) {
                             is DescriptionSpan.Words -> append(span.text)
                             is DescriptionSpan.ColorDot -> appendInlineContent(colorDotInlineContentId(span.color), span.color.label)
+                            is DescriptionSpan.CrystalDot -> appendInlineContent(crystalDotInlineContentId(span.color), span.color.label)
                         }
                     }
                 },
-                inlineContent = colorDotInlineContent,
+                inlineContent = colorDotInlineContent + crystalDotInlineContent,
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
@@ -515,23 +519,39 @@ private fun LogRow(event: DummyPlayerEvent) {
 /** The four pieces of text/icon a [LogRow] needs - title/meta/description phrased from `docs/rules/dummy-player.md`'s terms. */
 private data class LogEntryText(val icon: String, val title: String, val meta: String, val description: List<DescriptionSpan>)
 
-/** One chunk of a [LogEntryText.description]: either plain words, or an inline [CardColorDot] for a specific color. */
+/**
+ * One chunk of a [LogEntryText.description]: plain words, an inline [CardColorDot] for a card of
+ * that color, or an inline [CrystalIcon] for a crystal of that color - kept distinct so the log
+ * always draws the right glyph for what's actually being described (e.g. a Spell offer discard's
+ * color denotes the crystal it grants, not a card, so it renders as [CrystalDot]).
+ */
 private sealed interface DescriptionSpan {
     data class Words(val text: String) : DescriptionSpan
     data class ColorDot(val color: CardColor) : DescriptionSpan
+    data class CrystalDot(val color: CardColor) : DescriptionSpan
 }
 
 private fun colorDotInlineContentId(color: CardColor) = "color_dot_${color.name}"
+private fun crystalDotInlineContentId(color: CardColor) = "crystal_dot_${color.name}"
 
 /**
- * The inline-content map [LogRow]'s [Text] needs to render [DescriptionSpan.ColorDot]s - one entry
- * per [CardColor], built once since there are only 4 and their appearance never changes.
+ * The inline-content maps [LogRow]'s [Text] needs to render [DescriptionSpan.ColorDot]/
+ * [DescriptionSpan.CrystalDot] - one entry per [CardColor] each, built once since there are only 4
+ * of each and their appearance never changes.
  */
 private val colorDotInlineContent: Map<String, InlineTextContent> = CardColor.entries.associate { color ->
     colorDotInlineContentId(color) to InlineTextContent(
         placeholder = Placeholder(width = 12.sp, height = 12.sp, placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter),
     ) {
         CardColorDot(color = color)
+    }
+}
+
+private val crystalDotInlineContent: Map<String, InlineTextContent> = CardColor.entries.associate { color ->
+    crystalDotInlineContentId(color) to InlineTextContent(
+        placeholder = Placeholder(width = 12.sp, height = 12.sp, placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter),
+    ) {
+        CrystalIcon(color = color)
     }
 }
 
@@ -554,7 +574,9 @@ private fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
             if (additionalReveal.isEmpty()) {
                 add(DescriptionSpan.Words("no crystal match, turn ended."))
             } else {
-                add(DescriptionSpan.ColorDot(initialReveal.last()))
+                // The dot here stands for the matching crystal held in Inventory, not a card, so
+                // it's a CrystalDot even though initialReveal.last() is also a revealed card's color.
+                add(DescriptionSpan.CrystalDot(initialReveal.last()))
                 add(DescriptionSpan.Words(" ${initialReveal.last().label} crystal matched, +${additionalReveal.size} revealed: "))
                 additionalReveal.forEachIndexed { index, color ->
                     if (index > 0) add(DescriptionSpan.Words(", "))
@@ -583,7 +605,9 @@ private fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
             DescriptionSpan.Words("Advanced Action offer discard ("),
             DescriptionSpan.ColorDot(advancedActionOfferColor),
             DescriptionSpan.Words(" ${advancedActionOfferColor.label}) added to the deck. Spell offer discard ("),
-            DescriptionSpan.ColorDot(spellOfferColor),
+            // CrystalDot, not ColorDot - this discard grants a crystal, not a card, so the color
+            // it denotes is the crystal added to Inventory.
+            DescriptionSpan.CrystalDot(spellOfferColor),
             DescriptionSpan.Words(" ${spellOfferColor.label}) granted +1 crystal."),
         ),
     )
@@ -613,8 +637,20 @@ private fun EndRoundDialog(onDismiss: () -> Unit, onConfirm: (advancedActionColo
                     "Pick the color removed from each offer during round-prep (see docs/rules/dummy-player.md).",
                     style = MaterialTheme.typography.bodySmall,
                 )
-                ColorPickerRow(label = "Advanced Action offer", selected = advancedActionColor, onSelect = { advancedActionColor = it })
-                ColorPickerRow(label = "Spell offer", selected = spellColor, onSelect = { spellColor = it })
+                ColorPickerRow(
+                    label = "Advanced Action offer",
+                    selected = advancedActionColor,
+                    onSelect = { advancedActionColor = it },
+                    // A card of this color is what's added to the deck - CardColorDot fits.
+                    chipIcon = { color -> CardColorDot(color = color) },
+                )
+                ColorPickerRow(
+                    label = "Spell offer",
+                    selected = spellColor,
+                    onSelect = { spellColor = it },
+                    // A crystal of this color is what's granted, not a card - CrystalIcon fits better.
+                    chipIcon = { color -> CrystalIcon(color = color) },
+                )
             }
         },
         confirmButton = {
@@ -630,10 +666,17 @@ private fun EndRoundDialog(onDismiss: () -> Unit, onConfirm: (advancedActionColo
  * One labeled row of the 4 [CardColor] choices, rendered as selectable chips.
  * FlowRow, not a plain Row - a dialog's width is too narrow to fit all 4 labeled chips on one
  * line, and a non-wrapping Row would squeeze the last chip into a near-zero-width column instead.
+ * [chipIcon] lets each offer show the glyph for what its color actually denotes (a card added to
+ * the deck vs. a crystal granted), rather than a fixed icon regardless of meaning.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun ColorPickerRow(label: String, selected: CardColor, onSelect: (CardColor) -> Unit) {
+private fun ColorPickerRow(
+    label: String,
+    selected: CardColor,
+    onSelect: (CardColor) -> Unit,
+    chipIcon: @Composable (CardColor) -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -642,7 +685,7 @@ private fun ColorPickerRow(label: String, selected: CardColor, onSelect: (CardCo
                     selected = color == selected,
                     onClick = { onSelect(color) },
                     label = { Text(color.label) },
-                    leadingIcon = { CardColorDot(color = color) },
+                    leadingIcon = { chipIcon(color) },
                 )
             }
         }
