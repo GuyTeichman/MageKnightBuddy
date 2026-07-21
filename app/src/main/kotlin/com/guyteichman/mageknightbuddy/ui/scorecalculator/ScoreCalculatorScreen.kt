@@ -31,13 +31,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
+import com.guyteichman.mageknightbuddy.domain.CombatLevel
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.Outcome
+import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.Scenario
+import com.guyteichman.mageknightbuddy.ui.components.LabelPillPicker
 import com.guyteichman.mageknightbuddy.ui.components.LabeledCheckbox
 import com.guyteichman.mageknightbuddy.ui.components.LabeledDropdown
 import com.guyteichman.mageknightbuddy.ui.components.LabeledSwitch
@@ -86,6 +91,10 @@ private enum class WizardPage(val title: String, val helpKeys: List<String> = em
     RELIC_PIECES_FOUND("Relic Pieces Found", listOf("Relic Pieces Found", "All Relic Pieces Found")),
     DESTROYED_SITE_TOKENS("Destroyed Site Tokens", listOf("Destroyed Site Tokens")),
     ZIGGURAT_PYRAMID_CONQUERED("Ziggurat & Pyramid", listOf("Ziggurat/Pyramid Floors Conquered")),
+    VOLKARE_DIFFICULTY("Volkare Difficulty", listOf("Combat Level", "Race Level")),
+    VOLKARE_CITIES_CONQUERED("Cities Conquered", listOf("Volkare's Quest: Cities Conquered")),
+    VOLKARE_COMBAT("Volkare Combat", listOf("Volkare Defeated", "Volkare Combat Bonus")),
+    CITY_AND_VOLKARE("City & Volkare", listOf("City Conquered (Volkare's Return)", "Volkare Defeated", "Volkare Combat Bonus")),
     RESULT("Result"),
 }
 
@@ -190,6 +199,22 @@ private fun wizardPagesFor(scenario: Scenario): List<WizardPage> = when (scenari
             WizardPage.ZIGGURAT_PYRAMID_CONQUERED,
             WizardPage.ROUNDS_FINISHED_EARLY,
             WizardPage.DUMMY_PLAYER_STATUS,
+            WizardPage.RESULT,
+        )
+    // Combat/Race Level are "chosen before setup" per docs/rules/volkares-quest.md, but still get
+    // their own dedicated page (VOLKARE_DIFFICULTY) rather than living on the scenario-agnostic
+    // SETUP page - shared by both Volkare scenarios since it's identical in both.
+    Scenario.VolkaresQuest -> listOf(WizardPage.SETUP, WizardPage.VOLKARE_DIFFICULTY, WizardPage.FAME) +
+        standardAchievementPages +
+        listOf(
+            WizardPage.VOLKARE_CITIES_CONQUERED,
+            WizardPage.VOLKARE_COMBAT,
+            WizardPage.RESULT,
+        )
+    Scenario.VolkaresReturn -> listOf(WizardPage.SETUP, WizardPage.VOLKARE_DIFFICULTY, WizardPage.FAME) +
+        standardAchievementPages +
+        listOf(
+            WizardPage.CITY_AND_VOLKARE,
             WizardPage.RESULT,
         )
 }
@@ -505,6 +530,59 @@ private fun WizardContent(
                         onCheckedChange = { viewModel.pyramidFloorConquered = it },
                     )
                 }
+                WizardPage.VOLKARE_DIFFICULTY -> {
+                    LabelPillPicker(
+                        label = "Combat Level",
+                        options = CombatLevel.entries,
+                        selected = viewModel.combatLevel,
+                        displayName = { it.name.lowercase().replaceFirstChar(Char::uppercase) },
+                        color = { difficultyPillColor(it.ordinal, CombatLevel.entries.size) },
+                        onSelect = { viewModel.combatLevel = it },
+                    )
+                    LabelPillPicker(
+                        label = "Race Level",
+                        options = RaceLevel.entries,
+                        selected = viewModel.raceLevel,
+                        displayName = { it.name.lowercase().replaceFirstChar(Char::uppercase) },
+                        color = { difficultyPillColor(it.ordinal, RaceLevel.entries.size) },
+                        onSelect = { viewModel.raceLevel = it },
+                    )
+                }
+                WizardPage.VOLKARE_CITIES_CONQUERED -> NumberPillPicker(
+                    label = "Cities conquered",
+                    range = 0..2,
+                    selected = viewModel.volkareCitiesConquered,
+                    onSelect = { viewModel.volkareCitiesConquered = it },
+                )
+                WizardPage.VOLKARE_COMBAT -> {
+                    LabeledSwitch(
+                        label = "Volkare defeated",
+                        checked = viewModel.volkareDefeated,
+                        onCheckedChange = { viewModel.volkareDefeated = it },
+                    )
+                    NumberField(
+                        label = "Cards remaining in Volkare's deck",
+                        value = viewModel.cardsRemainingInVolkaresDeck,
+                        onValueChange = { viewModel.cardsRemainingInVolkaresDeck = it },
+                    )
+                }
+                WizardPage.CITY_AND_VOLKARE -> {
+                    LabeledSwitch(
+                        label = "City conquered",
+                        checked = viewModel.cityConquered,
+                        onCheckedChange = { viewModel.cityConquered = it },
+                    )
+                    LabeledSwitch(
+                        label = "Volkare defeated",
+                        checked = viewModel.volkareDefeated,
+                        onCheckedChange = { viewModel.volkareDefeated = it },
+                    )
+                    NumberField(
+                        label = "Cards remaining in Volkare's deck",
+                        value = viewModel.cardsRemainingInVolkaresDeck,
+                        onValueChange = { viewModel.cardsRemainingInVolkaresDeck = it },
+                    )
+                }
                 WizardPage.RESULT -> ResultCard(score = viewModel.score, outcome = viewModel.outcome)
             }
         }
@@ -538,6 +616,16 @@ private fun WizardContent(
         }
     }
 }
+
+// White (easiest) to gold (hardest) - the same gold used by ReputationTrackPicker's positive
+// end, for visual consistency across the app's two difficulty-flavored gradients.
+private val DifficultyPillStart = Color(0xFFFFFFFF)
+private val DifficultyPillEnd = Color(0xFFC9A227)
+
+// Shared by both CombatLevel and RaceLevel's LabelPillPicker on the VOLKARE_DIFFICULTY page -
+// [ordinal]/[total] position along the 3-step gradient, not tied to either enum type specifically.
+private fun difficultyPillColor(ordinal: Int, total: Int): Color =
+    lerp(DifficultyPillStart, DifficultyPillEnd, ordinal / (total - 1).toFloat())
 
 /** The final Result page's summary card: the computed total score and derived Won/Lost outcome. */
 @Composable
