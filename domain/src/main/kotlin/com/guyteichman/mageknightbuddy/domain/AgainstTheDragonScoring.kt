@@ -1,5 +1,10 @@
 package com.guyteichman.mageknightbuddy.domain
 
+// The Apocalypse Dragon always has 5 heads - 1 Control head plus 4 others (docs/rules/
+// against-the-dragon.md, "Key facts", citing page 9) - so this total is fixed, not
+// scenario-configurable.
+private const val TOTAL_NON_CONTROL_HEADS = 4
+
 // +5 Fame per Dragon head defeated, excluding the Control head (docs/rules/against-the-dragon.md,
 // Scoring > Solo).
 private const val FAME_PER_HEAD_DEFEATED = 5
@@ -9,22 +14,29 @@ private const val ALL_HEADS_DEFEATED_BONUS = 15
 
 /**
  * Inputs for scoring a solo Against the Dragon session (docs/rules/against-the-dragon.md,
- * "Solo" > "Scoring"): Fame, the six Standard Achievements, how many Dragon heads fell (and
- * whether every head fell), whether the Apocalypse Dragon itself was defeated (this decides
- * [AgainstTheDragonScoring.outcome], separately from the heads bonuses above), Rounds finished
- * early, Dummy deck cards left, and whether "End of the Round" had already been announced. Not
- * a v1 target - kept here as reference for when it's implemented.
+ * "Solo" > "Scoring"): Fame, the six Standard Achievements, how many Dragon heads fell, Rounds
+ * finished early, Dummy deck cards left, and whether "End of the Round" had already been
+ * announced. No separate "Dragon defeated" flag - the Control head can't be attacked and
+ * auto-defeats once the other 4 heads fall (page 10), so [AgainstTheDragonScoring.outcome]
+ * derives Won/Lost straight from [headsDefeated]. Not a v1 target - kept here as reference for
+ * when it's implemented.
  */
 data class AgainstTheDragonScoringInput(
     val fame: Int,
     val standardAchievements: StandardAchievements,
     val headsDefeated: Int,
-    val allHeadsDefeated: Boolean,
-    val dragonDefeated: Boolean,
     val roundsFinishedEarly: Int,
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
-)
+) {
+    // init runs on every construction (including copy()), so an out-of-range tally can never
+    // reach the scoring math below - it fails fast at the point the bad value was created.
+    init {
+        require(headsDefeated in 0..TOTAL_NON_CONTROL_HEADS) {
+            "headsDefeated must be between 0 and $TOTAL_NON_CONTROL_HEADS, was $headsDefeated"
+        }
+    }
+}
 
 /**
  * Scoring engine for the solo variant of Against the Dragon (docs/rules/against-the-dragon.md,
@@ -47,7 +59,7 @@ object AgainstTheDragonScoring {
     fun breakdown(input: AgainstTheDragonScoringInput): List<ScoreLineItem> {
         val achievements = input.standardAchievements
         // if/else as an expression, assigned straight to the val - no separate ternary in Kotlin.
-        val allHeadsBonus = if (input.allHeadsDefeated) ALL_HEADS_DEFEATED_BONUS else 0
+        val allHeadsBonus = if (input.headsDefeated == TOTAL_NON_CONTROL_HEADS) ALL_HEADS_DEFEATED_BONUS else 0
         // +5 if "End of the Round" was not yet announced in the last Round.
         val endOfRoundBonus = if (!input.endOfRoundAnnounced) 5 else 0
         return listOf(
@@ -68,9 +80,11 @@ object AgainstTheDragonScoring {
 
     /**
      * Win/Loss check (docs/rules/against-the-dragon.md, "Outcome" section): Won iff the
-     * Apocalypse Dragon itself was defeated; Lost otherwise, regardless of how many heads fell
-     * along the way. A score is always produced either way (see [score]).
+     * Apocalypse Dragon itself was defeated; Lost otherwise. The Control head can't be attacked
+     * and auto-defeats once the other 4 heads do, so defeating the Dragon and defeating all 4
+     * non-Control heads are the same event - Won iff [headsDefeated] reached the total. A score
+     * is always produced either way (see [score]).
      */
     fun outcome(input: AgainstTheDragonScoringInput): Outcome =
-        if (input.dragonDefeated) Outcome.WON else Outcome.LOST
+        if (input.headsDefeated == TOTAL_NON_CONTROL_HEADS) Outcome.WON else Outcome.LOST
 }
