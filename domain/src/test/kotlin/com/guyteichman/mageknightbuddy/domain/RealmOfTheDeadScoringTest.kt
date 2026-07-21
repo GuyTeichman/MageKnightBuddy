@@ -2,6 +2,7 @@ package com.guyteichman.mageknightbuddy.domain
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class RealmOfTheDeadScoringTest {
 
@@ -45,6 +46,20 @@ class RealmOfTheDeadScoringTest {
 
         assertEquals(5, RealmOfTheDeadScoring.score(input))
         assertEquals(Outcome.LOST, RealmOfTheDeadScoring.outcome(input))
+    }
+
+    @Test
+    fun `graveyardsSealed above the 2-Graveyard total is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(graveyardsSealed = 3, necromancerDefeated = false)
+        }
+    }
+
+    @Test
+    fun `negative graveyardsSealed is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(graveyardsSealed = -1, necromancerDefeated = false)
+        }
     }
 
     private fun minimalInput(

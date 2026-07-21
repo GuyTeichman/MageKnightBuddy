@@ -109,7 +109,7 @@ class ScoreCalculatorViewModelTest {
 
         viewModel.scenarioId = Scenario.RealmOfTheDead.id
         viewModel.fame = "5"
-        viewModel.graveyardsSealed = "2"
+        viewModel.graveyardsSealed = 2
         viewModel.necromancerDefeated = true
 
         viewModel.save()
@@ -187,7 +187,7 @@ class ScoreCalculatorViewModelTest {
         viewModel.scenarioId = Scenario.ForTheCouncil.id
         viewModel.cityRevealed = true
         viewModel.highPriestessDefeated = true
-        viewModel.graveyardsSealed = "2"
+        viewModel.graveyardsSealed = 2
         viewModel.necromancerDefeated = true
         viewModel.reputationTrackSpaceName = ReputationTrackSpace.NEGATIVE_X.name
 
@@ -202,7 +202,7 @@ class ScoreCalculatorViewModelTest {
         assertEquals(true, viewModel.endOfRoundAnnounced)
         assertEquals(false, viewModel.cityRevealed)
         assertEquals(false, viewModel.highPriestessDefeated)
-        assertEquals("0", viewModel.graveyardsSealed)
+        assertEquals(0, viewModel.graveyardsSealed)
         assertEquals(false, viewModel.necromancerDefeated)
         assertEquals(ReputationTrackSpace.CENTER.name, viewModel.reputationTrackSpaceName)
     }
