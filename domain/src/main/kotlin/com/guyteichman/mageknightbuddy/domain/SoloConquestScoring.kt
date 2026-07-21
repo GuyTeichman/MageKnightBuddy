@@ -18,7 +18,15 @@ data class SoloConquestScoringInput(
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
     val questPoints: Int,
-) : ScoringInput
+) : ScoringInput {
+    // init runs on every construction (including copy()), so an out-of-range tally can never
+    // reach the scoring math below - it fails fast at the point the bad value was created.
+    init {
+        require(citiesConquered in 0..TOTAL_CITIES_IN_SOLO_CONQUEST) {
+            "citiesConquered must be between 0 and $TOTAL_CITIES_IN_SOLO_CONQUEST, was $citiesConquered"
+        }
+    }
+}
 
 /**
  * One row of a score breakdown, e.g. ("Fame", 12) - the display-friendly unit every scenario's
