@@ -14,6 +14,7 @@ The expansion's full campaign-style scenario: stop the Four Horsemen (which empo
 Pages 35–37 describe the full Horseman-revealing schedule (tile-count thresholds per player count) and each Horseman's per-turn movement/site-destruction logic, plus how destroying a site increases the corresponding Dragon head's level. This is needed to *simulate* the Horsemen and Dragon, not to *score* the scenario — same exclusion rationale as `against-the-dragon.md` and `volkares-quest.md`. Extract it separately if/when a Horsemen/Dragon-driving feature is built.
 
 Key facts relevant to scoring/setup only:
+- At game start, five Apocalypse Dragon large enemy tokens are placed (page 36's Special Rules): one Control head plus four others, so "each head except the Control head" always means exactly 4 heads - a fixed total, same as the Four Horsemen.
 - The Horsemen always take the last turn each Round (before the Dragon exists on the map).
 - The Apocalypse Dragon is placed when the second City tile is revealed (covering the city space and 2 spaces above it); any rampaging enemies on that City tile become Apocalypse-possessed.
 - If a Horseman destroys 4 sites, it's removed from the game (job done) without being "defeated." Any Horsemen still on the map when the Dragon is first attacked are removed without counting as defeated.

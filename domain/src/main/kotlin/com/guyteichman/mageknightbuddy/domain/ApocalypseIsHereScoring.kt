@@ -1,28 +1,43 @@
 package com.guyteichman.mageknightbuddy.domain
 
+// Apocalypse is Here always starts with exactly 4 Horsemen (docs/rules/apocalypse-is-here.md,
+// "Overview") and 5 Apocalypse Dragon heads - 1 Control head plus 4 others ("Key facts" section,
+// citing page 36) - so both totals below are fixed, not scenario-configurable.
+private const val TOTAL_HORSEMEN = 4
+private const val TOTAL_NON_CONTROL_HEADS = 4
+
 // +15 points more if the player defeated every Dragon head (docs/rules/apocalypse-is-here.md,
-// Scoring > Solo). The rulebook never states a fixed total head count for this scenario, so
-// unlike Solo Conquest's city count this can't be derived from a raw tally - it's its own input.
+// Scoring > Solo).
 private const val ALL_HEADS_DEFEATED_BONUS = 15
 
 /**
  * Inputs for scoring a solo Apocalypse is Here session (docs/rules/apocalypse-is-here.md,
  * "Scoring" > "Solo"): Fame, the six Standard Achievements, how many Horsemen and Dragon heads
- * were defeated, whether every head fell, Rounds finished early, Dummy deck cards left, whether
- * "End of the Round" was already announced, and whether the Apocalypse Dragon itself was
- * defeated (drives Outcome). Not a v1 target - kept here as reference for when it's implemented.
+ * were defeated, Rounds finished early, Dummy deck cards left, whether "End of the Round" was
+ * already announced, and whether the Apocalypse Dragon itself was defeated (drives Outcome).
+ * Not a v1 target - kept here as reference for when it's implemented.
  */
 data class ApocalypseIsHereScoringInput(
     val fame: Int,
     val standardAchievements: StandardAchievements,
     val horsemenDefeated: Int,
     val headsDefeated: Int,
-    val allHeadsDefeated: Boolean,
     val roundsFinishedEarly: Int,
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
     val dragonDefeated: Boolean,
-)
+) {
+    // init runs on every construction (including copy()), so an out-of-range tally can never
+    // reach the scoring math below - it fails fast at the point the bad value was created.
+    init {
+        require(horsemenDefeated in 0..TOTAL_HORSEMEN) {
+            "horsemenDefeated must be between 0 and $TOTAL_HORSEMEN, was $horsemenDefeated"
+        }
+        require(headsDefeated in 0..TOTAL_NON_CONTROL_HEADS) {
+            "headsDefeated must be between 0 and $TOTAL_NON_CONTROL_HEADS, was $headsDefeated"
+        }
+    }
+}
 
 /**
  * Scoring engine for the solo variant of Apocalypse is Here (docs/rules/apocalypse-is-here.md,
@@ -45,7 +60,7 @@ object ApocalypseIsHereScoring {
     fun breakdown(input: ApocalypseIsHereScoringInput): List<ScoreLineItem> {
         val achievements = input.standardAchievements
         // if/else as an expression, assigned straight to the val.
-        val allHeadsBonus = if (input.allHeadsDefeated) ALL_HEADS_DEFEATED_BONUS else 0
+        val allHeadsBonus = if (input.headsDefeated == TOTAL_NON_CONTROL_HEADS) ALL_HEADS_DEFEATED_BONUS else 0
         // +5 if "End of the Round" was not yet announced in the last Round.
         val endOfRoundBonus = if (!input.endOfRoundAnnounced) 5 else 0
         return listOf(

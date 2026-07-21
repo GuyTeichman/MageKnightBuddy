@@ -2,6 +2,7 @@ package com.guyteichman.mageknightbuddy.domain
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class ApocalypseIsHereScoringTest {
 
@@ -20,17 +21,16 @@ class ApocalypseIsHereScoringTest {
                 woundsInDeck = 0,
             ),
             horsemenDefeated = 2,
-            headsDefeated = 3,
-            allHeadsDefeated = true,
+            headsDefeated = 4,
             roundsFinishedEarly = 1,
             cardsRemainingInDummyDeck = 4,
             endOfRoundAnnounced = false,
             dragonDefeated = true,
         )
 
-        // 40 fame + 5 achievements (2*2+1) + 2*3 horsemen + 3*5 heads + 15 all-heads
-        // + 1*30 rounds + 4 dummy cards + 5 end-of-round-not-announced = 120
-        assertEquals(120, ApocalypseIsHereScoring.score(input))
+        // 40 fame + 5 achievements (2*2+1) + 2*3 horsemen + 4*5 heads + 15 all-heads
+        // + 1*30 rounds + 4 dummy cards + 5 end-of-round-not-announced = 125
+        assertEquals(125, ApocalypseIsHereScoring.score(input))
     }
 
     @Test
@@ -48,8 +48,7 @@ class ApocalypseIsHereScoringTest {
                 woundsInDeck = 0,
             ),
             horsemenDefeated = 2,
-            headsDefeated = 3,
-            allHeadsDefeated = true,
+            headsDefeated = 4,
             roundsFinishedEarly = 1,
             cardsRemainingInDummyDeck = 4,
             endOfRoundAnnounced = false,
@@ -59,12 +58,12 @@ class ApocalypseIsHereScoringTest {
         val breakdown = ApocalypseIsHereScoring.breakdown(input)
 
         assertEquals(13, breakdown.size)
-        assertEquals(120, breakdown.sumOf { it.value })
+        assertEquals(125, breakdown.sumOf { it.value })
         assertEquals(40, breakdown.single { it.label == "Fame" }.value)
         assertEquals(5, breakdown.single { it.label == "Greatest Knowledge" }.value)
         assertEquals(0, breakdown.single { it.label == "Greatest Leader" }.value)
         assertEquals(6, breakdown.single { it.label == "Horsemen Defeated" }.value)
-        assertEquals(15, breakdown.single { it.label == "Heads Defeated" }.value)
+        assertEquals(20, breakdown.single { it.label == "Heads Defeated" }.value)
         assertEquals(15, breakdown.single { it.label == "All Heads Defeated" }.value)
         assertEquals(30, breakdown.single { it.label == "Rounds Finished Early" }.value)
         assertEquals(4, breakdown.single { it.label == "Dummy Player's Deck" }.value)
@@ -86,14 +85,50 @@ class ApocalypseIsHereScoringTest {
     }
 
     @Test
-    fun `all-heads-defeated bonus is independent of the raw heads-defeated count`() {
-        // The rulebook never states a fixed head total for this scenario, so the "+15 more if
-        // you defeated all heads" bonus is its own explicit input rather than something derived
-        // from headsDefeated - mirrors how HiddenValleyScoring treats highPriestessDefeated.
-        val input = minimalInput(headsDefeated = 0, allHeadsDefeated = true)
+    fun `all-heads-defeated bonus is derived from headsDefeated reaching the 4-head total`() {
+        // Page 36's Special Rules place five Apocalypse Dragon large enemy tokens at game start -
+        // one Control head plus four others - so the total is fixed, same as SoloConquestScoring
+        // deriving its all-cities bonus from citiesConquered.
+        val input = minimalInput(headsDefeated = 4)
 
-        // 0 heads bonus + 15 all-heads bonus = 15
+        // 4*5 heads bonus + 15 all-heads bonus = 35
+        assertEquals(35, ApocalypseIsHereScoring.score(input))
+    }
+
+    @Test
+    fun `all-heads-defeated bonus does not apply below the 4-head total`() {
+        val input = minimalInput(headsDefeated = 3)
+
+        // 3*5 heads bonus, no all-heads bonus = 15
         assertEquals(15, ApocalypseIsHereScoring.score(input))
+    }
+
+    @Test
+    fun `horsemenDefeated above the 4-Horseman total is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(horsemenDefeated = 5)
+        }
+    }
+
+    @Test
+    fun `negative horsemenDefeated is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(horsemenDefeated = -1)
+        }
+    }
+
+    @Test
+    fun `headsDefeated above the 4-head total is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(headsDefeated = 5)
+        }
+    }
+
+    @Test
+    fun `negative headsDefeated is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(headsDefeated = -1)
+        }
     }
 
     @Test
@@ -138,7 +173,6 @@ class ApocalypseIsHereScoringTest {
         ),
         horsemenDefeated: Int = 0,
         headsDefeated: Int = 0,
-        allHeadsDefeated: Boolean = false,
         roundsFinishedEarly: Int = 0,
         cardsRemainingInDummyDeck: Int = 0,
         endOfRoundAnnounced: Boolean = true,
@@ -148,7 +182,6 @@ class ApocalypseIsHereScoringTest {
         standardAchievements = standardAchievements,
         horsemenDefeated = horsemenDefeated,
         headsDefeated = headsDefeated,
-        allHeadsDefeated = allHeadsDefeated,
         roundsFinishedEarly = roundsFinishedEarly,
         cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
         endOfRoundAnnounced = endOfRoundAnnounced,
