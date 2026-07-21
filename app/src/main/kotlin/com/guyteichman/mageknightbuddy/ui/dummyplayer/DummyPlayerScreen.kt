@@ -38,6 +38,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
@@ -221,19 +222,18 @@ private fun KnightPicker(
 /**
  * A Knight's shield-token art at [size], or a generic shield glyph for any Knight whose art
  * hasn't been sourced yet (currently just Coral - see issue #69). [Image] renders the drawable's
- * actual pixels (the shield icon), unlike [Icon], which is meant for single-color glyphs.
+ * actual pixels (the shield icon), unlike [Icon], which is meant for single-color glyphs - so
+ * [tint] only affects the fallback glyph, never the real art. Defaults to [LocalContentColor] so
+ * the fallback matches whatever color plain [Icon]s already use in its call site (e.g. the picker's
+ * leading icons); callers with a different prior tint (e.g. [HeroRow]) pass it explicitly.
  */
 @Composable
-private fun KnightShieldIcon(knight: Knight, modifier: Modifier = Modifier, size: Dp = 24.dp) {
+private fun KnightShieldIcon(knight: Knight, size: Dp = 24.dp, tint: Color = LocalContentColor.current) {
     val resId = knight.shieldIconRes
     if (resId != null) {
-        Image(
-            painter = painterResource(resId),
-            contentDescription = null,
-            modifier = modifier.size(size),
-        )
+        Image(painter = painterResource(resId), contentDescription = null, modifier = Modifier.size(size))
     } else {
-        Icon(Icons.Filled.Shield, contentDescription = null, modifier = modifier.size(size))
+        Icon(Icons.Filled.Shield, contentDescription = null, tint = tint, modifier = Modifier.size(size))
     }
 }
 
@@ -372,7 +372,7 @@ private fun RoundChip(round: Int) {
 @Composable
 private fun HeroRow(session: DummyPlayerSession) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        KnightShieldIcon(knight = session.knight, size = 32.dp)
+        KnightShieldIcon(knight = session.knight, size = 32.dp, tint = MaterialTheme.colorScheme.primary)
         Text(session.knight.displayName, style = MaterialTheme.typography.titleMedium)
         if (session.wasRandom) {
             Surface(shape = RoundedCornerShape(percent = 50), color = MaterialTheme.colorScheme.primaryContainer) {
