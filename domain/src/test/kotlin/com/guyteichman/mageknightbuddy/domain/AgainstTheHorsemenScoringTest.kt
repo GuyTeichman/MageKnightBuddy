@@ -2,6 +2,7 @@ package com.guyteichman.mageknightbuddy.domain
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class AgainstTheHorsemenScoringTest {
 
@@ -101,6 +102,20 @@ class AgainstTheHorsemenScoringTest {
         val input = minimalInput(horsemenDefeated = 0)
 
         assertEquals(Outcome.LOST, AgainstTheHorsemenScoring.outcome(input))
+    }
+
+    @Test
+    fun `horsemenDefeated above the 4-Horseman total is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(horsemenDefeated = 5)
+        }
+    }
+
+    @Test
+    fun `negative horsemenDefeated is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(horsemenDefeated = -1)
+        }
     }
 
     private fun minimalInput(
