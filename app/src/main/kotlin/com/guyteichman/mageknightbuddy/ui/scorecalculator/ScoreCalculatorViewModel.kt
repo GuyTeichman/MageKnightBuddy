@@ -224,6 +224,12 @@ class ScoreCalculatorViewModel(
      * repository, so it shows up on the Scoreboard tab. `suspend` because the repository write
      * goes through Room, which requires calling off the main thread; callers launch this from a
      * coroutine (see `ScoreCalculatorScreen`'s "Done" button).
+     *
+     * Calls [reset] right after the save succeeds, so the wizard is already back to a blank first
+     * page by the time the player returns to this tab, instead of staying parked on the
+     * just-submitted Result page (issue #87) - which also let a player re-tap "Done" and submit
+     * the same score again. The [ScoringSession] is built and persisted before [reset] runs, so
+     * clearing the fields afterward can't affect what was just saved.
      */
     suspend fun save() {
         val session = ScoringSession.create(
@@ -234,6 +240,7 @@ class ScoreCalculatorViewModel(
             playedAt = Instant.now(),
         )
         repository.save(session)
+        reset()
     }
 
     companion object {

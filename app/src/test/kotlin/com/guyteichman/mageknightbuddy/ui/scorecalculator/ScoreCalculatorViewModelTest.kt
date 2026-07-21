@@ -145,6 +145,36 @@ class ScoreCalculatorViewModelTest {
     }
 
     @Test
+    fun `save resets the wizard back to its defaults after persisting`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        viewModel.pageIndex = 5
+        viewModel.scenarioId = Scenario.ForTheCouncil.id
+        viewModel.knight = Knight.WOLFHAWK
+        viewModel.playerName = "Guy"
+        viewModel.fame = "50"
+        viewModel.city1Conquered = true
+        viewModel.endOfRoundAnnounced = false
+
+        viewModel.save()
+
+        // The just-saved session must reflect the pre-reset field values, not the defaults below.
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Scenario.ForTheCouncil, saved.scenario)
+        assertEquals("Guy", saved.playerName)
+
+        // The wizard itself must already be back to a blank first page - otherwise the player is
+        // dropped back onto the just-submitted Result page next time they open this tab (issue #87).
+        assertEquals(0, viewModel.pageIndex)
+        assertEquals(Scenario.SoloConquest, viewModel.scenario)
+        assertEquals(Knight.entries.first(), viewModel.knight)
+        assertEquals("", viewModel.playerName)
+        assertEquals("0", viewModel.fame)
+        assertEquals(false, viewModel.city1Conquered)
+        assertEquals(true, viewModel.endOfRoundAnnounced)
+    }
+
+    @Test
     fun `reset clears all fields back to their defaults`() = runTest {
         val fakeDao = FakeScoringSessionDao()
         val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
