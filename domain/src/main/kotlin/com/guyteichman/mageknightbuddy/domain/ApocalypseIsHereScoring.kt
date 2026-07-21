@@ -13,9 +13,10 @@ private const val ALL_HEADS_DEFEATED_BONUS = 15
 /**
  * Inputs for scoring a solo Apocalypse is Here session (docs/rules/apocalypse-is-here.md,
  * "Scoring" > "Solo"): Fame, the six Standard Achievements, how many Horsemen and Dragon heads
- * were defeated, Rounds finished early, Dummy deck cards left, whether "End of the Round" was
- * already announced, and whether the Apocalypse Dragon itself was defeated (drives Outcome).
- * Not a v1 target - kept here as reference for when it's implemented.
+ * were defeated, Rounds finished early, Dummy deck cards left, and whether "End of the Round"
+ * was already announced. No separate "Dragon defeated" flag - the Control head can't be attacked
+ * and auto-defeats once the other 4 heads fall (page 10), so [outcome] derives Won/Lost straight
+ * from [headsDefeated]. Not a v1 target - kept here as reference for when it's implemented.
  */
 data class ApocalypseIsHereScoringInput(
     val fame: Int,
@@ -25,7 +26,6 @@ data class ApocalypseIsHereScoringInput(
     val roundsFinishedEarly: Int,
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
-    val dragonDefeated: Boolean,
 ) {
     // init runs on every construction (including copy()), so an out-of-range tally can never
     // reach the scoring math below - it fails fast at the point the bad value was created.
@@ -82,9 +82,11 @@ object ApocalypseIsHereScoring {
 
     /**
      * Win/Loss check (docs/rules/apocalypse-is-here.md, "Outcome" section): Won iff the
-     * Apocalypse Dragon was defeated; Lost otherwise. A score is always produced either way
-     * (see [score]).
+     * Apocalypse Dragon was defeated; Lost otherwise. The Control head can't be attacked and
+     * auto-defeats once the other 4 heads do, so defeating the Dragon and defeating all 4
+     * non-Control heads are the same event - Won iff [headsDefeated] reached the total. A score
+     * is always produced either way (see [score]).
      */
     fun outcome(input: ApocalypseIsHereScoringInput): Outcome =
-        if (input.dragonDefeated) Outcome.WON else Outcome.LOST
+        if (input.headsDefeated == TOTAL_NON_CONTROL_HEADS) Outcome.WON else Outcome.LOST
 }

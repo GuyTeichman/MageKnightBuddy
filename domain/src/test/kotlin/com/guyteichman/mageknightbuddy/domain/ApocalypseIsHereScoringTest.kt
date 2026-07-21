@@ -25,7 +25,6 @@ class ApocalypseIsHereScoringTest {
             roundsFinishedEarly = 1,
             cardsRemainingInDummyDeck = 4,
             endOfRoundAnnounced = false,
-            dragonDefeated = true,
         )
 
         // 40 fame + 5 achievements (2*2+1) + 2*3 horsemen + 4*5 heads + 15 all-heads
@@ -52,7 +51,6 @@ class ApocalypseIsHereScoringTest {
             roundsFinishedEarly = 1,
             cardsRemainingInDummyDeck = 4,
             endOfRoundAnnounced = false,
-            dragonDefeated = true,
         )
 
         val breakdown = ApocalypseIsHereScoring.breakdown(input)
@@ -132,24 +130,27 @@ class ApocalypseIsHereScoringTest {
     }
 
     @Test
-    fun `outcome is Won when the Apocalypse Dragon was defeated`() {
-        val input = minimalInput(dragonDefeated = true)
+    fun `outcome is Won when all 4 heads were defeated, since the Control head auto-defeats with them`() {
+        // The Control head can never be attacked directly and always tracks the highest level
+        // among the other four (docs/rules/apocalypse-is-here.md, "Key facts", citing page 10),
+        // so defeating the Dragon has no independent input - it's headsDefeated reaching 4.
+        val input = minimalInput(headsDefeated = 4)
 
         assertEquals(Outcome.WON, ApocalypseIsHereScoring.outcome(input))
     }
 
     @Test
-    fun `outcome is Lost when the Apocalypse Dragon was not defeated`() {
-        val input = minimalInput(dragonDefeated = false)
+    fun `outcome is Lost when fewer than 4 heads were defeated`() {
+        val input = minimalInput(headsDefeated = 3)
 
         assertEquals(Outcome.LOST, ApocalypseIsHereScoring.outcome(input))
     }
 
     @Test
-    fun `outcome is Lost even with a positive score, since defeating the Dragon is the only win condition`() {
+    fun `outcome is Lost even with a positive score, since defeating all heads is the only win condition`() {
         val input = minimalInput(
             fame = 40,
-            dragonDefeated = false,
+            headsDefeated = 0,
             roundsFinishedEarly = 1,
             cardsRemainingInDummyDeck = 3,
         )
@@ -176,7 +177,6 @@ class ApocalypseIsHereScoringTest {
         roundsFinishedEarly: Int = 0,
         cardsRemainingInDummyDeck: Int = 0,
         endOfRoundAnnounced: Boolean = true,
-        dragonDefeated: Boolean = false,
     ) = ApocalypseIsHereScoringInput(
         fame = fame,
         standardAchievements = standardAchievements,
@@ -185,6 +185,5 @@ class ApocalypseIsHereScoringTest {
         roundsFinishedEarly = roundsFinishedEarly,
         cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
         endOfRoundAnnounced = endOfRoundAnnounced,
-        dragonDefeated = dragonDefeated,
     )
 }
