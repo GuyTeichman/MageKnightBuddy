@@ -69,7 +69,7 @@ class DummyPlayerSessionTest {
 
     @Test
     fun `playTurn flips 3 cards and ends the turn when the 3rd card's color has no matching crystal`() {
-        // Coral's starting crystals are Blue, Blue, Red (no Green) - see docs/rules/dummy-player.md's example.
+        // Coral's starting crystals are White, White, Red (no Green) - see docs/rules/dummy-player.md's example.
         val session = DummyPlayerSession.start(
             Knight.CORAL,
             deckOrder = listOf(CardColor.WHITE, CardColor.RED, CardColor.GREEN, CardColor.BLUE, CardColor.WHITE),
@@ -83,11 +83,11 @@ class DummyPlayerSessionTest {
 
     @Test
     fun `playTurn chains one additional reveal per matching crystal of the 3rd card's color`() {
-        // Coral holds 2 Blue crystals - the 3rd card (Blue) should chain 2 additional reveals.
+        // Coral holds 2 White crystals - the 3rd card (White) should chain 2 additional reveals.
         val session = DummyPlayerSession.start(
             Knight.CORAL,
             deckOrder = listOf(
-                CardColor.WHITE, CardColor.RED, CardColor.BLUE,
+                CardColor.WHITE, CardColor.RED, CardColor.WHITE,
                 CardColor.GREEN, CardColor.WHITE, CardColor.RED,
             ),
         )
@@ -95,7 +95,7 @@ class DummyPlayerSessionTest {
         val next = session.playTurn()
 
         assertEquals(
-            listOf(CardColor.WHITE, CardColor.RED, CardColor.BLUE, CardColor.GREEN, CardColor.WHITE),
+            listOf(CardColor.WHITE, CardColor.RED, CardColor.WHITE, CardColor.GREEN, CardColor.WHITE),
             next.discardPile,
         )
         assertEquals(listOf(CardColor.RED), next.deckOrder)
@@ -117,16 +117,16 @@ class DummyPlayerSessionTest {
 
     @Test
     fun `playTurn on a near-empty deck still chains if there's nothing left to chain into`() {
-        // Last card flipped is Blue (2 matching crystals) but the deck is already empty afterward -
+        // Last card flipped is White (2 matching crystals) but the deck is already empty afterward -
         // additional reveals are bounded by what's left, so no chain happens.
         val session = DummyPlayerSession.start(
             Knight.CORAL,
-            deckOrder = listOf(CardColor.WHITE, CardColor.BLUE),
+            deckOrder = listOf(CardColor.GREEN, CardColor.WHITE),
         )
 
         val next = session.playTurn()
 
-        assertEquals(listOf(CardColor.WHITE, CardColor.BLUE), next.discardPile)
+        assertEquals(listOf(CardColor.GREEN, CardColor.WHITE), next.discardPile)
         assertEquals(emptyList(), next.deckOrder)
     }
 
@@ -172,15 +172,15 @@ class DummyPlayerSessionTest {
 
     @Test
     fun `endRound grants +1 crystal of the Spell offer color, uncapped`() {
-        // Coral starts with 2 Blue crystals - gaining another should reach 3, not cap.
+        // Coral starts with 2 White crystals - gaining another should reach 3, not cap.
         val session = DummyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
 
         val next = session.endRound(
-            advancedActionOfferColor = CardColor.WHITE,
-            spellOfferColor = CardColor.BLUE,
+            advancedActionOfferColor = CardColor.BLUE,
+            spellOfferColor = CardColor.WHITE,
         )
 
-        assertEquals(3, next.crystals.getValue(CardColor.BLUE))
+        assertEquals(3, next.crystals.getValue(CardColor.WHITE))
     }
 
     @Test

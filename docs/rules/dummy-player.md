@@ -11,7 +11,7 @@ The Dummy Player is the automated pacing opponent used by every cooperative and 
 
   This base rulebook only ever shows Goldyx's dots as its worked example — it doesn't print a full per-Knight table. The dots for every other Knight this app models were sourced by visually reading their Hero cards from other materials (research tickets #31, #66, #70): official card photos for Wolfhawk, Arythea, and Coral (Expansion/Apocalypse Dragon rulebooks); a third-party solo-play companion tool's hard-coded values for Tovak, Norowas, Krang, and Braevalar, independently cross-checked against clean card art from a Tabletop Simulator mod. Every one of the 8 Knights below is now confirmed from at least one direct visual source:
 
-  Coral specifically was re-verified against `Mage-Knight-The-Apocalypse-Dragon---Rulebook-WEB.pdf`, p.5 ("Coral – New Playable Hero" component list, the "1 Hero card" thumbnail image) in response to issue #89, which claimed the dots should read White, White, Red instead of Blue, Blue, Red. Extracting that thumbnail's embedded image at native resolution and sampling its pixel colors directly (rather than trusting the blurrier composited page render) shows two clearly blue pixels (e.g. RGB (125,167,188) and (122,178,193) — blue channel dominant, not the near-equal RGB a white dot would show) followed by one clearly red pixel (e.g. RGB (119,2,33)). This confirms Blue, Blue, Red as correct and the issue's premise as mistaken; no change was made to the table or to `STARTING_CRYSTAL_DOTS`.
+  Coral's dots were corrected to White, White, Red by issue #89 (was previously recorded as Blue, Blue, Red). A first re-verification attempt, sampling pixel colors from the embedded thumbnail image on p.5 of `Mage-Knight-The-Apocalypse-Dragon---Rulebook-WEB.pdf` ("Coral – New Playable Hero" component list), misread the two white dots as blue — likely a color-cast or compression artifact in that low-resolution embedded image, since a direct photo of the physical Hero card (the actual authoritative source, not a scan of a scan) clearly shows two pale/white dots and one dark red dot, not blue. Trust the physical-card photo over the PDF pixel-sampling if the two ever disagree again.
 
   | Knight | Dots |
   |---|---|
@@ -22,7 +22,7 @@ The Dummy Player is the automated pacing opponent used by every cooperative and 
   | Arythea | Red, Red, White |
   | Krang | Red, Red, Green |
   | Braevalar | Green, Blue, Blue |
-  | Coral | Blue, Blue, Red |
+  | Coral | White, White, Red |
 
   See `domain/src/main/kotlin/.../DummyPlayerSession.kt`'s `STARTING_CRYSTAL_DOTS` for where this table is actually consumed.
 - Shuffle that Hero's Deed deck (the 16 Basic Action cards). That shuffled deck is the Dummy Player's deck.
