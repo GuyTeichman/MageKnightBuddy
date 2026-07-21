@@ -62,6 +62,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -173,6 +174,8 @@ private fun DummyPlayerSetupScreen(
  *
  * Every entry gets a leading shield icon: real per-Knight art via [KnightShieldIcon] where it's
  * been sourced (issue #69), falling back to a generic shield glyph for Coral until hers lands too.
+ * "Random" reuses that same generic glyph with a "?" overlaid (see [RandomShieldIcon]) to mark
+ * it as the wildcard choice, distinct from the plain per-Knight entries.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -200,6 +203,7 @@ private fun KnightPicker(
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
                 text = { Text("Random") },
+                leadingIcon = { RandomShieldIcon() },
                 onClick = {
                     onRandomSelected()
                     expanded = false
@@ -249,6 +253,24 @@ private val Knight.shieldIconRes: Int?
         Knight.NOROWAS -> R.drawable.norowas_shield
         Knight.CORAL -> null
     }
+
+/**
+ * The "Random" dropdown entry's icon: the same generic shield glyph [KnightShieldIcon]'s fallback
+ * uses, with a "?" overlaid on top to distinguish it as the wildcard/random choice rather than a
+ * specific Knight.
+ */
+@Composable
+private fun RandomShieldIcon(size: Dp = 24.dp) {
+    Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
+        Icon(Icons.Filled.Shield, contentDescription = null, modifier = Modifier.size(size))
+        Text(
+            "?",
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.padding(bottom = size * 0.04f),
+        )
+    }
+}
 
 /**
  * The AI (turn/round) screen: shows the Dummy Player's current deck/crystal state and event log,
