@@ -2,6 +2,7 @@ package com.guyteichman.mageknightbuddy.domain
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class LostRelicScoringTest {
 
@@ -133,6 +134,20 @@ class LostRelicScoringTest {
         // 50 fame + 5 pieces (1*5, no all-pieces bonus) + 6 dummy cards + 5 end-of-round = 66
         assertEquals(66, LostRelicScoring.score(input))
         assertEquals(Outcome.LOST, LostRelicScoring.outcome(input))
+    }
+
+    @Test
+    fun `relicPiecesFound above the 2-piece total is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(relicPiecesFound = 3)
+        }
+    }
+
+    @Test
+    fun `negative relicPiecesFound is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(relicPiecesFound = -1)
+        }
     }
 
     private fun minimalInput(

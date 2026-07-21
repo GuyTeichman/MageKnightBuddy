@@ -17,7 +17,15 @@ data class LostRelicScoringInput(
     val relicPiecesFound: Int,
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
-)
+) {
+    // init runs on every construction (including copy()), so an out-of-range tally can never
+    // reach the scoring math below - it fails fast at the point the bad value was created.
+    init {
+        require(relicPiecesFound in 0..TOTAL_RELIC_PIECES_IN_SOLO_LOST_RELIC) {
+            "relicPiecesFound must be between 0 and $TOTAL_RELIC_PIECES_IN_SOLO_LOST_RELIC, was $relicPiecesFound"
+        }
+    }
+}
 
 /**
  * Scoring engine for the solo variant of The Lost Relic (docs/rules/lost-relic.md, "Solo" >
