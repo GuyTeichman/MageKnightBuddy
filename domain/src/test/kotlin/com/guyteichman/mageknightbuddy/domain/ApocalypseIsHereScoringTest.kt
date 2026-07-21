@@ -1,0 +1,189 @@
+package com.guyteichman.mageknightbuddy.domain
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+
+class ApocalypseIsHereScoringTest {
+
+    @Test
+    fun `score sums Fame, Standard Achievements, and all scenario bonuses`() {
+        val input = ApocalypseIsHereScoringInput(
+            fame = 40,
+            standardAchievements = StandardAchievements(
+                spellsInDeck = 2,
+                advancedActionsInDeck = 1,
+                units = emptyList(),
+                shieldsOnAdventureSites = 0,
+                artifacts = 0,
+                crystalsInInventory = 0,
+                shieldsOnConquerSites = 0,
+                woundsInDeck = 0,
+            ),
+            horsemenDefeated = 2,
+            headsDefeated = 4,
+            roundsFinishedEarly = 1,
+            cardsRemainingInDummyDeck = 4,
+            endOfRoundAnnounced = false,
+        )
+
+        // 40 fame + 5 achievements (2*2+1) + 2*3 horsemen + 4*5 heads + 15 all-heads
+        // + 1*30 rounds + 4 dummy cards + 5 end-of-round-not-announced = 125
+        assertEquals(125, ApocalypseIsHereScoring.score(input))
+    }
+
+    @Test
+    fun `breakdown lists all 13 scoring rules and sums to the same total as score`() {
+        val input = ApocalypseIsHereScoringInput(
+            fame = 40,
+            standardAchievements = StandardAchievements(
+                spellsInDeck = 2,
+                advancedActionsInDeck = 1,
+                units = emptyList(),
+                shieldsOnAdventureSites = 0,
+                artifacts = 0,
+                crystalsInInventory = 0,
+                shieldsOnConquerSites = 0,
+                woundsInDeck = 0,
+            ),
+            horsemenDefeated = 2,
+            headsDefeated = 4,
+            roundsFinishedEarly = 1,
+            cardsRemainingInDummyDeck = 4,
+            endOfRoundAnnounced = false,
+        )
+
+        val breakdown = ApocalypseIsHereScoring.breakdown(input)
+
+        assertEquals(13, breakdown.size)
+        assertEquals(125, breakdown.sumOf { it.value })
+        assertEquals(40, breakdown.single { it.label == "Fame" }.value)
+        assertEquals(5, breakdown.single { it.label == "Greatest Knowledge" }.value)
+        assertEquals(0, breakdown.single { it.label == "Greatest Leader" }.value)
+        assertEquals(6, breakdown.single { it.label == "Horsemen Defeated" }.value)
+        assertEquals(20, breakdown.single { it.label == "Heads Defeated" }.value)
+        assertEquals(15, breakdown.single { it.label == "All Heads Defeated" }.value)
+        assertEquals(30, breakdown.single { it.label == "Rounds Finished Early" }.value)
+        assertEquals(4, breakdown.single { it.label == "Dummy Player's Deck" }.value)
+        assertEquals(5, breakdown.single { it.label == "End of Round" }.value)
+    }
+
+    @Test
+    fun `score includes 3 Fame per Horseman defeated`() {
+        val input = minimalInput(horsemenDefeated = 4)
+
+        assertEquals(12, ApocalypseIsHereScoring.score(input))
+    }
+
+    @Test
+    fun `score includes 5 Fame per head defeated, excluding the Control head`() {
+        val input = minimalInput(headsDefeated = 3)
+
+        assertEquals(15, ApocalypseIsHereScoring.score(input))
+    }
+
+    @Test
+    fun `all-heads-defeated bonus is derived from headsDefeated reaching the 4-head total`() {
+        // Page 36's Special Rules place five Apocalypse Dragon large enemy tokens at game start -
+        // one Control head plus four others - so the total is fixed, same as SoloConquestScoring
+        // deriving its all-cities bonus from citiesConquered.
+        val input = minimalInput(headsDefeated = 4)
+
+        // 4*5 heads bonus + 15 all-heads bonus = 35
+        assertEquals(35, ApocalypseIsHereScoring.score(input))
+    }
+
+    @Test
+    fun `all-heads-defeated bonus does not apply below the 4-head total`() {
+        val input = minimalInput(headsDefeated = 3)
+
+        // 3*5 heads bonus, no all-heads bonus = 15
+        assertEquals(15, ApocalypseIsHereScoring.score(input))
+    }
+
+    @Test
+    fun `horsemenDefeated above the 4-Horseman total is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(horsemenDefeated = 5)
+        }
+    }
+
+    @Test
+    fun `negative horsemenDefeated is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(horsemenDefeated = -1)
+        }
+    }
+
+    @Test
+    fun `headsDefeated above the 4-head total is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(headsDefeated = 5)
+        }
+    }
+
+    @Test
+    fun `negative headsDefeated is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(headsDefeated = -1)
+        }
+    }
+
+    @Test
+    fun `outcome is Won when all 4 heads were defeated, since the Control head auto-defeats with them`() {
+        // The Control head can never be attacked directly and always tracks the highest level
+        // among the other four (docs/rules/apocalypse-is-here.md, "Key facts", citing page 10),
+        // so defeating the Dragon has no independent input - it's headsDefeated reaching 4.
+        val input = minimalInput(headsDefeated = 4)
+
+        assertEquals(Outcome.WON, ApocalypseIsHereScoring.outcome(input))
+    }
+
+    @Test
+    fun `outcome is Lost when fewer than 4 heads were defeated`() {
+        val input = minimalInput(headsDefeated = 3)
+
+        assertEquals(Outcome.LOST, ApocalypseIsHereScoring.outcome(input))
+    }
+
+    @Test
+    fun `outcome is Lost even with a positive score, since defeating all heads is the only win condition`() {
+        val input = minimalInput(
+            fame = 40,
+            headsDefeated = 0,
+            roundsFinishedEarly = 1,
+            cardsRemainingInDummyDeck = 3,
+        )
+
+        // 40 fame + 30 rounds + 3 dummy cards = 73
+        assertEquals(73, ApocalypseIsHereScoring.score(input))
+        assertEquals(Outcome.LOST, ApocalypseIsHereScoring.outcome(input))
+    }
+
+    private fun minimalInput(
+        fame: Int = 0,
+        standardAchievements: StandardAchievements = StandardAchievements(
+            spellsInDeck = 0,
+            advancedActionsInDeck = 0,
+            units = emptyList(),
+            shieldsOnAdventureSites = 0,
+            artifacts = 0,
+            crystalsInInventory = 0,
+            shieldsOnConquerSites = 0,
+            woundsInDeck = 0,
+        ),
+        horsemenDefeated: Int = 0,
+        headsDefeated: Int = 0,
+        roundsFinishedEarly: Int = 0,
+        cardsRemainingInDummyDeck: Int = 0,
+        endOfRoundAnnounced: Boolean = true,
+    ) = ApocalypseIsHereScoringInput(
+        fame = fame,
+        standardAchievements = standardAchievements,
+        horsemenDefeated = horsemenDefeated,
+        headsDefeated = headsDefeated,
+        roundsFinishedEarly = roundsFinishedEarly,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+    )
+}
