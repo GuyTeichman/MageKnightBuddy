@@ -21,7 +21,7 @@ data class VolkaresReturnScoringInput(
     val combatLevel: CombatLevel,
     val raceLevel: RaceLevel,
     val cardsRemainingInVolkareDeck: Int,
-)
+) : ScoringInput
 
 /**
  * Scoring engine for the Volkare's Return scenario (docs/rules/volkares-return.md, "Scoring"

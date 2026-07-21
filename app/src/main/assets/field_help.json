@@ -122,5 +122,29 @@
   "Ziggurat/Pyramid Floors Conquered": {
     "text": "+5 Fame for each of the ziggurat and the pyramid you conquered at least one floor of — a flat bonus per site, not scaled by which exact floor you reached. Conquering a floor of both is also required to Win.",
     "source": "Against the Apocalypse scoring, Solo, Apocalypse Dragon rulebook p.28"
+  },
+  "Combat Level": {
+    "text": "How tough Volkare and the city are, chosen before setup — Daring, Heroic, or Legendary. This is also the base value (30/40/50) the Volkare Combat Bonus starts from if you defeat him.",
+    "source": "Volkare's Quest / Volkare's Return, Scenario difficulty, Lost Legion rulebook p.17/p.14"
+  },
+  "Race Level": {
+    "text": "How much time pressure Volkare exerts, chosen before setup — Fair, Tight, or Thrilling. This is also the multiplier (1× / 1.5× / 2×) applied to the Volkare Combat Bonus if you defeat him.",
+    "source": "Volkare's Quest / Volkare's Return, Scenario difficulty, Lost Legion rulebook p.17/p.14"
+  },
+  "Volkare's Quest: Cities Conquered": {
+    "text": "+5 Fame for each city you conquered (Solo setup always has 2). Conquering cities isn't this scenario's goal, unlike Volkare's Return's +20 for its one city.",
+    "source": "Volkare's Quest scoring, Lost Legion rulebook p.17"
+  },
+  "City Conquered (Volkare's Return)": {
+    "text": "+20 Fame if you conquered the city.",
+    "source": "Volkare's Return scoring, Lost Legion rulebook p.14"
+  },
+  "Volkare Defeated": {
+    "text": "Whether Volkare's entire army was destroyed — this determines whether you Won or Lost, and whether the Volkare Combat Bonus applies at all.",
+    "source": "Volkare's Quest / Volkare's Return, Outcome, Lost Legion rulebook p.17/p.14"
+  },
+  "Volkare Combat Bonus": {
+    "text": "Only scored if Volkare was defeated: start from 30/40/50 Fame for Daring/Heroic/Legendary Combat Level, +2 Fame per card still left in Volkare's deck, then multiply that subtotal only by 1× / 1.5× / 2× for Fair/Tight/Thrilling Race Level.",
+    "source": "Volkare's Quest / Volkare's Return scoring, Lost Legion rulebook p.17/p.14"
   }
 }

@@ -7,6 +7,7 @@ import com.guyteichman.mageknightbuddy.domain.AgainstTheApocalypseScoringInput
 import com.guyteichman.mageknightbuddy.domain.AgainstTheDragonScoringInput
 import com.guyteichman.mageknightbuddy.domain.AgainstTheHorsemenScoringInput
 import com.guyteichman.mageknightbuddy.domain.ApocalypseIsHereScoringInput
+import com.guyteichman.mageknightbuddy.domain.CombatLevel
 import com.guyteichman.mageknightbuddy.domain.FirstReconnaissanceScoringInput
 import com.guyteichman.mageknightbuddy.domain.ForTheCouncilScoringInput
 import com.guyteichman.mageknightbuddy.domain.FracturedLandsScoringInput
@@ -15,10 +16,13 @@ import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.LifeAndDeathScoringInput
 import com.guyteichman.mageknightbuddy.domain.LostRelicScoringInput
 import com.guyteichman.mageknightbuddy.domain.Outcome
+import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
 import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.domain.SoloConquestScoringInput
+import com.guyteichman.mageknightbuddy.domain.VolkaresQuestScoringInput
+import com.guyteichman.mageknightbuddy.domain.VolkaresReturnScoringInput
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -313,6 +317,58 @@ class ScoreCalculatorViewModelTest {
         val input = assertIs<AgainstTheApocalypseScoringInput>(saved.input)
         assertEquals(1, input.zigguratFloorsConquered)
         assertEquals(1, input.pyramidFloorsConquered)
+    }
+
+    @Test
+    fun `save builds a VolkaresQuestScoringInput when Volkare's Quest is selected`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+
+        viewModel.scenarioId = Scenario.VolkaresQuest.id
+        viewModel.fame = "32"
+        viewModel.volkareCitiesConquered = 2
+        viewModel.combatLevel = CombatLevel.HEROIC
+        viewModel.raceLevel = RaceLevel.TIGHT
+        viewModel.volkareDefeated = true
+        viewModel.cardsRemainingInVolkaresDeck = "5"
+
+        viewModel.save()
+
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Scenario.VolkaresQuest, saved.scenario)
+        assertEquals(Outcome.WON, saved.outcome)
+        // 32 fame + 2*5 cities + Volkare combat bonus: (40 Heroic base + 2*5 cards) * 3/2 Tight = 75
+        // total = 32 + 10 + 75 = 117
+        assertEquals(117, saved.score)
+        val input = assertIs<VolkaresQuestScoringInput>(saved.input)
+        assertEquals(2, input.citiesConquered)
+        assertEquals(CombatLevel.HEROIC, input.combatLevel)
+        assertEquals(RaceLevel.TIGHT, input.raceLevel)
+    }
+
+    @Test
+    fun `save builds a VolkaresReturnScoringInput when Volkare's Return is selected`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+
+        viewModel.scenarioId = Scenario.VolkaresReturn.id
+        viewModel.fame = "27"
+        viewModel.cityConquered = true
+        viewModel.volkareDefeated = false
+        viewModel.combatLevel = CombatLevel.LEGENDARY
+        viewModel.raceLevel = RaceLevel.THRILLING
+        viewModel.cardsRemainingInVolkaresDeck = "8"
+
+        viewModel.save()
+
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Scenario.VolkaresReturn, saved.scenario)
+        assertEquals(Outcome.LOST, saved.outcome)
+        // 27 fame + 20 city conquered + 0 Volkare combat bonus (not defeated) = 47
+        assertEquals(47, saved.score)
+        val input = assertIs<VolkaresReturnScoringInput>(saved.input)
+        assertEquals(true, input.cityConquered)
+        assertEquals(false, input.volkareDefeated)
     }
 
     @Test

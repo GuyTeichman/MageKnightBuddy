@@ -16,6 +16,7 @@ import com.guyteichman.mageknightbuddy.domain.AgainstTheApocalypseScoringInput
 import com.guyteichman.mageknightbuddy.domain.AgainstTheDragonScoringInput
 import com.guyteichman.mageknightbuddy.domain.AgainstTheHorsemenScoringInput
 import com.guyteichman.mageknightbuddy.domain.ApocalypseIsHereScoringInput
+import com.guyteichman.mageknightbuddy.domain.CombatLevel
 import com.guyteichman.mageknightbuddy.domain.FirstReconnaissanceScoringInput
 import com.guyteichman.mageknightbuddy.domain.ForTheCouncilScoringInput
 import com.guyteichman.mageknightbuddy.domain.FracturedLandsScoringInput
@@ -24,6 +25,7 @@ import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.LifeAndDeathScoringInput
 import com.guyteichman.mageknightbuddy.domain.LostRelicScoringInput
 import com.guyteichman.mageknightbuddy.domain.Outcome
+import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
 import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.Scenario
@@ -32,6 +34,8 @@ import com.guyteichman.mageknightbuddy.domain.ScoringSession
 import com.guyteichman.mageknightbuddy.domain.SoloConquestScoringInput
 import com.guyteichman.mageknightbuddy.domain.StandardAchievements
 import com.guyteichman.mageknightbuddy.domain.UnitTally
+import com.guyteichman.mageknightbuddy.domain.VolkaresQuestScoringInput
+import com.guyteichman.mageknightbuddy.domain.VolkaresReturnScoringInput
 import com.guyteichman.mageknightbuddy.domain.outcome
 import com.guyteichman.mageknightbuddy.domain.score
 import java.time.Instant
@@ -121,6 +125,17 @@ class ScoreCalculatorViewModel(
     // floor number.
     var zigguratFloorConquered: Boolean by savedStateHandle.saveable("zigguratFloorConquered") { mutableStateOf(false) }
     var pyramidFloorConquered: Boolean by savedStateHandle.saveable("pyramidFloorConquered") { mutableStateOf(false) }
+
+    // Combat/Race Level are shared by both Volkare scenarios (same two enums, same
+    // VOLKARE_DIFFICULTY page). cardsRemainingInVolkaresDeck is also shared, even though the two
+    // domain input types name it slightly differently (cardsRemainingInVolkaresDeck vs
+    // cardsRemainingInVolkareDeck) - see the `when` in [input] for the mapping.
+    var combatLevel: CombatLevel by savedStateHandle.saveable("combatLevel") { mutableStateOf(CombatLevel.entries.first()) }
+    var raceLevel: RaceLevel by savedStateHandle.saveable("raceLevel") { mutableStateOf(RaceLevel.entries.first()) }
+    var volkareCitiesConquered: Int by savedStateHandle.saveable("volkareCitiesConquered") { mutableStateOf(0) }
+    var volkareDefeated: Boolean by savedStateHandle.saveable("volkareDefeated") { mutableStateOf(false) }
+    var cardsRemainingInVolkaresDeck: String by savedStateHandle.saveable("cardsRemainingInVolkaresDeck") { mutableStateOf("0") }
+    var cityConquered: Boolean by savedStateHandle.saveable("cityConquered") { mutableStateOf(false) }
 
     // Which ReputationTrackSpace the player's Shield token sits on, stored by enum name rather
     // than an invented numeric index - the physical track only ever shows one number per space
@@ -250,6 +265,24 @@ class ScoreCalculatorViewModel(
                 cardsRemainingInDummyDeck = cardsRemainingInDummyDeck.toIntOrZero(),
                 endOfRoundAnnounced = endOfRoundAnnounced,
             )
+            Scenario.VolkaresQuest -> VolkaresQuestScoringInput(
+                fame = fame.toIntOrZero(),
+                standardAchievements = standardAchievements,
+                citiesConquered = volkareCitiesConquered,
+                combatLevel = combatLevel,
+                raceLevel = raceLevel,
+                volkareDefeated = volkareDefeated,
+                cardsRemainingInVolkaresDeck = cardsRemainingInVolkaresDeck.toIntOrZero(),
+            )
+            Scenario.VolkaresReturn -> VolkaresReturnScoringInput(
+                fame = fame.toIntOrZero(),
+                standardAchievements = standardAchievements,
+                cityConquered = cityConquered,
+                volkareDefeated = volkareDefeated,
+                combatLevel = combatLevel,
+                raceLevel = raceLevel,
+                cardsRemainingInVolkareDeck = cardsRemainingInVolkaresDeck.toIntOrZero(),
+            )
         }
 
     /**
@@ -297,6 +330,12 @@ class ScoreCalculatorViewModel(
         destroyedSiteTokens = "0"
         zigguratFloorConquered = false
         pyramidFloorConquered = false
+        combatLevel = CombatLevel.entries.first()
+        raceLevel = RaceLevel.entries.first()
+        volkareCitiesConquered = 0
+        volkareDefeated = false
+        cardsRemainingInVolkaresDeck = "0"
+        cityConquered = false
     }
 
     /**
