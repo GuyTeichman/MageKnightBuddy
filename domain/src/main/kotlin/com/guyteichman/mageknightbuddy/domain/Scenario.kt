@@ -40,10 +40,58 @@ sealed interface Scenario {
         override val displayName = "The Realm of the Dead"
     }
 
+    data object AgainstTheDragon : Scenario {
+        override val id = "against_the_dragon"
+        override val displayName = "Against the Dragon"
+    }
+
+    data object AgainstTheHorsemen : Scenario {
+        override val id = "against_the_horsemen"
+        override val displayName = "Against the Horsemen"
+    }
+
+    data object ApocalypseIsHere : Scenario {
+        override val id = "apocalypse_is_here"
+        override val displayName = "Apocalypse is Here"
+    }
+
+    data object FracturedLands : Scenario {
+        override val id = "the_fractured_lands"
+        override val displayName = "The Fractured Lands"
+    }
+
+    data object LifeAndDeath : Scenario {
+        override val id = "life_and_death"
+        override val displayName = "Life and Death"
+    }
+
+    data object LostRelic : Scenario {
+        override val id = "lost_relic"
+        override val displayName = "The Lost Relic"
+    }
+
+    data object AgainstTheApocalypse : Scenario {
+        override val id = "against_the_apocalypse"
+        override val displayName = "Against the Apocalypse"
+    }
+
     companion object {
         // All known scenarios with a working scoring engine (see the matching *Scoring object
         // in this package for each one's rules).
-        val entries: List<Scenario> = listOf(SoloConquest, FirstReconnaissance, ForTheCouncil, HiddenValley, RealmOfTheDead)
+        val entries: List<Scenario> = listOf(
+            SoloConquest,
+            FirstReconnaissance,
+            ForTheCouncil,
+            HiddenValley,
+            RealmOfTheDead,
+            AgainstTheDragon,
+            AgainstTheHorsemen,
+            ApocalypseIsHere,
+            FracturedLands,
+            LifeAndDeath,
+            LostRelic,
+            AgainstTheApocalypse,
+        )
 
         /** Looks up a [Scenario] by its stored [id] (e.g. when reading back from persistence). */
         fun fromId(id: String): Scenario = entries.first { it.id == id }

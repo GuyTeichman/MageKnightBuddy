@@ -3,10 +3,17 @@ package com.guyteichman.mageknightbuddy.ui.scorecalculator
 import androidx.lifecycle.SavedStateHandle
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.data.toDomain
+import com.guyteichman.mageknightbuddy.domain.AgainstTheApocalypseScoringInput
+import com.guyteichman.mageknightbuddy.domain.AgainstTheDragonScoringInput
+import com.guyteichman.mageknightbuddy.domain.AgainstTheHorsemenScoringInput
+import com.guyteichman.mageknightbuddy.domain.ApocalypseIsHereScoringInput
 import com.guyteichman.mageknightbuddy.domain.FirstReconnaissanceScoringInput
 import com.guyteichman.mageknightbuddy.domain.ForTheCouncilScoringInput
+import com.guyteichman.mageknightbuddy.domain.FracturedLandsScoringInput
 import com.guyteichman.mageknightbuddy.domain.HiddenValleyScoringInput
 import com.guyteichman.mageknightbuddy.domain.Knight
+import com.guyteichman.mageknightbuddy.domain.LifeAndDeathScoringInput
+import com.guyteichman.mageknightbuddy.domain.LostRelicScoringInput
 import com.guyteichman.mageknightbuddy.domain.Outcome
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
 import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
@@ -109,7 +116,7 @@ class ScoreCalculatorViewModelTest {
 
         viewModel.scenarioId = Scenario.RealmOfTheDead.id
         viewModel.fame = "5"
-        viewModel.graveyardsSealed = "2"
+        viewModel.graveyardsSealed = 2
         viewModel.necromancerDefeated = true
 
         viewModel.save()
@@ -142,6 +149,170 @@ class ScoreCalculatorViewModelTest {
         assertEquals(9, saved.score)
         val input = assertIs<ForTheCouncilScoringInput>(saved.input)
         assertEquals(ReputationTrackSpace.MINUS_3, input.reputationTrackSpace)
+    }
+
+    @Test
+    fun `save builds an AgainstTheDragonScoringInput when Against the Dragon is selected`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+
+        viewModel.scenarioId = Scenario.AgainstTheDragon.id
+        viewModel.fame = "30"
+        viewModel.headsDefeated = 4
+        viewModel.roundsFinishedEarly = "1"
+        viewModel.cardsRemainingInDummyDeck = "4"
+        viewModel.endOfRoundAnnounced = false
+
+        viewModel.save()
+
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Scenario.AgainstTheDragon, saved.scenario)
+        assertEquals(Outcome.WON, saved.outcome)
+        // 30 fame + 4*5 heads + 15 all-heads + 30 rounds + 4 dummy cards + 5 end-of-round-not-announced = 104
+        assertEquals(104, saved.score)
+        val input = assertIs<AgainstTheDragonScoringInput>(saved.input)
+        assertEquals(4, input.headsDefeated)
+    }
+
+    @Test
+    fun `save builds an AgainstTheHorsemenScoringInput when Against the Horsemen is selected`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+
+        viewModel.scenarioId = Scenario.AgainstTheHorsemen.id
+        viewModel.fame = "20"
+        viewModel.horsemenDefeated = 3
+        viewModel.cardsRemainingInDummyDeck = "2"
+
+        viewModel.save()
+
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Scenario.AgainstTheHorsemen, saved.scenario)
+        assertEquals(Outcome.LOST, saved.outcome)
+        // 20 fame + 3*4 horsemen (no all-four bonus) + 2 dummy cards = 34
+        assertEquals(34, saved.score)
+        val input = assertIs<AgainstTheHorsemenScoringInput>(saved.input)
+        assertEquals(3, input.horsemenDefeated)
+    }
+
+    @Test
+    fun `save builds an ApocalypseIsHereScoringInput when Apocalypse is Here is selected`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+
+        viewModel.scenarioId = Scenario.ApocalypseIsHere.id
+        viewModel.fame = "40"
+        viewModel.horsemenDefeated = 2
+        viewModel.headsDefeated = 4
+        viewModel.roundsFinishedEarly = "1"
+        viewModel.cardsRemainingInDummyDeck = "3"
+        viewModel.endOfRoundAnnounced = false
+
+        viewModel.save()
+
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Scenario.ApocalypseIsHere, saved.scenario)
+        assertEquals(Outcome.WON, saved.outcome)
+        // 40 fame + 2*3 horsemen + 4*5 heads + 15 all-heads + 30 rounds + 3 dummy cards + 5 end-of-round = 119
+        assertEquals(119, saved.score)
+        val input = assertIs<ApocalypseIsHereScoringInput>(saved.input)
+        assertEquals(2, input.horsemenDefeated)
+        assertEquals(4, input.headsDefeated)
+    }
+
+    @Test
+    fun `save builds a FracturedLandsScoringInput when The Fractured Lands is selected`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+
+        viewModel.scenarioId = Scenario.FracturedLands.id
+        viewModel.fame = "12"
+        viewModel.questPoints = "5"
+
+        viewModel.save()
+
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Scenario.FracturedLands, saved.scenario)
+        // The Fractured Lands has no lose condition - always Won.
+        assertEquals(Outcome.WON, saved.outcome)
+        // 12 fame + 5 quest points (Greatest Quester) = 17
+        assertEquals(17, saved.score)
+        val input = assertIs<FracturedLandsScoringInput>(saved.input)
+        assertEquals(5, input.questPoints)
+    }
+
+    @Test
+    fun `save builds a LifeAndDeathScoringInput when Life and Death is selected`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+
+        viewModel.scenarioId = Scenario.LifeAndDeath.id
+        viewModel.fame = "25"
+        viewModel.tezlaSpiritDefeated = true
+        viewModel.darkTezlaDefeated = true
+        viewModel.roundsFinishedEarly = "1"
+        viewModel.cardsRemainingInDummyDeck = "2"
+        viewModel.endOfRoundAnnounced = false
+
+        viewModel.save()
+
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Scenario.LifeAndDeath, saved.scenario)
+        assertEquals(Outcome.WON, saved.outcome)
+        // 25 fame + 2*10 avatars + 15 both-avatars + 30 rounds + 2 dummy cards + 5 end-of-round = 97
+        assertEquals(97, saved.score)
+        val input = assertIs<LifeAndDeathScoringInput>(saved.input)
+        assertEquals(true, input.tezlaSpiritDefeated)
+        assertEquals(true, input.darkTezlaDefeated)
+    }
+
+    @Test
+    fun `save builds a LostRelicScoringInput when The Lost Relic is selected`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+
+        viewModel.scenarioId = Scenario.LostRelic.id
+        viewModel.fame = "18"
+        viewModel.relicPiecesFound = 2
+        viewModel.cardsRemainingInDummyDeck = "4"
+        viewModel.endOfRoundAnnounced = false
+
+        viewModel.save()
+
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Scenario.LostRelic, saved.scenario)
+        assertEquals(Outcome.WON, saved.outcome)
+        // 18 fame + 2*5 relic pieces + 10 all-pieces + 4 dummy cards + 5 end-of-round = 47
+        assertEquals(47, saved.score)
+        val input = assertIs<LostRelicScoringInput>(saved.input)
+        assertEquals(2, input.relicPiecesFound)
+    }
+
+    @Test
+    fun `save builds an AgainstTheApocalypseScoringInput mapping the ziggurat and pyramid switches to 1 or 0`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+
+        viewModel.scenarioId = Scenario.AgainstTheApocalypse.id
+        viewModel.fame = "35"
+        viewModel.destroyedSiteTokens = "2"
+        viewModel.zigguratFloorConquered = true
+        viewModel.pyramidFloorConquered = true
+        viewModel.roundsFinishedEarly = "1"
+        viewModel.cardsRemainingInDummyDeck = "3"
+        viewModel.endOfRoundAnnounced = false
+
+        viewModel.save()
+
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Scenario.AgainstTheApocalypse, saved.scenario)
+        assertEquals(Outcome.WON, saved.outcome)
+        // 35 fame + 2*3 destroyed sites + 2*5 sites conquered (flat, not tiered by floor) + 15 victorious
+        // + 30 rounds + 3 dummy cards + 5 end-of-round = 104
+        assertEquals(104, saved.score)
+        val input = assertIs<AgainstTheApocalypseScoringInput>(saved.input)
+        assertEquals(1, input.zigguratFloorsConquered)
+        assertEquals(1, input.pyramidFloorsConquered)
     }
 
     @Test
@@ -187,7 +358,7 @@ class ScoreCalculatorViewModelTest {
         viewModel.scenarioId = Scenario.ForTheCouncil.id
         viewModel.cityRevealed = true
         viewModel.highPriestessDefeated = true
-        viewModel.graveyardsSealed = "2"
+        viewModel.graveyardsSealed = 2
         viewModel.necromancerDefeated = true
         viewModel.reputationTrackSpaceName = ReputationTrackSpace.NEGATIVE_X.name
 
@@ -202,7 +373,7 @@ class ScoreCalculatorViewModelTest {
         assertEquals(true, viewModel.endOfRoundAnnounced)
         assertEquals(false, viewModel.cityRevealed)
         assertEquals(false, viewModel.highPriestessDefeated)
-        assertEquals("0", viewModel.graveyardsSealed)
+        assertEquals(0, viewModel.graveyardsSealed)
         assertEquals(false, viewModel.necromancerDefeated)
         assertEquals(ReputationTrackSpace.CENTER.name, viewModel.reputationTrackSpaceName)
     }

@@ -20,6 +20,13 @@ fun ScoringInput.score(): Int = when (this) {
     is ForTheCouncilScoringInput -> ForTheCouncilScoring.score(this)
     is HiddenValleyScoringInput -> HiddenValleyScoring.score(this)
     is RealmOfTheDeadScoringInput -> RealmOfTheDeadScoring.score(this)
+    is AgainstTheDragonScoringInput -> AgainstTheDragonScoring.score(this)
+    is AgainstTheHorsemenScoringInput -> AgainstTheHorsemenScoring.score(this)
+    is ApocalypseIsHereScoringInput -> ApocalypseIsHereScoring.score(this)
+    is FracturedLandsScoringInput -> FracturedLandsScoring.score(this)
+    is LifeAndDeathScoringInput -> LifeAndDeathScoring.score(this)
+    is LostRelicScoringInput -> LostRelicScoring.score(this)
+    is AgainstTheApocalypseScoringInput -> AgainstTheApocalypseScoring.score(this)
 }
 
 /** Win/Loss check for whichever scenario this input belongs to; see [score] for the dispatch pattern. */
@@ -29,6 +36,13 @@ fun ScoringInput.outcome(): Outcome = when (this) {
     is ForTheCouncilScoringInput -> ForTheCouncilScoring.outcome(this)
     is HiddenValleyScoringInput -> HiddenValleyScoring.outcome(this)
     is RealmOfTheDeadScoringInput -> RealmOfTheDeadScoring.outcome(this)
+    is AgainstTheDragonScoringInput -> AgainstTheDragonScoring.outcome(this)
+    is AgainstTheHorsemenScoringInput -> AgainstTheHorsemenScoring.outcome(this)
+    is ApocalypseIsHereScoringInput -> ApocalypseIsHereScoring.outcome(this)
+    is FracturedLandsScoringInput -> FracturedLandsScoring.outcome(this)
+    is LifeAndDeathScoringInput -> LifeAndDeathScoring.outcome(this)
+    is LostRelicScoringInput -> LostRelicScoring.outcome(this)
+    is AgainstTheApocalypseScoringInput -> AgainstTheApocalypseScoring.outcome(this)
 }
 
 /** Itemized score breakdown for whichever scenario this input belongs to; see [score] for the dispatch pattern. */
@@ -38,4 +52,11 @@ fun ScoringInput.breakdown(): List<ScoreLineItem> = when (this) {
     is ForTheCouncilScoringInput -> ForTheCouncilScoring.breakdown(this)
     is HiddenValleyScoringInput -> HiddenValleyScoring.breakdown(this)
     is RealmOfTheDeadScoringInput -> RealmOfTheDeadScoring.breakdown(this)
+    is AgainstTheDragonScoringInput -> AgainstTheDragonScoring.breakdown(this)
+    is AgainstTheHorsemenScoringInput -> AgainstTheHorsemenScoring.breakdown(this)
+    is ApocalypseIsHereScoringInput -> ApocalypseIsHereScoring.breakdown(this)
+    is FracturedLandsScoringInput -> FracturedLandsScoring.breakdown(this)
+    is LifeAndDeathScoringInput -> LifeAndDeathScoring.breakdown(this)
+    is LostRelicScoringInput -> LostRelicScoring.breakdown(this)
+    is AgainstTheApocalypseScoringInput -> AgainstTheApocalypseScoring.breakdown(this)
 }

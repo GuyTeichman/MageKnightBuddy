@@ -12,7 +12,7 @@ data class FracturedLandsScoringInput(
     val fame: Int,
     val standardAchievements: StandardAchievements,
     val questPoints: Int,
-)
+) : ScoringInput
 
 /**
  * Scoring engine for the Solo variant of The Fractured Lands

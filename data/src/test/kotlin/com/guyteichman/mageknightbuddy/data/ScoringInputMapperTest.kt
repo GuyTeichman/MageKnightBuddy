@@ -1,8 +1,15 @@
 package com.guyteichman.mageknightbuddy.data
 
+import com.guyteichman.mageknightbuddy.domain.AgainstTheApocalypseScoringInput
+import com.guyteichman.mageknightbuddy.domain.AgainstTheDragonScoringInput
+import com.guyteichman.mageknightbuddy.domain.AgainstTheHorsemenScoringInput
+import com.guyteichman.mageknightbuddy.domain.ApocalypseIsHereScoringInput
 import com.guyteichman.mageknightbuddy.domain.FirstReconnaissanceScoringInput
 import com.guyteichman.mageknightbuddy.domain.ForTheCouncilScoringInput
+import com.guyteichman.mageknightbuddy.domain.FracturedLandsScoringInput
 import com.guyteichman.mageknightbuddy.domain.HiddenValleyScoringInput
+import com.guyteichman.mageknightbuddy.domain.LifeAndDeathScoringInput
+import com.guyteichman.mageknightbuddy.domain.LostRelicScoringInput
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
 import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.ScoringInput
@@ -110,6 +117,104 @@ class ScoringInputMapperTest {
             necromancerDefeated = true,
             roundsFinishedEarly = 1,
             cardsRemainingInDummyDeck = 4,
+            endOfRoundAnnounced = false,
+        )
+
+        assertRoundTrips(input)
+    }
+
+    @Test
+    fun `AgainstTheDragonScoringInput round-trips through ScoringInputDto and JSON`() {
+        val input = AgainstTheDragonScoringInput(
+            fame = 30,
+            standardAchievements = achievements,
+            headsDefeated = 3,
+            roundsFinishedEarly = 1,
+            cardsRemainingInDummyDeck = 4,
+            endOfRoundAnnounced = false,
+        )
+
+        assertRoundTrips(input)
+    }
+
+    @Test
+    fun `AgainstTheHorsemenScoringInput round-trips through ScoringInputDto and JSON`() {
+        val input = AgainstTheHorsemenScoringInput(
+            fame = 25,
+            standardAchievements = achievements,
+            horsemenDefeated = 4,
+            roundsFinishedEarly = 0,
+            cardsRemainingInDummyDeck = 2,
+            endOfRoundAnnounced = true,
+        )
+
+        assertRoundTrips(input)
+    }
+
+    @Test
+    fun `ApocalypseIsHereScoringInput round-trips through ScoringInputDto and JSON`() {
+        val input = ApocalypseIsHereScoringInput(
+            fame = 45,
+            standardAchievements = achievements,
+            horsemenDefeated = 2,
+            headsDefeated = 4,
+            roundsFinishedEarly = 1,
+            cardsRemainingInDummyDeck = 6,
+            endOfRoundAnnounced = false,
+        )
+
+        assertRoundTrips(input)
+    }
+
+    @Test
+    fun `FracturedLandsScoringInput round-trips through ScoringInputDto and JSON`() {
+        val input = FracturedLandsScoringInput(
+            fame = 15,
+            standardAchievements = achievements,
+            questPoints = 8,
+        )
+
+        assertRoundTrips(input)
+    }
+
+    @Test
+    fun `LifeAndDeathScoringInput round-trips through ScoringInputDto and JSON`() {
+        val input = LifeAndDeathScoringInput(
+            fame = 35,
+            standardAchievements = achievements,
+            tezlaSpiritDefeated = true,
+            darkTezlaDefeated = false,
+            roundsFinishedEarly = 1,
+            cardsRemainingInDummyDeck = 3,
+            endOfRoundAnnounced = false,
+        )
+
+        assertRoundTrips(input)
+    }
+
+    @Test
+    fun `LostRelicScoringInput round-trips through ScoringInputDto and JSON`() {
+        val input = LostRelicScoringInput(
+            fame = 22,
+            standardAchievements = achievements,
+            relicPiecesFound = 2,
+            cardsRemainingInDummyDeck = 5,
+            endOfRoundAnnounced = true,
+        )
+
+        assertRoundTrips(input)
+    }
+
+    @Test
+    fun `AgainstTheApocalypseScoringInput round-trips through ScoringInputDto and JSON`() {
+        val input = AgainstTheApocalypseScoringInput(
+            fame = 28,
+            standardAchievements = achievements,
+            destroyedSiteTokens = 3,
+            zigguratFloorsConquered = 1,
+            pyramidFloorsConquered = 1,
+            roundsFinishedEarly = 1,
+            cardsRemainingInDummyDeck = 5,
             endOfRoundAnnounced = false,
         )
 

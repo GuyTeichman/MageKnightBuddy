@@ -92,4 +92,81 @@ sealed interface ScoringInputDto {
         val cardsRemainingInDummyDeck: Int,
         val endOfRoundAnnounced: Boolean,
     ) : ScoringInputDto
+
+    @Serializable
+    @SerialName("against_the_dragon")
+    data class AgainstTheDragon(
+        val fame: Int,
+        val standardAchievements: StandardAchievementsDto,
+        val headsDefeated: Int,
+        val roundsFinishedEarly: Int,
+        val cardsRemainingInDummyDeck: Int,
+        val endOfRoundAnnounced: Boolean,
+    ) : ScoringInputDto
+
+    @Serializable
+    @SerialName("against_the_horsemen")
+    data class AgainstTheHorsemen(
+        val fame: Int,
+        val standardAchievements: StandardAchievementsDto,
+        val horsemenDefeated: Int,
+        val roundsFinishedEarly: Int,
+        val cardsRemainingInDummyDeck: Int,
+        val endOfRoundAnnounced: Boolean,
+    ) : ScoringInputDto
+
+    @Serializable
+    @SerialName("apocalypse_is_here")
+    data class ApocalypseIsHere(
+        val fame: Int,
+        val standardAchievements: StandardAchievementsDto,
+        val horsemenDefeated: Int,
+        val headsDefeated: Int,
+        val roundsFinishedEarly: Int,
+        val cardsRemainingInDummyDeck: Int,
+        val endOfRoundAnnounced: Boolean,
+    ) : ScoringInputDto
+
+    @Serializable
+    @SerialName("the_fractured_lands")
+    data class FracturedLands(
+        val fame: Int,
+        val standardAchievements: StandardAchievementsDto,
+        val questPoints: Int,
+    ) : ScoringInputDto
+
+    @Serializable
+    @SerialName("life_and_death")
+    data class LifeAndDeath(
+        val fame: Int,
+        val standardAchievements: StandardAchievementsDto,
+        val tezlaSpiritDefeated: Boolean,
+        val darkTezlaDefeated: Boolean,
+        val roundsFinishedEarly: Int,
+        val cardsRemainingInDummyDeck: Int,
+        val endOfRoundAnnounced: Boolean,
+    ) : ScoringInputDto
+
+    @Serializable
+    @SerialName("lost_relic")
+    data class LostRelic(
+        val fame: Int,
+        val standardAchievements: StandardAchievementsDto,
+        val relicPiecesFound: Int,
+        val cardsRemainingInDummyDeck: Int,
+        val endOfRoundAnnounced: Boolean,
+    ) : ScoringInputDto
+
+    @Serializable
+    @SerialName("against_the_apocalypse")
+    data class AgainstTheApocalypse(
+        val fame: Int,
+        val standardAchievements: StandardAchievementsDto,
+        val destroyedSiteTokens: Int,
+        val zigguratFloorsConquered: Int,
+        val pyramidFloorsConquered: Int,
+        val roundsFinishedEarly: Int,
+        val cardsRemainingInDummyDeck: Int,
+        val endOfRoundAnnounced: Boolean,
+    ) : ScoringInputDto
 }

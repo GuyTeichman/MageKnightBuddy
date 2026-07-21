@@ -18,8 +18,7 @@ private const val ALL_HEADS_DEFEATED_BONUS = 15
  * finished early, Dummy deck cards left, and whether "End of the Round" had already been
  * announced. No separate "Dragon defeated" flag - the Control head can't be attacked and
  * auto-defeats once the other 4 heads fall (page 10), so [AgainstTheDragonScoring.outcome]
- * derives Won/Lost straight from [headsDefeated]. Not a v1 target - kept here as reference for
- * when it's implemented.
+ * derives Won/Lost straight from [headsDefeated].
  */
 data class AgainstTheDragonScoringInput(
     val fame: Int,
@@ -28,7 +27,7 @@ data class AgainstTheDragonScoringInput(
     val roundsFinishedEarly: Int,
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
-) {
+) : ScoringInput {
     // init runs on every construction (including copy()), so an out-of-range tally can never
     // reach the scoring math below - it fails fast at the point the bad value was created.
     init {

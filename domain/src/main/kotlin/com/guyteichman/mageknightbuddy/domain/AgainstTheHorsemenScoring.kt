@@ -8,8 +8,7 @@ private const val TOTAL_HORSEMEN = 4
  * Everything the player enters at the end of a solo Against the Horsemen session, matching the
  * inputs docs/rules/against-the-horsemen.md's "Solo" > "Scoring" section needs: base Fame, the
  * six Standard Achievements, how many Horsemen were defeated, how many Rounds were finished
- * early, Dummy deck cards left, and whether "End of the Round" was already announced. Not a v1
- * target - kept here as reference for when this scenario is implemented.
+ * early, Dummy deck cards left, and whether "End of the Round" was already announced.
  */
 data class AgainstTheHorsemenScoringInput(
     val fame: Int,
@@ -18,7 +17,15 @@ data class AgainstTheHorsemenScoringInput(
     val roundsFinishedEarly: Int,
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
-)
+) : ScoringInput {
+    // init runs on every construction (including copy()), so an out-of-range tally can never
+    // reach the scoring math below - it fails fast at the point the bad value was created.
+    init {
+        require(horsemenDefeated in 0..TOTAL_HORSEMEN) {
+            "horsemenDefeated must be between 0 and $TOTAL_HORSEMEN, was $horsemenDefeated"
+        }
+    }
+}
 
 /**
  * Scoring engine for the solo variant of Against the Horsemen (docs/rules/against-the-horsemen.md,

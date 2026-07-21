@@ -1,8 +1,15 @@
 package com.guyteichman.mageknightbuddy.data
 
+import com.guyteichman.mageknightbuddy.domain.AgainstTheApocalypseScoringInput
+import com.guyteichman.mageknightbuddy.domain.AgainstTheDragonScoringInput
+import com.guyteichman.mageknightbuddy.domain.AgainstTheHorsemenScoringInput
+import com.guyteichman.mageknightbuddy.domain.ApocalypseIsHereScoringInput
 import com.guyteichman.mageknightbuddy.domain.FirstReconnaissanceScoringInput
 import com.guyteichman.mageknightbuddy.domain.ForTheCouncilScoringInput
+import com.guyteichman.mageknightbuddy.domain.FracturedLandsScoringInput
 import com.guyteichman.mageknightbuddy.domain.HiddenValleyScoringInput
+import com.guyteichman.mageknightbuddy.domain.LifeAndDeathScoringInput
+import com.guyteichman.mageknightbuddy.domain.LostRelicScoringInput
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
 import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.ScoringInput
@@ -76,6 +83,62 @@ fun ScoringInput.toDto(): ScoringInputDto = when (this) {
         cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
         endOfRoundAnnounced = endOfRoundAnnounced,
     )
+    is AgainstTheDragonScoringInput -> ScoringInputDto.AgainstTheDragon(
+        fame = fame,
+        standardAchievements = standardAchievements.toDto(),
+        headsDefeated = headsDefeated,
+        roundsFinishedEarly = roundsFinishedEarly,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+    )
+    is AgainstTheHorsemenScoringInput -> ScoringInputDto.AgainstTheHorsemen(
+        fame = fame,
+        standardAchievements = standardAchievements.toDto(),
+        horsemenDefeated = horsemenDefeated,
+        roundsFinishedEarly = roundsFinishedEarly,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+    )
+    is ApocalypseIsHereScoringInput -> ScoringInputDto.ApocalypseIsHere(
+        fame = fame,
+        standardAchievements = standardAchievements.toDto(),
+        horsemenDefeated = horsemenDefeated,
+        headsDefeated = headsDefeated,
+        roundsFinishedEarly = roundsFinishedEarly,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+    )
+    is FracturedLandsScoringInput -> ScoringInputDto.FracturedLands(
+        fame = fame,
+        standardAchievements = standardAchievements.toDto(),
+        questPoints = questPoints,
+    )
+    is LifeAndDeathScoringInput -> ScoringInputDto.LifeAndDeath(
+        fame = fame,
+        standardAchievements = standardAchievements.toDto(),
+        tezlaSpiritDefeated = tezlaSpiritDefeated,
+        darkTezlaDefeated = darkTezlaDefeated,
+        roundsFinishedEarly = roundsFinishedEarly,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+    )
+    is LostRelicScoringInput -> ScoringInputDto.LostRelic(
+        fame = fame,
+        standardAchievements = standardAchievements.toDto(),
+        relicPiecesFound = relicPiecesFound,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+    )
+    is AgainstTheApocalypseScoringInput -> ScoringInputDto.AgainstTheApocalypse(
+        fame = fame,
+        standardAchievements = standardAchievements.toDto(),
+        destroyedSiteTokens = destroyedSiteTokens,
+        zigguratFloorsConquered = zigguratFloorsConquered,
+        pyramidFloorsConquered = pyramidFloorsConquered,
+        roundsFinishedEarly = roundsFinishedEarly,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+    )
 }
 
 /** Converts any [ScoringInputDto] variant back to its domain [ScoringInput]; the inverse of [ScoringInput.toDto]. */
@@ -114,6 +177,62 @@ fun ScoringInputDto.toDomain(): ScoringInput = when (this) {
         standardAchievements = standardAchievements.toDomain(),
         graveyardsSealed = graveyardsSealed,
         necromancerDefeated = necromancerDefeated,
+        roundsFinishedEarly = roundsFinishedEarly,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+    )
+    is ScoringInputDto.AgainstTheDragon -> AgainstTheDragonScoringInput(
+        fame = fame,
+        standardAchievements = standardAchievements.toDomain(),
+        headsDefeated = headsDefeated,
+        roundsFinishedEarly = roundsFinishedEarly,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+    )
+    is ScoringInputDto.AgainstTheHorsemen -> AgainstTheHorsemenScoringInput(
+        fame = fame,
+        standardAchievements = standardAchievements.toDomain(),
+        horsemenDefeated = horsemenDefeated,
+        roundsFinishedEarly = roundsFinishedEarly,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+    )
+    is ScoringInputDto.ApocalypseIsHere -> ApocalypseIsHereScoringInput(
+        fame = fame,
+        standardAchievements = standardAchievements.toDomain(),
+        horsemenDefeated = horsemenDefeated,
+        headsDefeated = headsDefeated,
+        roundsFinishedEarly = roundsFinishedEarly,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+    )
+    is ScoringInputDto.FracturedLands -> FracturedLandsScoringInput(
+        fame = fame,
+        standardAchievements = standardAchievements.toDomain(),
+        questPoints = questPoints,
+    )
+    is ScoringInputDto.LifeAndDeath -> LifeAndDeathScoringInput(
+        fame = fame,
+        standardAchievements = standardAchievements.toDomain(),
+        tezlaSpiritDefeated = tezlaSpiritDefeated,
+        darkTezlaDefeated = darkTezlaDefeated,
+        roundsFinishedEarly = roundsFinishedEarly,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+    )
+    is ScoringInputDto.LostRelic -> LostRelicScoringInput(
+        fame = fame,
+        standardAchievements = standardAchievements.toDomain(),
+        relicPiecesFound = relicPiecesFound,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+    )
+    is ScoringInputDto.AgainstTheApocalypse -> AgainstTheApocalypseScoringInput(
+        fame = fame,
+        standardAchievements = standardAchievements.toDomain(),
+        destroyedSiteTokens = destroyedSiteTokens,
+        zigguratFloorsConquered = zigguratFloorsConquered,
+        pyramidFloorsConquered = pyramidFloorsConquered,
         roundsFinishedEarly = roundsFinishedEarly,
         cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
         endOfRoundAnnounced = endOfRoundAnnounced,
