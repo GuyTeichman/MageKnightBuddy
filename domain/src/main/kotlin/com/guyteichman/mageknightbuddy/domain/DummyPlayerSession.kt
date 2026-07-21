@@ -117,7 +117,7 @@ data class DummyPlayerSession private constructor(
             Knight.ARYTHEA to listOf(CardColor.RED, CardColor.RED, CardColor.WHITE),
             Knight.KRANG to listOf(CardColor.RED, CardColor.RED, CardColor.GREEN),
             Knight.BRAEVALAR to listOf(CardColor.GREEN, CardColor.BLUE, CardColor.BLUE),
-            Knight.CORAL to listOf(CardColor.BLUE, CardColor.BLUE, CardColor.RED),
+            Knight.CORAL to listOf(CardColor.WHITE, CardColor.WHITE, CardColor.RED),
         )
 
         /** Converts a Knight's starting dots (see [STARTING_CRYSTAL_DOTS]) into a color-to-count map for the initial `crystals` inventory. */
