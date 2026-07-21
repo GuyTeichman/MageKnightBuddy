@@ -19,6 +19,7 @@ class ScenarioTest {
         assertEquals(Scenario.LifeAndDeath, Scenario.fromId("life_and_death"))
         assertEquals(Scenario.LostRelic, Scenario.fromId("lost_relic"))
         assertEquals(Scenario.AgainstTheApocalypse, Scenario.fromId("against_the_apocalypse"))
+        assertEquals(Scenario.SoloConquestChallenge, Scenario.fromId("solo_conquest_challenge"))
     }
 
     @Test
@@ -37,6 +38,7 @@ class ScenarioTest {
                 Scenario.LifeAndDeath,
                 Scenario.LostRelic,
                 Scenario.AgainstTheApocalypse,
+                Scenario.SoloConquestChallenge,
             ),
             Scenario.entries,
         )

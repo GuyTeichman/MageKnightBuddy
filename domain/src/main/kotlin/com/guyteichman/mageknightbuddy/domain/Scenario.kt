@@ -75,6 +75,11 @@ sealed interface Scenario {
         override val displayName = "Against the Apocalypse"
     }
 
+    data object SoloConquestChallenge : Scenario {
+        override val id = "solo_conquest_challenge"
+        override val displayName = "Solo Conquest Challenge"
+    }
+
     companion object {
         // All known scenarios with a working scoring engine (see the matching *Scoring object
         // in this package for each one's rules).
@@ -91,6 +96,7 @@ sealed interface Scenario {
             LifeAndDeath,
             LostRelic,
             AgainstTheApocalypse,
+            SoloConquestChallenge,
         )
 
         /** Looks up a [Scenario] by its stored [id] (e.g. when reading back from persistence). */
