@@ -16,7 +16,7 @@ private const val ALL_HEADS_DEFEATED_BONUS = 15
  * were defeated, Rounds finished early, Dummy deck cards left, and whether "End of the Round"
  * was already announced. No separate "Dragon defeated" flag - the Control head can't be attacked
  * and auto-defeats once the other 4 heads fall (page 10), so [outcome] derives Won/Lost straight
- * from [headsDefeated]. Not a v1 target - kept here as reference for when it's implemented.
+ * from [headsDefeated].
  */
 data class ApocalypseIsHereScoringInput(
     val fame: Int,

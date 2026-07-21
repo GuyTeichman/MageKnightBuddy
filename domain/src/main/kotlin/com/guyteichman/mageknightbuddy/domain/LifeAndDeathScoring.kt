@@ -11,8 +11,7 @@ private const val BOTH_AVATARS_DEFEATED_BONUS = 15
  * "Solo" > "Scoring"): Fame, the six Standard Achievements, whether each of the two named
  * Avatars of Tezla (Tezla's Spirit for the Elementalists, Dark Tezla for the Dark Crusaders)
  * was defeated, Rounds finished early, Dummy deck cards left, and whether "End of the Round"
- * had already been announced. Not a v1 target - kept here as reference for when it's
- * implemented (v1 is Solo Conquest only).
+ * had already been announced.
  */
 data class LifeAndDeathScoringInput(
     val fame: Int,

@@ -8,8 +8,7 @@ private const val TOTAL_HORSEMEN = 4
  * Everything the player enters at the end of a solo Against the Horsemen session, matching the
  * inputs docs/rules/against-the-horsemen.md's "Solo" > "Scoring" section needs: base Fame, the
  * six Standard Achievements, how many Horsemen were defeated, how many Rounds were finished
- * early, Dummy deck cards left, and whether "End of the Round" was already announced. Not a v1
- * target - kept here as reference for when this scenario is implemented.
+ * early, Dummy deck cards left, and whether "End of the Round" was already announced.
  */
 data class AgainstTheHorsemenScoringInput(
     val fame: Int,
