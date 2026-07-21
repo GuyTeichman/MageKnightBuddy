@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
+import com.guyteichman.mageknightbuddy.domain.BRAEVALAR_FINAL_SPACE_MOVE_COST_RANGE
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.Outcome
@@ -620,7 +621,7 @@ private fun WizardContent(
                     )
                     NumberPillPicker(
                         label = "Final space's normal Move cost at Night",
-                        range = 2..5,
+                        range = BRAEVALAR_FINAL_SPACE_MOVE_COST_RANGE,
                         selected = viewModel.finalSpaceMoveCostAtNight,
                         onSelect = { viewModel.finalSpaceMoveCostAtNight = it },
                     )
