@@ -358,10 +358,11 @@ private fun WizardContent(
                     onCheckedChange = { viewModel.highPriestessDefeated = it },
                 )
                 WizardPage.GRAVEYARDS_SEALED -> {
-                    NumberField(
-                        label = "Graveyards sealed (0-2)",
-                        value = viewModel.graveyardsSealed,
-                        onValueChange = { viewModel.graveyardsSealed = it },
+                    BoundedIntPicker(
+                        label = "Graveyards sealed",
+                        range = 0..2,
+                        selected = viewModel.graveyardsSealed,
+                        onSelect = { viewModel.graveyardsSealed = it },
                     )
                     LabeledSwitch(
                         label = "Necromancer defeated",
@@ -523,6 +524,50 @@ private fun ReputationTrackSpace.trackColor(): Color {
 // cells.
 private val ReputationTrackSpace.modifierLabel: String
     get() = modifier?.let { if (it > 0) "+$it" else it.toString() } ?: "X"
+
+/**
+ * A horizontal row of tappable "pill" options for an Int field with a small, fixed valid range
+ * (e.g. Graveyards sealed, 0-2) - shows every legal value up front instead of a free-text
+ * NumberField whose min/max only lives in the label text and isn't actually enforced by the
+ * widget. Reusable for any future bounded field, not just this one.
+ */
+@Composable
+private fun BoundedIntPicker(label: String, range: IntRange, selected: Int, onSelect: (Int) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            range.forEach { value ->
+                BoundedIntPickerOption(
+                    value = value,
+                    selected = value == selected,
+                    onClick = { onSelect(value) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BoundedIntPickerOption(value: Int, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(50),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        border = BorderStroke(
+            width = if (selected) 2.dp else 1.dp,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        ),
+        modifier = modifier,
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            Text(value.toString(), style = MaterialTheme.typography.titleMedium)
+        }
+    }
+}
 
 /** A checkbox with its label as a clickable row, for simple yes/no wizard fields (e.g. a city being conquered). */
 @Composable

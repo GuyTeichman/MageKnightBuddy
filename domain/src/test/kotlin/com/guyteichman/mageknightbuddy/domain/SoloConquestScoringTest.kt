@@ -2,6 +2,7 @@ package com.guyteichman.mageknightbuddy.domain
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class SoloConquestScoringTest {
 
@@ -86,6 +87,20 @@ class SoloConquestScoringTest {
         val input = minimalInput(citiesConquered = 1)
 
         assertEquals(Outcome.LOST, SoloConquestScoring.outcome(input))
+    }
+
+    @Test
+    fun `citiesConquered above the 2-city total is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(citiesConquered = 3)
+        }
+    }
+
+    @Test
+    fun `negative citiesConquered is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(citiesConquered = -1)
+        }
     }
 
     private fun minimalInput(citiesConquered: Int, questPoints: Int = 0) = SoloConquestScoringInput(
