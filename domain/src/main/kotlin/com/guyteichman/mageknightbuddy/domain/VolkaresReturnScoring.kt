@@ -7,30 +7,6 @@ private const val CITY_CONQUERED_BONUS = 20
 private const val POINTS_PER_CARD_LEFT_IN_VOLKARES_DECK = 2
 
 /**
- * How tough Volkare and the city are (docs/rules/volkares-return.md, "Scenario difficulty"):
- * one of the two independent difficulty axes chosen before setup. [combatBonusBase] is the
- * starting value of the Volkare Combat Bonus (Scoring, step 4) for that level.
- */
-enum class CombatLevel(val combatBonusBase: Int) {
-    DARING(30),
-    HEROIC(40),
-    LEGENDARY(50),
-}
-
-/**
- * How much time pressure Volkare exerts (docs/rules/volkares-return.md, "Scenario difficulty"):
- * the other of the two independent difficulty axes. [combatBonusMultiplierNumerator] represents
- * this level's multiplier (1 / 1.5 / 2) on the Volkare Combat Bonus, expressed as a numerator
- * over a denominator of 2 so the multiplication can stay in exact integer math (no Double
- * rounding surprises) - e.g. Tight's 1.5x is numerator 3 over denominator 2.
- */
-enum class RaceLevel(val combatBonusMultiplierNumerator: Int) {
-    FAIR(2),
-    TIGHT(3),
-    THRILLING(4),
-}
-
-/**
  * Everything the player enters at the end of a Volkare's Return session, matching the inputs
  * docs/rules/volkares-return.md's Scoring section needs: base Fame, the six Standard
  * Achievements, whether the city was conquered, whether Volkare was defeated, the two
@@ -93,11 +69,11 @@ object VolkaresReturnScoring {
         val bonusBeforeMultiplier =
             input.combatLevel.combatBonusBase +
                 POINTS_PER_CARD_LEFT_IN_VOLKARES_DECK * input.cardsRemainingInVolkareDeck
-        // The base bonus (30/40/50) and the per-card bonus (always 2 * an Int) are both even,
-        // so their sum is always even - multiplying by the numerator (2/3/4) and dividing by 2
-        // is therefore always an exact integer division, with no fractional Volkare Combat
-        // Bonus ever silently truncated.
-        return bonusBeforeMultiplier * input.raceLevel.combatBonusMultiplierNumerator / 2
+        // Integer numerator/denominator arithmetic (rather than a Double multiplier) keeps this
+        // exact - the base bonus (30/40/50) plus the per-card bonus is always even, so Tight's
+        // *3/2 always divides out evenly. See RaceLevel's KDoc.
+        return bonusBeforeMultiplier * input.raceLevel.combatBonusMultiplierNumerator /
+            input.raceLevel.combatBonusMultiplierDenominator
     }
 
     /**

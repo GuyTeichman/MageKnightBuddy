@@ -9,35 +9,6 @@ private const val FAME_PER_CONQUERED_CITY = 5
 private const val VOLKARE_COMBAT_BONUS_PER_REMAINING_CARD = 2
 
 /**
- * The three Combat Level difficulty settings for Volkare's Quest (docs/rules/volkares-quest.md,
- * "Scenario difficulty" table). Only [volkareCombatBonusBase] matters for scoring - the City
- * Level and Volkare's Level values in that table only affect setup, not the score.
- */
-enum class CombatLevel(val volkareCombatBonusBase: Int) {
-    DARING(30),
-    HEROIC(40),
-    LEGENDARY(50),
-}
-
-/**
- * The three Race Level difficulty settings for Volkare's Quest (docs/rules/volkares-quest.md,
- * "Scenario difficulty" table). Only the Volkare-combat-bonus multiplier matters for scoring -
- * the Wounds-in-deck and Fearful-Units values in that table only affect setup, not the score.
- * The multiplier (1 / 1.5 / 2) is modeled as a numerator/denominator pair rather than a Double so
- * [VolkaresQuestScoring] can compute the bonus with exact Int arithmetic instead of floating
- * point - the pre-multiplier subtotal it's applied to is always even, so the *3/2 for Tight
- * always divides out evenly (see [VolkaresQuestScoring]'s private `volkareCombatBonus`).
- */
-enum class RaceLevel(
-    val volkareCombatBonusMultiplierNumerator: Int,
-    val volkareCombatBonusMultiplierDenominator: Int,
-) {
-    FAIR(1, 1),
-    TIGHT(3, 2),
-    THRILLING(2, 1),
-}
-
-/**
  * Everything the player enters at the end of a Volkare's Quest session, matching the inputs
  * docs/rules/volkares-quest.md's Scoring section needs: base Fame, the six Standard Achievements,
  * how many cities were conquered, which Combat/Race Level difficulty this session was played at,
@@ -103,11 +74,11 @@ object VolkaresQuestScoring {
      */
     private fun volkareCombatBonus(input: VolkaresQuestScoringInput): Int {
         if (!input.volkareDefeated) return 0
-        val subtotal = input.combatLevel.volkareCombatBonusBase +
+        val subtotal = input.combatLevel.combatBonusBase +
             VOLKARE_COMBAT_BONUS_PER_REMAINING_CARD * input.cardsRemainingInVolkaresDeck
         // Integer numerator/denominator arithmetic (rather than a Double multiplier) keeps this
         // exact - see RaceLevel's KDoc for why subtotal * numerator is always evenly divisible.
-        return subtotal * input.raceLevel.volkareCombatBonusMultiplierNumerator /
-            input.raceLevel.volkareCombatBonusMultiplierDenominator
+        return subtotal * input.raceLevel.combatBonusMultiplierNumerator /
+            input.raceLevel.combatBonusMultiplierDenominator
     }
 }
