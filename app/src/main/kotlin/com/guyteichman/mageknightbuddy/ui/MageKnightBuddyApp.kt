@@ -112,7 +112,7 @@ fun MageKnightBuddyApp(
                     onDone = { navigateToTab(Tab.Scoreboard.route) },
                 )
             }
-            composable(Tab.DummyPlayer.route) { DummyPlayerTab(repository = dummyPlayerRepository) }
+            composable(Tab.DummyPlayer.route) { DummyPlayerTab(repository = dummyPlayerRepository, fieldHelp = fieldHelp) }
         }
     }
 }

@@ -74,5 +74,9 @@
   "For the Council: Reputation": {
     "text": "Tap the space your Shield token is actually on. You score (or lose) Quest Points equal to the modifier printed there — or −10 instead on an X space. Reputation +2 or higher (2 spaces past center) determines whether you Won or Lost.",
     "source": "For the Council scoring, Solo, Apocalypse Dragon rulebook p.25"
+  },
+  "Round-Prep Offers": {
+    "text": "When a Dummy Player is in play, round-prep changes: the lowest Advanced Action offer card goes into the Dummy Player's deck (which is then reshuffled) instead of being discarded, and the lowest Spell offer card still goes to the bottom of the Spell deck as usual but also grants the Dummy Player one crystal of its color, with no 3-crystal cap.",
+    "source": "Cooperative and Solo Scenarios, Dummy Player, rulebook p.15"
   }
 }

@@ -72,6 +72,8 @@ import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
+import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
+import com.guyteichman.mageknightbuddy.ui.help.HelpButton
 import kotlinx.coroutines.launch
 
 private const val DUMMY_PLAYER_SETUP_ROUTE = "dummy_player_setup"
@@ -83,9 +85,13 @@ private const val DUMMY_PLAYER_AI_ROUTE = "dummy_player_ai"
  * restored. Runs its own nested [NavHost], the same pattern [com.guyteichman.mageknightbuddy.ui.scoreboard.ScoreboardTab]
  * uses, so this tab's own back stack (setup vs. AI screen) is independent of the app's top-level
  * tab switching.
+ *
+ * @param fieldHelp the bundled "?" help text/citations (see [FieldHelp]), threaded down to the AI
+ * screen's End Round dialog so it can show a [HelpButton] instead of a raw rulebook filename
+ * reference (issue #88).
  */
 @Composable
-fun DummyPlayerTab(repository: DummyPlayerSessionRepository) {
+fun DummyPlayerTab(repository: DummyPlayerSessionRepository, fieldHelp: Map<String, FieldHelp>) {
     val nestedNavController = rememberNavController()
 
     NavHost(navController = nestedNavController, startDestination = DUMMY_PLAYER_SETUP_ROUTE) {
@@ -101,7 +107,7 @@ fun DummyPlayerTab(repository: DummyPlayerSessionRepository) {
         composable(DUMMY_PLAYER_AI_ROUTE) {
             // Back is a plain pop with no confirmation - autosave means nothing is ever unsaved
             // (per #27).
-            DummyPlayerAiScreen(repository = repository, onBack = { nestedNavController.popBackStack() })
+            DummyPlayerAiScreen(repository = repository, fieldHelp = fieldHelp, onBack = { nestedNavController.popBackStack() })
         }
     }
 }
@@ -217,7 +223,7 @@ private fun KnightPicker(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, onBack: () -> Unit) {
+private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldHelp: Map<String, FieldHelp>, onBack: () -> Unit) {
     val viewModel: DummyPlayerAiViewModel = viewModel(factory = DummyPlayerAiViewModel.factory(repository))
     val scope = rememberCoroutineScope()
     val session = viewModel.session
@@ -302,6 +308,7 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, onBack
 
     if (showEndRoundDialog) {
         EndRoundDialog(
+            fieldHelp = fieldHelp,
             onDismiss = { showEndRoundDialog = false },
             onConfirm = { advancedActionColor, spellColor ->
                 scope.launch { viewModel.endRound(advancedActionColor, spellColor) }
@@ -634,9 +641,17 @@ private fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
  * Prompts for the two round-prep offer-discard colors before calling [DummyPlayerAiViewModel.endRound].
  * Tapping Cancel (or dismissing the dialog any other way) just closes it - [onConfirm] is the only
  * path that calls [DummyPlayerAiViewModel.endRound], so nothing has mutated yet for Cancel to undo.
+ * The title row carries a [HelpButton] (issue #88) so the round-prep rule itself is a rulebook-cited
+ * in-app dialog instead of the raw `docs/rules/dummy-player.md` filename this used to print - that
+ * file ships with the repo, not the installed app, so referencing it directly was a dead end for a
+ * real player mid-game.
  */
 @Composable
-private fun EndRoundDialog(onDismiss: () -> Unit, onConfirm: (advancedActionColor: CardColor, spellColor: CardColor) -> Unit) {
+private fun EndRoundDialog(
+    fieldHelp: Map<String, FieldHelp>,
+    onDismiss: () -> Unit,
+    onConfirm: (advancedActionColor: CardColor, spellColor: CardColor) -> Unit,
+) {
     var advancedActionColor by remember { mutableStateOf(CardColor.entries.first()) }
     var spellColor by remember { mutableStateOf(CardColor.entries.first()) }
 
@@ -647,11 +662,16 @@ private fun EndRoundDialog(onDismiss: () -> Unit, onConfirm: (advancedActionColo
         // chips (and the intro paragraph) into awkward mid-word line wraps.
         properties = DialogProperties(usePlatformDefaultWidth = false),
         modifier = Modifier.fillMaxWidth(fraction = 0.94f),
-        title = { Text("End Round") },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("End Round", modifier = Modifier.weight(1f))
+                HelpButton(keys = listOf("Round-Prep Offers"), fieldHelp = fieldHelp)
+            }
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
-                    "Pick the color removed from each offer during round-prep (see docs/rules/dummy-player.md).",
+                    "Pick the color removed from each offer during round-prep.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 ColorPickerRow(

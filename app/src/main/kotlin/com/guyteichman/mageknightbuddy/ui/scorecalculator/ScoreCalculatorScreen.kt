@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -27,7 +26,6 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
@@ -58,6 +56,7 @@ import com.guyteichman.mageknightbuddy.domain.Outcome
 import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
+import com.guyteichman.mageknightbuddy.ui.help.HelpButton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -626,51 +625,6 @@ private fun UnitLevelRow(
                 modifier = Modifier.weight(1f),
             )
         }
-    }
-}
-
-/**
- * The "?" icon button shown next to a wizard page's title. Tapping it opens a dialog with the
- * beginner-friendly rule text (and rulebook citation) for every help key that page declares in
- * [WizardPage.helpKeys], looked up from the bundled [fieldHelp] map (see [FieldHelp]).
- */
-@Composable
-private fun HelpButton(keys: List<String>, fieldHelp: Map<String, FieldHelp>) {
-    var showHelp by remember { mutableStateOf(false) }
-
-    IconButton(onClick = { showHelp = true }) {
-        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Rule details")
-    }
-
-    if (showHelp) {
-        AlertDialog(
-            onDismissRequest = { showHelp = false },
-            title = { Text("Rule details") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    keys.forEach { key ->
-                        // `map[key]?.let { }` is a safe-call + scope function combo: if the key
-                        // has no entry in fieldHelp, `fieldHelp[key]` is null and the `?.` short-
-                        // circuits, so nothing renders for that key instead of crashing.
-                        fieldHelp[key]?.let { help ->
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(help.text)
-                                Text(
-                                    help.source,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showHelp = false }) {
-                    Text("Close")
-                }
-            },
-        )
     }
 }
 
