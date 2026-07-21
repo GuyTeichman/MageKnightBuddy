@@ -48,10 +48,11 @@ object AgainstTheApocalypseScoring {
      */
     fun breakdown(input: AgainstTheApocalypseScoringInput): List<ScoreLineItem> {
         val achievements = input.standardAchievements
-        // The rulebook scores ziggurat and pyramid floors identically (5 points each), so once
-        // the win-condition check below is done with them separately, this line can safely
-        // combine the two tallies back into one score line.
-        val floorsConquered = input.zigguratFloorsConquered + input.pyramidFloorsConquered
+        // Solo scoring is a flat 5 points per *site* you conquered a floor of (0, 1, or 2 sites
+        // total - one ziggurat, one pyramid), not scaled by which floor number (1/2/3) was
+        // reached - that tiered-by-floor-number formula is Competitive's rule, not Solo's.
+        val sitesConquered =
+            listOf(input.zigguratFloorsConquered, input.pyramidFloorsConquered).count { it >= 1 }
         // +15 Fame if the scenario's Solo win condition was met (see isVictorious below).
         val victoryBonus = if (isVictorious(input)) 15 else 0
         // +5 if "End of the Round" had not yet been announced in the final Round.
@@ -67,7 +68,7 @@ object AgainstTheApocalypseScoring {
             ScoreLineItem("Greatest Conqueror", achievements.greatestConqueror()),
             ScoreLineItem("Greatest Beating", achievements.greatestBeating()),
             ScoreLineItem("Destroyed Sites", input.destroyedSiteTokens * 3),
-            ScoreLineItem("Ziggurat/Pyramid Floors Conquered", floorsConquered * 5),
+            ScoreLineItem("Ziggurat/Pyramid Floors Conquered", sitesConquered * 5),
             ScoreLineItem("Victorious", victoryBonus),
             ScoreLineItem("Rounds Finished Early", input.roundsFinishedEarly * 30),
             ScoreLineItem("Dummy Player's Deck", input.cardsRemainingInDummyDeck),

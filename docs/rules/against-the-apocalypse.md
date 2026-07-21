@@ -81,7 +81,7 @@ One team score = lowest Fame among all players as base, then standard Achievemen
 
 Base = your Fame. Standard Achievements Scoring, no Titles. Plus:
 - +3 points per Destroyed Site token in your Inventory.
-- +5 points per ziggurat/pyramid floor you've conquered.
+- +5 points per ziggurat/pyramid *site* you've conquered a floor of (flat per site, 0-10 total: 5 for the ziggurat + 5 for the pyramid; unlike Competitive, the floor number reached - 1, 2, or 3 - doesn't change the score).
 - +15 points if victorious.
 - +30 points per Round finished before the Round limit.
 - +1 point per unflipped card in the Dummy Player's Deed deck.
