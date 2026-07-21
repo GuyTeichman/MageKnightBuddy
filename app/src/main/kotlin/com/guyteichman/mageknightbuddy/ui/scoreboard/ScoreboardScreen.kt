@@ -1,5 +1,6 @@
 package com.guyteichman.mageknightbuddy.ui.scoreboard
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -144,14 +146,25 @@ private fun ScoreboardHeaderRow() {
     }
 }
 
+// Fixed hex colors, not MaterialTheme.colorScheme ones: Material3 has no built-in "success"/
+// "failure" semantic color slot, so win/loss can't be expressed in theme terms. These reuse
+// the same green/red hex values as CardColor.swatch in DummyPlayerScreen.kt for visual
+// consistency, at a low alpha so the row's text keeps full contrast in both light and dark theme.
+private val WON_ROW_TINT = Color(0xFF3E7C4A).copy(alpha = 0.12f)
+private val LOST_ROW_TINT = Color(0xFFB5423A).copy(alpha = 0.12f)
+
 // One row per saved session; tapping anywhere in the row triggers onClick (wired up by the
-// caller to navigate to that session's breakdown screen).
+// caller to navigate to that session's breakdown screen). The row's background is tinted by
+// outcome (green-ish for a win, red-ish for a loss); the divider below is left untinted so the
+// color reads as a row highlight rather than bleeding into the row separators.
 @Composable
 private fun ScoreboardRow(session: ScoringSession, onClick: () -> Unit) {
+    val outcomeTint = if (session.outcome == Outcome.WON) WON_ROW_TINT else LOST_ROW_TINT
     Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(outcomeTint)
                 .clickable(onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
