@@ -3,9 +3,6 @@ package com.guyteichman.mageknightbuddy.domain
 // +20 points if the city was conquered (docs/rules/volkares-return.md, Scoring, step 3).
 private const val CITY_CONQUERED_BONUS = 20
 
-// +2 points per card still left in Volkare's deck when he was defeated (Scoring, step 4).
-private const val POINTS_PER_CARD_LEFT_IN_VOLKARES_DECK = 2
-
 /**
  * Everything the player enters at the end of a Volkare's Return session, matching the inputs
  * docs/rules/volkares-return.md's Scoring section needs: base Fame, the six Standard
@@ -59,21 +56,13 @@ object VolkaresReturnScoring {
 
     /**
      * The Volkare Combat Bonus (docs/rules/volkares-return.md, Scoring, step 4): 0 unless
-     * Volkare was defeated. When he was, start from the Combat Level's base value, add 2 per
-     * card still left in his deck, then multiply *only that bonus* by the Race Level's
-     * multiplier - the multiplier never touches Fame, Achievements, or the City Conquered bonus.
+     * Volkare was defeated, otherwise delegates to [CombatLevel.volkareCombatBonus] - shared with
+     * Volkare's Quest since both scenarios compute this bonus identically. The multiplier never
+     * touches Fame, Achievements, or the City Conquered bonus - only this subtotal.
      */
     private fun volkareCombatBonus(input: VolkaresReturnScoringInput): Int {
         if (!input.volkareDefeated) return 0
-
-        val bonusBeforeMultiplier =
-            input.combatLevel.combatBonusBase +
-                POINTS_PER_CARD_LEFT_IN_VOLKARES_DECK * input.cardsRemainingInVolkareDeck
-        // Integer numerator/denominator arithmetic (rather than a Double multiplier) keeps this
-        // exact - the base bonus (30/40/50) plus the per-card bonus is always even, so Tight's
-        // *3/2 always divides out evenly. See RaceLevel's KDoc.
-        return bonusBeforeMultiplier * input.raceLevel.combatBonusMultiplierNumerator /
-            input.raceLevel.combatBonusMultiplierDenominator
+        return input.combatLevel.volkareCombatBonus(input.raceLevel, input.cardsRemainingInVolkareDeck)
     }
 
     /**

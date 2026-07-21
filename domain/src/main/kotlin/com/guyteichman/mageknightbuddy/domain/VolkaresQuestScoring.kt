@@ -4,10 +4,6 @@ package com.guyteichman.mageknightbuddy.domain
 // Return's +20/city, conquering cities isn't this scenario's goal, so the bonus is smaller.
 private const val FAME_PER_CONQUERED_CITY = 5
 
-// Fame awarded per card still in Volkare's deck, counted before the Race Level multiplier is
-// applied (docs/rules/volkares-quest.md, Scoring step 4).
-private const val VOLKARE_COMBAT_BONUS_PER_REMAINING_CARD = 2
-
 /**
  * Everything the player enters at the end of a Volkare's Quest session, matching the inputs
  * docs/rules/volkares-quest.md's Scoring section needs: base Fame, the six Standard Achievements,
@@ -68,17 +64,12 @@ object VolkaresQuestScoring {
 
     /**
      * The Volkare combat bonus (docs/rules/volkares-quest.md, Scoring step 4): zero unless
-     * Volkare was defeated. Otherwise, this Combat Level's base value plus 2 Fame per card still
-     * in his deck, with the whole subtotal multiplied by this Race Level's factor. The multiplier
+     * Volkare was defeated, otherwise delegates to [CombatLevel.volkareCombatBonus] - shared with
+     * Volkare's Return since both scenarios compute this bonus identically. The multiplier
      * applies only to this subtotal - never to the Fame/Achievements/cities total in [breakdown].
      */
     private fun volkareCombatBonus(input: VolkaresQuestScoringInput): Int {
         if (!input.volkareDefeated) return 0
-        val subtotal = input.combatLevel.combatBonusBase +
-            VOLKARE_COMBAT_BONUS_PER_REMAINING_CARD * input.cardsRemainingInVolkaresDeck
-        // Integer numerator/denominator arithmetic (rather than a Double multiplier) keeps this
-        // exact - see RaceLevel's KDoc for why subtotal * numerator is always evenly divisible.
-        return subtotal * input.raceLevel.combatBonusMultiplierNumerator /
-            input.raceLevel.combatBonusMultiplierDenominator
+        return input.combatLevel.volkareCombatBonus(input.raceLevel, input.cardsRemainingInVolkaresDeck)
     }
 }

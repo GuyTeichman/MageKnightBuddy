@@ -30,3 +30,20 @@ enum class RaceLevel(
     TIGHT(3, 2),
     THRILLING(2, 1),
 }
+
+// Fame awarded per card still left in Volkare's deck, counted before the Race Level multiplier
+// is applied (both scenarios' Scoring step 4).
+private const val COMBAT_BONUS_PER_REMAINING_CARD = 2
+
+/**
+ * The Volkare Combat Bonus (both scenarios' Scoring step 4): this Combat Level's base value plus
+ * 2 Fame per card still left in Volkare's deck, with that whole subtotal multiplied by this Race
+ * Level's factor. Shared by [VolkaresQuestScoring] and [VolkaresReturnScoring] since both
+ * scenarios compute it identically - only what feeds into [cardsRemaining] differs per scenario.
+ */
+fun CombatLevel.volkareCombatBonus(raceLevel: RaceLevel, cardsRemaining: Int): Int {
+    val subtotal = combatBonusBase + COMBAT_BONUS_PER_REMAINING_CARD * cardsRemaining
+    // Integer numerator/denominator arithmetic (rather than a Double multiplier) keeps this
+    // exact - see RaceLevel's KDoc for why subtotal * numerator is always evenly divisible.
+    return subtotal * raceLevel.combatBonusMultiplierNumerator / raceLevel.combatBonusMultiplierDenominator
+}
