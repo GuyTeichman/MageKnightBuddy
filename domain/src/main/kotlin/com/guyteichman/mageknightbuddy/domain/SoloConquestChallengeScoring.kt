@@ -5,6 +5,10 @@ package com.guyteichman.mageknightbuddy.domain
 // indicated"; the city count isn't one of the exceptions).
 private const val TOTAL_CITIES_IN_SOLO_CONQUEST_CHALLENGE = 2
 
+// Mage Knight has exactly 4 card colors (see CardColor: RED, GREEN, BLUE, WHITE), so "distinct
+// colors" tallies (crystals held, Advanced Actions in deck) can never exceed 4.
+private const val TOTAL_CARD_COLORS = 4
+
 // The Wound/Shield/Unit-level thresholds each Knight's additional objective checks against
 // (docs/rules/solo-conquest-challenge.md, "Outcome" section). Named per-Knight so the
 // `outcome()` when-block below reads like the rulebook table it mirrors.
@@ -54,7 +58,23 @@ data class SoloConquestChallengeScoringInput(
     // Braevalar: normal Move cost at Night of the space the game ended on (Mountains = 5,
     // Lakes = 2) - scored directly as bonus Fame.
     val finalSpaceMoveCostAtNight: Int = 0,
-)
+) {
+    // init runs on every construction (including copy()), so an out-of-range tally can never
+    // reach the scoring math below - it fails fast at the point the bad value was created.
+    init {
+        require(citiesConquered in 0..TOTAL_CITIES_IN_SOLO_CONQUEST_CHALLENGE) {
+            "citiesConquered must be between 0 and $TOTAL_CITIES_IN_SOLO_CONQUEST_CHALLENGE, was $citiesConquered"
+        }
+        require(distinctCrystalColorsInInventory in 0..TOTAL_CARD_COLORS) {
+            "distinctCrystalColorsInInventory must be between 0 and $TOTAL_CARD_COLORS, " +
+                "was $distinctCrystalColorsInInventory"
+        }
+        require(distinctAdvancedActionColorsInDeck in 0..TOTAL_CARD_COLORS) {
+            "distinctAdvancedActionColorsInDeck must be between 0 and $TOTAL_CARD_COLORS, " +
+                "was $distinctAdvancedActionColorsInDeck"
+        }
+    }
+}
 
 /**
  * Scoring engine for the Solo Conquest Challenge scenario (docs/rules/solo-conquest-challenge.md):

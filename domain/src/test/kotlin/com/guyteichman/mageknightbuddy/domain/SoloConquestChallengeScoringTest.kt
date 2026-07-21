@@ -2,6 +2,7 @@ package com.guyteichman.mageknightbuddy.domain
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class SoloConquestChallengeScoringTest {
 
@@ -271,6 +272,48 @@ class SoloConquestChallengeScoringTest {
         )
 
         assertEquals(Outcome.WON, SoloConquestChallengeScoring.outcome(input))
+    }
+
+    @Test
+    fun `citiesConquered above the 2-city total is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(knight = Knight.TOVAK, citiesConquered = 3)
+        }
+    }
+
+    @Test
+    fun `negative citiesConquered is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(knight = Knight.TOVAK, citiesConquered = -1)
+        }
+    }
+
+    @Test
+    fun `distinctCrystalColorsInInventory above the 4-color total is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(knight = Knight.GOLDYX, distinctCrystalColorsInInventory = 5)
+        }
+    }
+
+    @Test
+    fun `negative distinctCrystalColorsInInventory is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(knight = Knight.GOLDYX, distinctCrystalColorsInInventory = -1)
+        }
+    }
+
+    @Test
+    fun `distinctAdvancedActionColorsInDeck above the 4-color total is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(knight = Knight.BRAEVALAR, distinctAdvancedActionColorsInDeck = 5)
+        }
+    }
+
+    @Test
+    fun `negative distinctAdvancedActionColorsInDeck is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(knight = Knight.BRAEVALAR, distinctAdvancedActionColorsInDeck = -1)
+        }
     }
 
     private fun achievements(
