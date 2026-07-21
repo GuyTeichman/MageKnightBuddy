@@ -1,5 +1,6 @@
 package com.guyteichman.mageknightbuddy.ui.dummyplayer
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +38,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
@@ -56,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.buildAnnotatedString
@@ -67,6 +70,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.guyteichman.mageknightbuddy.R
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
@@ -167,8 +171,8 @@ private fun DummyPlayerSetupScreen(
  * Picking "Random" resolves immediately (see [DummyPlayerSetupViewModel.pickRandom]), so the
  * field then shows the rolled Knight with a "(Random)" suffix rather than staying on "Random".
  *
- * Every entry gets a leading shield icon; per-Knight shield art hasn't been sourced/imported yet
- * (see issue #30), so a generic shield glyph stands in until that's a separate follow-up.
+ * Every entry gets a leading shield icon: real per-Knight art via [KnightShieldIcon] where it's
+ * been sourced (issue #69), falling back to a generic shield glyph for Coral until hers lands too.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -187,7 +191,7 @@ private fun KnightPicker(
             onValueChange = {},
             readOnly = true,
             label = { Text("Knight") },
-            leadingIcon = { Icon(Icons.Filled.Shield, contentDescription = null) },
+            leadingIcon = { KnightShieldIcon(knight = knight) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
@@ -204,7 +208,7 @@ private fun KnightPicker(
             Knight.entries.forEach { option ->
                 DropdownMenuItem(
                     text = { Text(option.displayName) },
-                    leadingIcon = { Icon(Icons.Filled.Shield, contentDescription = null) },
+                    leadingIcon = { KnightShieldIcon(knight = option) },
                     onClick = {
                         onKnightSelected(option)
                         expanded = false
@@ -214,6 +218,37 @@ private fun KnightPicker(
         }
     }
 }
+
+/**
+ * A Knight's shield-token art at [size], or a generic shield glyph for any Knight whose art
+ * hasn't been sourced yet (currently just Coral - see issue #69). [Image] renders the drawable's
+ * actual pixels (the shield icon), unlike [Icon], which is meant for single-color glyphs - so
+ * [tint] only affects the fallback glyph, never the real art. Defaults to [LocalContentColor] so
+ * the fallback matches whatever color plain [Icon]s already use in its call site (e.g. the picker's
+ * leading icons); callers with a different prior tint (e.g. [HeroRow]) pass it explicitly.
+ */
+@Composable
+private fun KnightShieldIcon(knight: Knight, size: Dp = 24.dp, tint: Color = LocalContentColor.current) {
+    val resId = knight.shieldIconRes
+    if (resId != null) {
+        Image(painter = painterResource(resId), contentDescription = null, modifier = Modifier.size(size))
+    } else {
+        Icon(Icons.Filled.Shield, contentDescription = null, tint = tint, modifier = Modifier.size(size))
+    }
+}
+
+/** Maps a [Knight] to its shield-token drawable, or null where the art hasn't been sourced yet. */
+private val Knight.shieldIconRes: Int?
+    get() = when (this) {
+        Knight.ARYTHEA -> R.drawable.arythea_shield
+        Knight.TOVAK -> R.drawable.tovak_shield
+        Knight.KRANG -> R.drawable.krang_shield
+        Knight.BRAEVALAR -> R.drawable.braevalar_shield
+        Knight.WOLFHAWK -> R.drawable.wolfhawk_shield
+        Knight.GOLDYX -> R.drawable.goldyx_shield
+        Knight.NOROWAS -> R.drawable.norowas_shield
+        Knight.CORAL -> null
+    }
 
 /**
  * The AI (turn/round) screen: shows the Dummy Player's current deck/crystal state and event log,
@@ -333,16 +368,11 @@ private fun RoundChip(round: Int) {
     }
 }
 
-/** Knight shield glyph, name, and a "Random" badge if the Knight was randomly rolled at setup. */
+/** Knight shield icon, name, and a "Random" badge if the Knight was randomly rolled at setup. */
 @Composable
 private fun HeroRow(session: DummyPlayerSession) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Icon(
-            Icons.Filled.Shield,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(32.dp),
-        )
+        KnightShieldIcon(knight = session.knight, size = 32.dp, tint = MaterialTheme.colorScheme.primary)
         Text(session.knight.displayName, style = MaterialTheme.typography.titleMedium)
         if (session.wasRandom) {
             Surface(shape = RoundedCornerShape(percent = 50), color = MaterialTheme.colorScheme.primaryContainer) {
