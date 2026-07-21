@@ -29,18 +29,18 @@ data class RealmOfTheDeadScoringInput(
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
 ) : ScoringInput {
-    // A custom getter (not a stored field): this recomputes from graveyardsSealed every time
-    // it's read, rather than being set once. Keeps "both Graveyards sealed" as a single
-    // derived fact instead of repeating the == SOLO_GRAVEYARDS_TOTAL check at each call site.
-    val allGraveyardsSealed: Boolean get() = graveyardsSealed == SOLO_GRAVEYARDS_TOTAL
-
     // init runs on every construction (including copy()), so an out-of-range tally can never
-    // reach the scoring math above - it fails fast at the point the bad value was created.
+    // reach the scoring math below - it fails fast at the point the bad value was created.
     init {
         require(graveyardsSealed in 0..SOLO_GRAVEYARDS_TOTAL) {
             "graveyardsSealed must be between 0 and $SOLO_GRAVEYARDS_TOTAL, was $graveyardsSealed"
         }
     }
+
+    // A custom getter (not a stored field): this recomputes from graveyardsSealed every time
+    // it's read, rather than being set once. Keeps "both Graveyards sealed" as a single
+    // derived fact instead of repeating the == SOLO_GRAVEYARDS_TOTAL check at each call site.
+    val allGraveyardsSealed: Boolean get() = graveyardsSealed == SOLO_GRAVEYARDS_TOTAL
 }
 
 /**

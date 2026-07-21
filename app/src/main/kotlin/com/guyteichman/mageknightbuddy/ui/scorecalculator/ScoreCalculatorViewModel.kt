@@ -94,7 +94,7 @@ class ScoreCalculatorViewModel(
     var cityRevealed: Boolean by savedStateHandle.saveable("cityRevealed") { mutableStateOf(false) }
     var highPriestessDefeated: Boolean by savedStateHandle.saveable("highPriestessDefeated") { mutableStateOf(false) }
     // Int rather than String: unlike the free-text NumberFields above, this is picked from a
-    // fixed 0-2 range (GraveyardsSealedPicker), so there's no partial/blank typing state to
+    // fixed 0-2 range (BoundedIntPicker), so there's no partial/blank typing state to
     // preserve - see docs/rules/realm-of-the-dead.md's fixed 2-Graveyard Solo setup.
     var graveyardsSealed: Int by savedStateHandle.saveable("graveyardsSealed") { mutableStateOf(0) }
     var necromancerDefeated: Boolean by savedStateHandle.saveable("necromancerDefeated") { mutableStateOf(false) }

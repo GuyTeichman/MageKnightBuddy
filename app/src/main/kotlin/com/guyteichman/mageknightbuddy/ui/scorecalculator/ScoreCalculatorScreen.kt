@@ -560,7 +560,10 @@ private fun BoundedIntPickerOption(value: Int, selected: Boolean, onClick: () ->
         ),
         modifier = modifier,
     ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(vertical = 12.dp)) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        ) {
             Text(value.toString(), style = MaterialTheme.typography.titleMedium)
         }
     }
