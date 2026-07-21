@@ -8,6 +8,10 @@ private const val MIN_DESTROYED_SITE_TOKENS_FOR_VICTORY = 2
 // (tracked as two separate tallies below, since the win condition needs both, not just a sum).
 private const val MIN_FLOORS_CONQUERED_PER_STRUCTURE = 1
 
+// Ziggurat and Pyramid adventure sites always have exactly 3 floors (base game adventure site
+// rules), so a tally above this can never legitimately occur.
+private const val TOTAL_FLOORS_PER_STRUCTURE = 3
+
 /**
  * Everything the player enters at the end of a Solo Against the Apocalypse session, matching
  * the inputs docs/rules/against-the-apocalypse.md's "Scoring" > "Solo" section needs: base
@@ -25,7 +29,18 @@ data class AgainstTheApocalypseScoringInput(
     val roundsFinishedEarly: Int,
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
-)
+) : ScoringInput {
+    // init runs on every construction (including copy()), so an out-of-range tally can never
+    // reach the scoring math below - it fails fast at the point the bad value was created.
+    init {
+        require(zigguratFloorsConquered in 0..TOTAL_FLOORS_PER_STRUCTURE) {
+            "zigguratFloorsConquered must be between 0 and $TOTAL_FLOORS_PER_STRUCTURE, was $zigguratFloorsConquered"
+        }
+        require(pyramidFloorsConquered in 0..TOTAL_FLOORS_PER_STRUCTURE) {
+            "pyramidFloorsConquered must be between 0 and $TOTAL_FLOORS_PER_STRUCTURE, was $pyramidFloorsConquered"
+        }
+    }
+}
 
 /**
  * Scoring engine for the Solo variant of Against the Apocalypse

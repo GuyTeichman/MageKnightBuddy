@@ -22,7 +22,7 @@ data class LifeAndDeathScoringInput(
     val roundsFinishedEarly: Int,
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
-)
+) : ScoringInput
 
 /**
  * Scoring engine for the solo variant of Life and Death (docs/rules/life-and-death.md,

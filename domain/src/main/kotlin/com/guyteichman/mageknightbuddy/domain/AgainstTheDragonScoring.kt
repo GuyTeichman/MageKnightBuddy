@@ -28,7 +28,7 @@ data class AgainstTheDragonScoringInput(
     val roundsFinishedEarly: Int,
     val cardsRemainingInDummyDeck: Int,
     val endOfRoundAnnounced: Boolean,
-) {
+) : ScoringInput {
     // init runs on every construction (including copy()), so an out-of-range tally can never
     // reach the scoring math below - it fails fast at the point the bad value was created.
     init {

@@ -12,10 +12,17 @@ import androidx.lifecycle.viewmodel.compose.saveable
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
+import com.guyteichman.mageknightbuddy.domain.AgainstTheApocalypseScoringInput
+import com.guyteichman.mageknightbuddy.domain.AgainstTheDragonScoringInput
+import com.guyteichman.mageknightbuddy.domain.AgainstTheHorsemenScoringInput
+import com.guyteichman.mageknightbuddy.domain.ApocalypseIsHereScoringInput
 import com.guyteichman.mageknightbuddy.domain.FirstReconnaissanceScoringInput
 import com.guyteichman.mageknightbuddy.domain.ForTheCouncilScoringInput
+import com.guyteichman.mageknightbuddy.domain.FracturedLandsScoringInput
 import com.guyteichman.mageknightbuddy.domain.HiddenValleyScoringInput
 import com.guyteichman.mageknightbuddy.domain.Knight
+import com.guyteichman.mageknightbuddy.domain.LifeAndDeathScoringInput
+import com.guyteichman.mageknightbuddy.domain.LostRelicScoringInput
 import com.guyteichman.mageknightbuddy.domain.Outcome
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
 import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
@@ -93,8 +100,27 @@ class ScoreCalculatorViewModel(
     // scenario is harmless.
     var cityRevealed: Boolean by savedStateHandle.saveable("cityRevealed") { mutableStateOf(false) }
     var highPriestessDefeated: Boolean by savedStateHandle.saveable("highPriestessDefeated") { mutableStateOf(false) }
-    var graveyardsSealed: String by savedStateHandle.saveable("graveyardsSealed") { mutableStateOf("0") }
+    // An Int (not a String like most other Int-backed fields above), since it's driven entirely
+    // by the NumberPillPicker widget (a fixed set of taps, no free-text typing) - same rationale
+    // as the Boolean fields below being stored as Boolean rather than "true"/"false" strings.
+    var graveyardsSealed: Int by savedStateHandle.saveable("graveyardsSealed") { mutableStateOf(0) }
     var necromancerDefeated: Boolean by savedStateHandle.saveable("necromancerDefeated") { mutableStateOf(false) }
+
+    // Heads Defeated is shared by Against the Dragon and Apocalypse is Here (same field
+    // semantics, 0-4 non-Control heads); Horsemen Defeated is shared by Against the Horsemen and
+    // Apocalypse is Here - each scenario's `input` branch below just reads the one(s) it needs.
+    var headsDefeated: Int by savedStateHandle.saveable("headsDefeated") { mutableStateOf(0) }
+    var horsemenDefeated: Int by savedStateHandle.saveable("horsemenDefeated") { mutableStateOf(0) }
+    var tezlaSpiritDefeated: Boolean by savedStateHandle.saveable("tezlaSpiritDefeated") { mutableStateOf(false) }
+    var darkTezlaDefeated: Boolean by savedStateHandle.saveable("darkTezlaDefeated") { mutableStateOf(false) }
+    var relicPiecesFound: Int by savedStateHandle.saveable("relicPiecesFound") { mutableStateOf(0) }
+    var destroyedSiteTokens: String by savedStateHandle.saveable("destroyedSiteTokens") { mutableStateOf("0") }
+    // Booleans, not the 0-3 floor number domain actually stores - since issue #100's fix, Solo
+    // scoring only ever checks whether a floor was conquered, never which one, so the wizard maps
+    // true/false to 1/0 in [input] below rather than asking the player to recall an irrelevant
+    // floor number.
+    var zigguratFloorConquered: Boolean by savedStateHandle.saveable("zigguratFloorConquered") { mutableStateOf(false) }
+    var pyramidFloorConquered: Boolean by savedStateHandle.saveable("pyramidFloorConquered") { mutableStateOf(false) }
 
     // Which ReputationTrackSpace the player's Shield token sits on, stored by enum name rather
     // than an invented numeric index - the physical track only ever shows one number per space
@@ -158,7 +184,7 @@ class ScoreCalculatorViewModel(
             Scenario.RealmOfTheDead -> RealmOfTheDeadScoringInput(
                 fame = fame.toIntOrZero(),
                 standardAchievements = standardAchievements,
-                graveyardsSealed = graveyardsSealed.toIntOrZero(),
+                graveyardsSealed = graveyardsSealed,
                 necromancerDefeated = necromancerDefeated,
                 roundsFinishedEarly = roundsFinishedEarly.toIntOrZero(),
                 cardsRemainingInDummyDeck = cardsRemainingInDummyDeck.toIntOrZero(),
@@ -167,6 +193,62 @@ class ScoreCalculatorViewModel(
             Scenario.ForTheCouncil -> ForTheCouncilScoringInput(
                 questPoints = questPoints.toIntOrZero(),
                 reputationTrackSpace = ReputationTrackSpace.valueOf(reputationTrackSpaceName),
+            )
+            Scenario.AgainstTheDragon -> AgainstTheDragonScoringInput(
+                fame = fame.toIntOrZero(),
+                standardAchievements = standardAchievements,
+                headsDefeated = headsDefeated,
+                roundsFinishedEarly = roundsFinishedEarly.toIntOrZero(),
+                cardsRemainingInDummyDeck = cardsRemainingInDummyDeck.toIntOrZero(),
+                endOfRoundAnnounced = endOfRoundAnnounced,
+            )
+            Scenario.AgainstTheHorsemen -> AgainstTheHorsemenScoringInput(
+                fame = fame.toIntOrZero(),
+                standardAchievements = standardAchievements,
+                horsemenDefeated = horsemenDefeated,
+                roundsFinishedEarly = roundsFinishedEarly.toIntOrZero(),
+                cardsRemainingInDummyDeck = cardsRemainingInDummyDeck.toIntOrZero(),
+                endOfRoundAnnounced = endOfRoundAnnounced,
+            )
+            Scenario.ApocalypseIsHere -> ApocalypseIsHereScoringInput(
+                fame = fame.toIntOrZero(),
+                standardAchievements = standardAchievements,
+                horsemenDefeated = horsemenDefeated,
+                headsDefeated = headsDefeated,
+                roundsFinishedEarly = roundsFinishedEarly.toIntOrZero(),
+                cardsRemainingInDummyDeck = cardsRemainingInDummyDeck.toIntOrZero(),
+                endOfRoundAnnounced = endOfRoundAnnounced,
+            )
+            Scenario.FracturedLands -> FracturedLandsScoringInput(
+                fame = fame.toIntOrZero(),
+                standardAchievements = standardAchievements,
+                questPoints = questPoints.toIntOrZero(),
+            )
+            Scenario.LifeAndDeath -> LifeAndDeathScoringInput(
+                fame = fame.toIntOrZero(),
+                standardAchievements = standardAchievements,
+                tezlaSpiritDefeated = tezlaSpiritDefeated,
+                darkTezlaDefeated = darkTezlaDefeated,
+                roundsFinishedEarly = roundsFinishedEarly.toIntOrZero(),
+                cardsRemainingInDummyDeck = cardsRemainingInDummyDeck.toIntOrZero(),
+                endOfRoundAnnounced = endOfRoundAnnounced,
+            )
+            Scenario.LostRelic -> LostRelicScoringInput(
+                fame = fame.toIntOrZero(),
+                standardAchievements = standardAchievements,
+                relicPiecesFound = relicPiecesFound,
+                cardsRemainingInDummyDeck = cardsRemainingInDummyDeck.toIntOrZero(),
+                endOfRoundAnnounced = endOfRoundAnnounced,
+            )
+            Scenario.AgainstTheApocalypse -> AgainstTheApocalypseScoringInput(
+                fame = fame.toIntOrZero(),
+                standardAchievements = standardAchievements,
+                destroyedSiteTokens = destroyedSiteTokens.toIntOrZero(),
+                zigguratFloorsConquered = if (zigguratFloorConquered) 1 else 0,
+                pyramidFloorsConquered = if (pyramidFloorConquered) 1 else 0,
+                roundsFinishedEarly = roundsFinishedEarly.toIntOrZero(),
+                cardsRemainingInDummyDeck = cardsRemainingInDummyDeck.toIntOrZero(),
+                endOfRoundAnnounced = endOfRoundAnnounced,
             )
         }
 
@@ -204,9 +286,17 @@ class ScoreCalculatorViewModel(
         endOfRoundAnnounced = true
         cityRevealed = false
         highPriestessDefeated = false
-        graveyardsSealed = "0"
+        graveyardsSealed = 0
         necromancerDefeated = false
         reputationTrackSpaceName = ReputationTrackSpace.CENTER.name
+        headsDefeated = 0
+        horsemenDefeated = 0
+        tezlaSpiritDefeated = false
+        darkTezlaDefeated = false
+        relicPiecesFound = 0
+        destroyedSiteTokens = "0"
+        zigguratFloorConquered = false
+        pyramidFloorConquered = false
     }
 
     /**

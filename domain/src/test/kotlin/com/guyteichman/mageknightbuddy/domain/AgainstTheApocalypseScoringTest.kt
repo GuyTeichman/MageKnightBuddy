@@ -2,6 +2,7 @@ package com.guyteichman.mageknightbuddy.domain
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class AgainstTheApocalypseScoringTest {
 
@@ -154,6 +155,34 @@ class AgainstTheApocalypseScoringTest {
         // 40 fame + 0 bonuses + 30 rounds + 3 dummy cards = 73, no victory bonus since not won
         assertEquals(73, AgainstTheApocalypseScoring.score(input))
         assertEquals(Outcome.LOST, AgainstTheApocalypseScoring.outcome(input))
+    }
+
+    @Test
+    fun `zigguratFloorsConquered above the 3-floor total is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(zigguratFloorsConquered = 4)
+        }
+    }
+
+    @Test
+    fun `pyramidFloorsConquered above the 3-floor total is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(pyramidFloorsConquered = 4)
+        }
+    }
+
+    @Test
+    fun `negative zigguratFloorsConquered is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(zigguratFloorsConquered = -1)
+        }
+    }
+
+    @Test
+    fun `negative pyramidFloorsConquered is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(pyramidFloorsConquered = -1)
+        }
     }
 
     private fun minimalInput(

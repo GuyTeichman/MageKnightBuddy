@@ -12,6 +12,13 @@ class ScenarioTest {
         assertEquals(Scenario.ForTheCouncil, Scenario.fromId("for_the_council"))
         assertEquals(Scenario.HiddenValley, Scenario.fromId("hidden_valley"))
         assertEquals(Scenario.RealmOfTheDead, Scenario.fromId("realm_of_the_dead"))
+        assertEquals(Scenario.AgainstTheDragon, Scenario.fromId("against_the_dragon"))
+        assertEquals(Scenario.AgainstTheHorsemen, Scenario.fromId("against_the_horsemen"))
+        assertEquals(Scenario.ApocalypseIsHere, Scenario.fromId("apocalypse_is_here"))
+        assertEquals(Scenario.FracturedLands, Scenario.fromId("the_fractured_lands"))
+        assertEquals(Scenario.LifeAndDeath, Scenario.fromId("life_and_death"))
+        assertEquals(Scenario.LostRelic, Scenario.fromId("lost_relic"))
+        assertEquals(Scenario.AgainstTheApocalypse, Scenario.fromId("against_the_apocalypse"))
     }
 
     @Test
@@ -23,6 +30,13 @@ class ScenarioTest {
                 Scenario.ForTheCouncil,
                 Scenario.HiddenValley,
                 Scenario.RealmOfTheDead,
+                Scenario.AgainstTheDragon,
+                Scenario.AgainstTheHorsemen,
+                Scenario.ApocalypseIsHere,
+                Scenario.FracturedLands,
+                Scenario.LifeAndDeath,
+                Scenario.LostRelic,
+                Scenario.AgainstTheApocalypse,
             ),
             Scenario.entries,
         )

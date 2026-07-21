@@ -78,5 +78,49 @@
   "Round-Prep Offers": {
     "text": "When a Dummy Player is in play, round-prep changes: the lowest Advanced Action offer card goes into the Dummy Player's deck (which is then reshuffled) instead of being discarded, and the lowest Spell offer card still goes to the bottom of the Spell deck as usual but also grants the Dummy Player one crystal of its color, with no 3-crystal cap.",
     "source": "Cooperative and Solo Scenarios, Dummy Player, rulebook p.15"
+  },
+  "Heads Defeated": {
+    "text": "+5 Fame for each Apocalypse Dragon head you defeated (excluding the Control head, which auto-defeats once the other 4 fall).",
+    "source": "Against the Dragon scoring, Solo, Apocalypse Dragon rulebook p.34"
+  },
+  "All Heads Defeated": {
+    "text": "+15 Fame more if you defeated all 4 heads — this is also what determines whether you Won or Lost (the Control head auto-defeats once the other 4 fall).",
+    "source": "Against the Dragon scoring, Solo, Apocalypse Dragon rulebook p.34"
+  },
+  "Horsemen Defeated": {
+    "text": "+4 Fame for each of the Four Horsemen you defeated.",
+    "source": "Against the Horsemen scoring, Solo, Apocalypse Dragon rulebook p.30"
+  },
+  "All Horsemen Defeated": {
+    "text": "+15 Fame more if you defeated all four Horsemen — this is also what determines whether you Won or Lost.",
+    "source": "Against the Horsemen scoring, Solo, Apocalypse Dragon rulebook p.30"
+  },
+  "Apocalypse is Here: Horsemen Defeated": {
+    "text": "+3 Fame for each of the Four Horsemen you defeated.",
+    "source": "Apocalypse is Here scoring, Solo, Apocalypse Dragon rulebook p.38"
+  },
+  "Avatars Defeated": {
+    "text": "+10 Fame for each Avatar of Tezla you defeated — Tezla's Spirit for the Elementalists, Dark Tezla for the Dark Crusaders.",
+    "source": "Life and Death scoring, Solo, Shades of Tezla Scenario Book p.23"
+  },
+  "Both Avatars Defeated": {
+    "text": "+15 Fame more if you defeated both Avatars — this is also what determines whether you Won or Lost.",
+    "source": "Life and Death scoring, Solo, Shades of Tezla Scenario Book p.23"
+  },
+  "Relic Pieces Found": {
+    "text": "+5 Fame for each piece of the relic you found.",
+    "source": "The Lost Relic scoring, Solo, Shades of Tezla Scenario Book p.28"
+  },
+  "All Relic Pieces Found": {
+    "text": "+10 Fame more if you found every piece of the relic — this is also what determines whether you Won or Lost.",
+    "source": "The Lost Relic scoring, Solo, Shades of Tezla Scenario Book p.28"
+  },
+  "Destroyed Site Tokens": {
+    "text": "+3 Fame for each Destroyed Site token in your Inventory.",
+    "source": "Against the Apocalypse scoring, Solo, Apocalypse Dragon rulebook p.28"
+  },
+  "Ziggurat/Pyramid Floors Conquered": {
+    "text": "+5 Fame for each of the ziggurat and the pyramid you conquered at least one floor of — a flat bonus per site, not scaled by which exact floor you reached. Conquering a floor of both is also required to Win.",
+    "source": "Against the Apocalypse scoring, Solo, Apocalypse Dragon rulebook p.28"
   }
 }
