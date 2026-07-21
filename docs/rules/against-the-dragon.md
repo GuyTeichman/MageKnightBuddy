@@ -14,6 +14,10 @@ A scenario where the Apocalypse Dragon actively destroys sites and attacks playe
 The full turn-by-turn logic for what the Apocalypse Dragon destroys/attacks each Round (pages 31–32: the "destroy a site" / "attack a player" decision table, targeting rules, and per-player response options when attacked) is needed to *simulate* the Dragon's turns, not to *score* the scenario. Extract it separately if/when a Dragon-driving feature is built — analogous to the Volkare movement logic excluded from `volkares-quest.md`. Likewise, "Combat Versus The Apocalypse Dragon" (referenced, not reproduced) is needed to *fight* it, not to score.
 
 Key facts relevant to scoring/setup only:
+- The Apocalypse Dragon component always has five heads (page 9, "The Apocalypse Dragon"): one Control head plus four others, so "each head except the Control head" always means exactly 4 heads - a fixed total.
+- The Control head can never be attacked directly; its level always tracks the highest level among the other four heads, and "once the other four heads are defeated, so is the Control head" (page 10). So defeating the Apocalypse Dragon (the Outcome condition) is equivalent to defeating all 4 non-Control heads - not an independent fact.
+
+Key facts relevant to scoring/setup only:
 - The Dragon always takes the last turn each Round; it stops taking turns once first attacked in its lair, or once "End of the Round" is announced.
 - Core non-city tile **3** is always included in setup — revealing it places the Dragon (covering the central wasteland space and the 2 spaces above it) and marks its lair.
 - Optional Blitz variant: start with 1 Fame and 2(+1) Reputation, +1 Fame per level gained, one extra Source die and one extra Unit in the offer.
