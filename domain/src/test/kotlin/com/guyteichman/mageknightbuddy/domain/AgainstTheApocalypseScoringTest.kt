@@ -28,9 +28,9 @@ class AgainstTheApocalypseScoringTest {
         )
 
         // 40 fame + 6 achievements (2*1+1 knowledge, 2*1+2/2 loot, 2*1 conqueror, -2*1 beating)
-        // + 9 destroyed sites (3*3) + 15 floors ((2+1)*5) + 15 victorious
-        // + 30 rounds + 5 dummy cards + 5 end-of-round-not-announced = 125
-        assertEquals(125, AgainstTheApocalypseScoring.score(input))
+        // + 9 destroyed sites (3*3) + 10 sites conquered (2 sites * 5, flat per site) + 15 victorious
+        // + 30 rounds + 5 dummy cards + 5 end-of-round-not-announced = 120
+        assertEquals(120, AgainstTheApocalypseScoring.score(input))
         assertEquals(Outcome.WON, AgainstTheApocalypseScoring.outcome(input))
     }
 
@@ -59,10 +59,10 @@ class AgainstTheApocalypseScoringTest {
         val breakdown = AgainstTheApocalypseScoring.breakdown(input)
 
         assertEquals(13, breakdown.size)
-        assertEquals(125, breakdown.sumOf { it.value })
+        assertEquals(120, breakdown.sumOf { it.value })
         assertEquals(40, breakdown.single { it.label == "Fame" }.value)
         assertEquals(9, breakdown.single { it.label == "Destroyed Sites" }.value)
-        assertEquals(15, breakdown.single { it.label == "Ziggurat/Pyramid Floors Conquered" }.value)
+        assertEquals(10, breakdown.single { it.label == "Ziggurat/Pyramid Floors Conquered" }.value)
         assertEquals(15, breakdown.single { it.label == "Victorious" }.value)
         assertEquals(30, breakdown.single { it.label == "Rounds Finished Early" }.value)
         assertEquals(5, breakdown.single { it.label == "Dummy Player's Deck" }.value)
@@ -77,10 +77,23 @@ class AgainstTheApocalypseScoringTest {
     }
 
     @Test
-    fun `score includes 5 points per ziggurat or pyramid floor conquered`() {
+    fun `score includes 5 points per ziggurat or pyramid site with a floor conquered, not per floor number`() {
         val input = minimalInput(zigguratFloorsConquered = 2, pyramidFloorsConquered = 3)
 
-        assertEquals(25, AgainstTheApocalypseScoring.score(input))
+        // Flat 5 points per site (ziggurat + pyramid), not scaled by which floor (1/2/3) was reached.
+        assertEquals(10, AgainstTheApocalypseScoring.score(input))
+    }
+
+    @Test
+    fun `score treats reaching floor 3 the same as floor 1, since only whether a site was conquered matters`() {
+        val deepFloor = minimalInput(zigguratFloorsConquered = 3, pyramidFloorsConquered = 0)
+        val shallowFloor = minimalInput(zigguratFloorsConquered = 1, pyramidFloorsConquered = 0)
+
+        assertEquals(5, AgainstTheApocalypseScoring.score(deepFloor))
+        assertEquals(
+            AgainstTheApocalypseScoring.score(deepFloor),
+            AgainstTheApocalypseScoring.score(shallowFloor),
+        )
     }
 
     @Test
