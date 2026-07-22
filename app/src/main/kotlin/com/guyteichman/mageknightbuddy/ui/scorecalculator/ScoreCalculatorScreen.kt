@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,12 +37,16 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
+import com.guyteichman.mageknightbuddy.domain.BRAEVALAR_FINAL_SPACE_MOVE_COST_RANGE
+import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.CombatLevel
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.Outcome
 import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.Scenario
+import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
+import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
 import com.guyteichman.mageknightbuddy.ui.components.LabelPillPicker
 import com.guyteichman.mageknightbuddy.ui.components.LabeledCheckbox
 import com.guyteichman.mageknightbuddy.ui.components.LabeledDropdown
@@ -50,6 +55,7 @@ import com.guyteichman.mageknightbuddy.ui.components.NumberField
 import com.guyteichman.mageknightbuddy.ui.components.NumberPillPicker
 import com.guyteichman.mageknightbuddy.ui.components.ReputationTrackPicker
 import com.guyteichman.mageknightbuddy.ui.components.UnitLevelRow
+import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.help.HelpButton
 import kotlinx.coroutines.CoroutineScope
@@ -91,6 +97,13 @@ private enum class WizardPage(val title: String, val helpKeys: List<String> = em
     RELIC_PIECES_FOUND("Relic Pieces Found", listOf("Relic Pieces Found", "All Relic Pieces Found")),
     DESTROYED_SITE_TOKENS("Destroyed Site Tokens", listOf("Destroyed Site Tokens")),
     ZIGGURAT_PYRAMID_CONQUERED("Ziggurat & Pyramid", listOf("Ziggurat/Pyramid Floors Conquered")),
+    ARYTHEA_CHALLENGE("Arythea's Challenge", listOf("Wound Cards on Units")),
+    GOLDYX_CHALLENGE("Goldyx's Challenge", listOf("Crystal Colors in Inventory")),
+    KRANG_CHALLENGE("Krang's Challenge", listOf("Puppet Master")),
+    BRAEVALAR_CHALLENGE(
+        "Braevalar's Challenge",
+        listOf("All Basic Actions in Deck", "Advanced Action Colors in Deck", "Final Space Move Cost"),
+    ),
     VOLKARE_DIFFICULTY("Volkare Difficulty", listOf("Combat Level", "Race Level")),
     VOLKARE_CITIES_CONQUERED("Cities Conquered", listOf("Volkare's Quest: Cities Conquered")),
     VOLKARE_COMBAT("Volkare Combat", listOf("Volkare Defeated", "Volkare Combat Bonus")),
@@ -110,12 +123,28 @@ private val standardAchievementPages = listOf(
 )
 
 /**
+ * The Knight-specific "Challenge" page for Solo Conquest Challenge - only Arythea, Goldyx, Krang,
+ * and Braevalar need one (their Knight override adds brand-new input fields no other Knight's
+ * override needs); the other four Knights' overrides only change the *formula* applied to data
+ * already collected on the shared Standard Achievement pages, so they get no extra page at all.
+ */
+private fun knightChallengePage(knight: Knight): List<WizardPage> = when (knight) {
+    Knight.ARYTHEA -> listOf(WizardPage.ARYTHEA_CHALLENGE)
+    Knight.GOLDYX -> listOf(WizardPage.GOLDYX_CHALLENGE)
+    Knight.KRANG -> listOf(WizardPage.KRANG_CHALLENGE)
+    Knight.BRAEVALAR -> listOf(WizardPage.BRAEVALAR_CHALLENGE)
+    Knight.TOVAK, Knight.NOROWAS, Knight.WOLFHAWK, Knight.CORAL -> emptyList()
+}
+
+/**
  * The ordered page sequence for [scenario]'s wizard, built from its `*ScoringInput`'s actual
  * field shape (see the matching domain data class) rather than one fixed sequence for every
  * scenario. Exhaustive `when` over the sealed [Scenario] - the compiler flags it if a new
- * Scenario is added without a page sequence for it.
+ * Scenario is added without a page sequence for it. [knight] only matters for Solo Conquest
+ * Challenge, whose page list depends on which Knight is selected as well as the scenario - every
+ * other scenario's sequence is fixed regardless of [knight].
  */
-private fun wizardPagesFor(scenario: Scenario): List<WizardPage> = when (scenario) {
+private fun wizardPagesFor(scenario: Scenario, knight: Knight): List<WizardPage> = when (scenario) {
     Scenario.SoloConquest -> listOf(WizardPage.SETUP, WizardPage.FAME) + standardAchievementPages +
         listOf(
             WizardPage.GREATEST_QUESTER,
@@ -201,6 +230,16 @@ private fun wizardPagesFor(scenario: Scenario): List<WizardPage> = when (scenari
             WizardPage.DUMMY_PLAYER_STATUS,
             WizardPage.RESULT,
         )
+    // Same shape as Solo Conquest (Cities Conquered reuses that exact page - same 2-city setup),
+    // plus one Knight-conditional "Challenge" page for the 4 Knights that need extra fields.
+    Scenario.SoloConquestChallenge -> listOf(WizardPage.SETUP, WizardPage.FAME) + standardAchievementPages +
+        listOf(WizardPage.GREATEST_QUESTER, WizardPage.CITIES_CONQUERED) +
+        knightChallengePage(knight) +
+        listOf(
+            WizardPage.ROUNDS_FINISHED_EARLY,
+            WizardPage.DUMMY_PLAYER_STATUS,
+            WizardPage.RESULT,
+        )
     // Combat/Race Level are "chosen before setup" per docs/rules/volkares-quest.md, but still get
     // their own dedicated page (VOLKARE_DIFFICULTY) rather than living on the scenario-agnostic
     // SETUP page - shared by both Volkare scenarios since it's identical in both.
@@ -244,8 +283,8 @@ fun ScoreCalculatorScreen(
     // `viewModel.save()` call from a plain (non-suspend) button click handler.
     val scope = rememberCoroutineScope()
     // Recomputed on every recomposition (cheap - a handful of enum values), so switching the
-    // Scenario dropdown on the SETUP page immediately reflects the new scenario's page sequence.
-    val wizardPages = wizardPagesFor(viewModel.scenario)
+    // Scenario or Knight dropdown on the SETUP page immediately reflects the new page sequence.
+    val wizardPages = wizardPagesFor(viewModel.scenario, viewModel.knight)
     // Defensive clamp: pageIndex is restored from SavedStateHandle across process death, and a
     // shorter sequence (e.g. switching from Solo Conquest's 13 pages to For the Council's 4)
     // could otherwise leave it pointing past the end of the new list.
@@ -530,6 +569,88 @@ private fun WizardContent(
                         onCheckedChange = { viewModel.pyramidFloorConquered = it },
                     )
                 }
+                WizardPage.ARYTHEA_CHALLENGE -> NumberField(
+                    label = "Wound cards on Units (on top of Wounds in deck)",
+                    value = viewModel.woundCardsOnUnits,
+                    onValueChange = { viewModel.woundCardsOnUnits = it },
+                )
+                WizardPage.GOLDYX_CHALLENGE -> {
+                    Text("Crystal colors in Inventory", style = MaterialTheme.typography.labelLarge)
+                    ColorCheckbox(
+                        icon = { CrystalIcon(CardColor.RED) },
+                        label = "${CardColor.RED.label} crystal",
+                        checked = viewModel.goldyxRedCrystal,
+                        onCheckedChange = { viewModel.goldyxRedCrystal = it },
+                    )
+                    ColorCheckbox(
+                        icon = { CrystalIcon(CardColor.GREEN) },
+                        label = "${CardColor.GREEN.label} crystal",
+                        checked = viewModel.goldyxGreenCrystal,
+                        onCheckedChange = { viewModel.goldyxGreenCrystal = it },
+                    )
+                    ColorCheckbox(
+                        icon = { CrystalIcon(CardColor.BLUE) },
+                        label = "${CardColor.BLUE.label} crystal",
+                        checked = viewModel.goldyxBlueCrystal,
+                        onCheckedChange = { viewModel.goldyxBlueCrystal = it },
+                    )
+                    ColorCheckbox(
+                        icon = { CrystalIcon(CardColor.WHITE) },
+                        label = "${CardColor.WHITE.label} crystal",
+                        checked = viewModel.goldyxWhiteCrystal,
+                        onCheckedChange = { viewModel.goldyxWhiteCrystal = it },
+                    )
+                }
+                WizardPage.KRANG_CHALLENGE -> {
+                    NumberField(
+                        label = "Highest Fame value among held Enemy tokens",
+                        value = viewModel.puppetMasterHighestFameValue,
+                        onValueChange = { viewModel.puppetMasterHighestFameValue = it },
+                    )
+                    NumberField(
+                        label = "Distinct Fame values among held Enemy tokens",
+                        value = viewModel.puppetMasterDistinctFameValues,
+                        onValueChange = { viewModel.puppetMasterDistinctFameValues = it },
+                    )
+                }
+                WizardPage.BRAEVALAR_CHALLENGE -> {
+                    LabeledSwitch(
+                        label = "All Basic Action cards still in deck",
+                        checked = viewModel.allBasicActionsInDeck,
+                        onCheckedChange = { viewModel.allBasicActionsInDeck = it },
+                    )
+                    Text("Advanced Action colors in deck", style = MaterialTheme.typography.labelLarge)
+                    ColorCheckbox(
+                        icon = { CardColorDot(CardColor.RED) },
+                        label = "${CardColor.RED.label} Advanced Action",
+                        checked = viewModel.braevalarRedAdvancedAction,
+                        onCheckedChange = { viewModel.braevalarRedAdvancedAction = it },
+                    )
+                    ColorCheckbox(
+                        icon = { CardColorDot(CardColor.GREEN) },
+                        label = "${CardColor.GREEN.label} Advanced Action",
+                        checked = viewModel.braevalarGreenAdvancedAction,
+                        onCheckedChange = { viewModel.braevalarGreenAdvancedAction = it },
+                    )
+                    ColorCheckbox(
+                        icon = { CardColorDot(CardColor.BLUE) },
+                        label = "${CardColor.BLUE.label} Advanced Action",
+                        checked = viewModel.braevalarBlueAdvancedAction,
+                        onCheckedChange = { viewModel.braevalarBlueAdvancedAction = it },
+                    )
+                    ColorCheckbox(
+                        icon = { CardColorDot(CardColor.WHITE) },
+                        label = "${CardColor.WHITE.label} Advanced Action",
+                        checked = viewModel.braevalarWhiteAdvancedAction,
+                        onCheckedChange = { viewModel.braevalarWhiteAdvancedAction = it },
+                    )
+                    NumberPillPicker(
+                        label = "Final space's normal Move cost at Night",
+                        range = BRAEVALAR_FINAL_SPACE_MOVE_COST_RANGE,
+                        selected = viewModel.finalSpaceMoveCostAtNight,
+                        onSelect = { viewModel.finalSpaceMoveCostAtNight = it },
+                    )
+                }
                 WizardPage.VOLKARE_DIFFICULTY -> {
                     LabelPillPicker(
                         label = "Combat Level",
@@ -614,6 +735,21 @@ private fun WizardContent(
                 Text(if (isLastPage) "Done" else "Next")
             }
         }
+    }
+}
+
+/**
+ * A checkbox with a colored crystal/card-color icon and label, used by Goldyx's and Braevalar's
+ * "which colors do you have at least one of" fields - one row per [CardColor], with the
+ * ViewModel deriving the actual `distinctXColors` Int count from however many are checked
+ * (same pattern Solo Conquest's two named-city checkboxes already use for `citiesConquered`).
+ */
+@Composable
+private fun ColorCheckbox(icon: @Composable () -> Unit, label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
+        icon()
+        Text(label)
     }
 }
 

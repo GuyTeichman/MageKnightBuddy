@@ -20,6 +20,7 @@ import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
 import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.Scenario
+import com.guyteichman.mageknightbuddy.domain.SoloConquestChallengeScoringInput
 import com.guyteichman.mageknightbuddy.domain.SoloConquestScoringInput
 import com.guyteichman.mageknightbuddy.domain.VolkaresQuestScoringInput
 import com.guyteichman.mageknightbuddy.domain.VolkaresReturnScoringInput
@@ -317,6 +318,135 @@ class ScoreCalculatorViewModelTest {
         val input = assertIs<AgainstTheApocalypseScoringInput>(saved.input)
         assertEquals(1, input.zigguratFloorsConquered)
         assertEquals(1, input.pyramidFloorsConquered)
+    }
+
+    @Test
+    fun `save builds a SoloConquestChallengeScoringInput for Tovak, a Knight with no extra fields`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+
+        viewModel.scenarioId = Scenario.SoloConquestChallenge.id
+        viewModel.knight = Knight.TOVAK
+        viewModel.fame = "50"
+        viewModel.shieldsOnConquerSites = "4"
+        viewModel.city1Conquered = true
+        viewModel.city2Conquered = true
+
+        viewModel.save()
+
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Scenario.SoloConquestChallenge, saved.scenario)
+        assertEquals(Outcome.WON, saved.outcome)
+        // 50 fame + 16 Greatest Conqueror (Tovak: 4 Fame/Shield, so 4*4) + (2*10 + 15 all-cities) cities = 101
+        assertEquals(101, saved.score)
+        val input = assertIs<SoloConquestChallengeScoringInput>(saved.input)
+        assertEquals(Knight.TOVAK, input.knight)
+        assertEquals(2, input.citiesConquered)
+    }
+
+    @Test
+    fun `save builds a SoloConquestChallengeScoringInput for Arythea, combining wounds in deck and on Units`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+
+        viewModel.scenarioId = Scenario.SoloConquestChallenge.id
+        viewModel.knight = Knight.ARYTHEA
+        viewModel.fame = "10"
+        viewModel.woundsInDeck = "7"
+        viewModel.woundCardsOnUnits = "3"
+        viewModel.city1Conquered = true
+        viewModel.city2Conquered = true
+
+        viewModel.save()
+
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Outcome.WON, saved.outcome)
+        // 10 fame + 0 Greatest Beating (Arythea: Wounds cost no Fame) + (2*10 + 15 all-cities) cities = 45
+        assertEquals(45, saved.score)
+        val input = assertIs<SoloConquestChallengeScoringInput>(saved.input)
+        assertEquals(3, input.woundCardsOnUnits)
+    }
+
+    @Test
+    fun `save builds a SoloConquestChallengeScoringInput for Goldyx, deriving distinctCrystalColorsInInventory from 4 color checkboxes`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+
+        viewModel.scenarioId = Scenario.SoloConquestChallenge.id
+        viewModel.knight = Knight.GOLDYX
+        viewModel.fame = "20"
+        viewModel.spellsInDeck = "4"
+        viewModel.goldyxRedCrystal = true
+        viewModel.goldyxGreenCrystal = true
+        viewModel.goldyxBlueCrystal = true
+        viewModel.goldyxWhiteCrystal = true
+        viewModel.city1Conquered = true
+        viewModel.city2Conquered = true
+
+        viewModel.save()
+
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Outcome.WON, saved.outcome)
+        // 20 fame + 12 Greatest Knowledge (Goldyx: 3 Fame/Spell, so 3*4) + (2*10 + 15 all-cities) cities = 67
+        assertEquals(67, saved.score)
+        val input = assertIs<SoloConquestChallengeScoringInput>(saved.input)
+        assertEquals(4, input.distinctCrystalColorsInInventory)
+    }
+
+    @Test
+    fun `save builds a SoloConquestChallengeScoringInput for Krang, whose Puppet Master line replaces all 6 Achievements`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+
+        viewModel.scenarioId = Scenario.SoloConquestChallenge.id
+        viewModel.knight = Knight.KRANG
+        viewModel.fame = "30"
+        viewModel.puppetMasterHighestFameValue = "7"
+        viewModel.puppetMasterDistinctFameValues = "4"
+        viewModel.city1Conquered = true
+        viewModel.city2Conquered = true
+
+        viewModel.save()
+
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Outcome.WON, saved.outcome)
+        // 30 fame + 15 Puppet Master (7 highest + 2*4 distinct) + (2*10 + 15 all-cities) cities = 80
+        assertEquals(80, saved.score)
+        val input = assertIs<SoloConquestChallengeScoringInput>(saved.input)
+        assertEquals(7, input.puppetMasterHighestFameValue)
+        assertEquals(4, input.puppetMasterDistinctFameValues)
+    }
+
+    @Test
+    fun `save builds a SoloConquestChallengeScoringInput for Braevalar, combining the deck switch, 4 color checkboxes, and the Move-cost pill picker`() = runTest {
+        val fakeDao = FakeScoringSessionDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+
+        viewModel.scenarioId = Scenario.SoloConquestChallenge.id
+        viewModel.knight = Knight.BRAEVALAR
+        viewModel.fame = "15"
+        viewModel.spellsInDeck = "1"
+        viewModel.advancedActionsInDeck = "2"
+        viewModel.allBasicActionsInDeck = true
+        viewModel.braevalarRedAdvancedAction = true
+        viewModel.braevalarGreenAdvancedAction = true
+        viewModel.braevalarBlueAdvancedAction = true
+        viewModel.braevalarWhiteAdvancedAction = true
+        viewModel.finalSpaceMoveCostAtNight = 5
+        viewModel.city1Conquered = true
+        viewModel.city2Conquered = true
+
+        viewModel.save()
+
+        val saved = fakeDao.inserted.single().toDomain()
+        assertEquals(Outcome.WON, saved.outcome)
+        // 15 fame + 6 Greatest Knowledge (Braevalar: 2*1 spell + 2*2 advanced actions)
+        // + 5 Final Space Move Cost + (2*10 + 15 all-cities) cities = 61
+        assertEquals(61, saved.score)
+        val input = assertIs<SoloConquestChallengeScoringInput>(saved.input)
+        assertEquals(true, input.allBasicActionsInDeck)
+        assertEquals(4, input.distinctAdvancedActionColorsInDeck)
+        assertEquals(5, input.finalSpaceMoveCostAtNight)
     }
 
     @Test

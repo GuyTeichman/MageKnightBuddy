@@ -316,6 +316,27 @@ class SoloConquestChallengeScoringTest {
         }
     }
 
+    @Test
+    fun `finalSpaceMoveCostAtNight above 5 is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(knight = Knight.BRAEVALAR, finalSpaceMoveCostAtNight = 6)
+        }
+    }
+
+    @Test
+    fun `finalSpaceMoveCostAtNight below 2 is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(knight = Knight.BRAEVALAR, finalSpaceMoveCostAtNight = 1)
+        }
+    }
+
+    @Test
+    fun `finalSpaceMoveCostAtNight of 0 is rejected - it must be a real move cost, not the unused-field sentinel`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(knight = Knight.BRAEVALAR, finalSpaceMoveCostAtNight = 0)
+        }
+    }
+
     private fun achievements(
         spellsInDeck: Int = 0,
         advancedActionsInDeck: Int = 0,
@@ -351,7 +372,7 @@ class SoloConquestChallengeScoringTest {
         puppetMasterDistinctFameValues: Int = 0,
         allBasicActionsInDeck: Boolean = false,
         distinctAdvancedActionColorsInDeck: Int = 0,
-        finalSpaceMoveCostAtNight: Int = 0,
+        finalSpaceMoveCostAtNight: Int = 2,
     ) = SoloConquestChallengeScoringInput(
         knight = knight,
         fame = fame,

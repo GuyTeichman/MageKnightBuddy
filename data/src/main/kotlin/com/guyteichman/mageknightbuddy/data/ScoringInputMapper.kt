@@ -9,12 +9,14 @@ import com.guyteichman.mageknightbuddy.domain.FirstReconnaissanceScoringInput
 import com.guyteichman.mageknightbuddy.domain.ForTheCouncilScoringInput
 import com.guyteichman.mageknightbuddy.domain.FracturedLandsScoringInput
 import com.guyteichman.mageknightbuddy.domain.HiddenValleyScoringInput
+import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.LifeAndDeathScoringInput
 import com.guyteichman.mageknightbuddy.domain.LostRelicScoringInput
 import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
 import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.ScoringInput
+import com.guyteichman.mageknightbuddy.domain.SoloConquestChallengeScoringInput
 import com.guyteichman.mageknightbuddy.domain.SoloConquestScoringInput
 import com.guyteichman.mageknightbuddy.domain.StandardAchievements
 import com.guyteichman.mageknightbuddy.domain.UnitTally
@@ -143,6 +145,23 @@ fun ScoringInput.toDto(): ScoringInputDto = when (this) {
         cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
         endOfRoundAnnounced = endOfRoundAnnounced,
     )
+    is SoloConquestChallengeScoringInput -> ScoringInputDto.SoloConquestChallenge(
+        knightName = knight.name,
+        fame = fame,
+        standardAchievements = standardAchievements.toDto(),
+        citiesConquered = citiesConquered,
+        roundsFinishedEarly = roundsFinishedEarly,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+        questPoints = questPoints,
+        woundCardsOnUnits = woundCardsOnUnits,
+        distinctCrystalColorsInInventory = distinctCrystalColorsInInventory,
+        puppetMasterHighestFameValue = puppetMasterHighestFameValue,
+        puppetMasterDistinctFameValues = puppetMasterDistinctFameValues,
+        allBasicActionsInDeck = allBasicActionsInDeck,
+        distinctAdvancedActionColorsInDeck = distinctAdvancedActionColorsInDeck,
+        finalSpaceMoveCostAtNight = finalSpaceMoveCostAtNight,
+    )
     is VolkaresQuestScoringInput -> ScoringInputDto.VolkaresQuest(
         fame = fame,
         standardAchievements = standardAchievements.toDto(),
@@ -258,6 +277,23 @@ fun ScoringInputDto.toDomain(): ScoringInput = when (this) {
         roundsFinishedEarly = roundsFinishedEarly,
         cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
         endOfRoundAnnounced = endOfRoundAnnounced,
+    )
+    is ScoringInputDto.SoloConquestChallenge -> SoloConquestChallengeScoringInput(
+        knight = Knight.valueOf(knightName),
+        fame = fame,
+        standardAchievements = standardAchievements.toDomain(),
+        citiesConquered = citiesConquered,
+        roundsFinishedEarly = roundsFinishedEarly,
+        cardsRemainingInDummyDeck = cardsRemainingInDummyDeck,
+        endOfRoundAnnounced = endOfRoundAnnounced,
+        questPoints = questPoints,
+        woundCardsOnUnits = woundCardsOnUnits,
+        distinctCrystalColorsInInventory = distinctCrystalColorsInInventory,
+        puppetMasterHighestFameValue = puppetMasterHighestFameValue,
+        puppetMasterDistinctFameValues = puppetMasterDistinctFameValues,
+        allBasicActionsInDeck = allBasicActionsInDeck,
+        distinctAdvancedActionColorsInDeck = distinctAdvancedActionColorsInDeck,
+        finalSpaceMoveCostAtNight = finalSpaceMoveCostAtNight,
     )
     is ScoringInputDto.VolkaresQuest -> VolkaresQuestScoringInput(
         fame = fame,

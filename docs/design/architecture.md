@@ -13,7 +13,7 @@ Native Android: Kotlin + Jetpack Compose. See [ADR-0001](../adr/0001-domain-logi
 ## Tab roadmap
 
 1. **Scoreboard** (start destination) — table of every saved `ScoringSession` on this device (Knight / Score / Outcome, most recent first). A FAB ("Score new scenario") navigates to the Score tab. Tapping a row pushes a full-screen category breakdown (its own nested `NavHost` scoped to this tab) — see Scoreboard flow below.
-2. **Score** — the Score Calculator wizard. Solo scoring now covers every scenario with a working scoring engine in `domain/` (see `Scenario.entries`) except Solo Conquest Challenge - Solo Conquest, First Reconnaissance, For the Council, The Hidden Valley, The Realm of the Dead, Against the Dragon, Against the Horsemen, Apocalypse is Here, The Fractured Lands, Life and Death, The Lost Relic, Against the Apocalypse, Volkare's Quest, and Volkare's Return. Solo Conquest Challenge has a scoring engine in `domain/` but isn't wired into this tab yet - see issue #107.
+2. **Score** — the Score Calculator wizard. Solo scoring now covers every scenario with a working scoring engine in `domain/` (see `Scenario.entries`) - Solo Conquest, First Reconnaissance, For the Council, The Hidden Valley, The Realm of the Dead, Against the Dragon, Against the Horsemen, Apocalypse is Here, The Fractured Lands, Life and Death, The Lost Relic, Against the Apocalypse, Volkare's Quest, Volkare's Return, and Solo Conquest Challenge (whose Knight-specific "Challenge" pages only appear for the 4 Knights - Arythea, Goldyx, Krang, Braevalar - whose objective needs a field no other Knight's does; `wizardPagesFor` takes both `Scenario` and `Knight` for this one scenario).
 3. **Dummy Player tab** (later) — tracks the active player-simulation's deck and draws; buttons for "run turn" and "end round / new round". Hosts a mode selector between standard Dummy Player, Volkare (The Lost Legion's Volkare's Return/Volkare's Quest), and Proxy Player (a more elaborate, interactive Dummy Player replacement introduced in Apocalypse Dragon, but usable in any solo/coop scenario, not just the ones that expansion added) — one tab, one mode active per scenario, not three separate tabs. Volkare and Proxy Player modes are not designed yet.
 
 ## Score Calculator flow
@@ -41,7 +41,6 @@ This is a **post-game wizard only** — it does not track anything live during p
 
 ## Explicitly out of scope for now
 
-- Solo Conquest Challenge — a scoring engine exists in `domain/` but isn't wired into the Score Calculator tab yet (see issue #107).
 - Live/in-game tracking during the Score Calculator flow.
 - Dummy Player tab implementation, including its Volkare and Proxy Player modes — neither is designed yet.
 - The Settings screen itself (expansion/variant toggles, help-citation visibility) — Greatest Quester is scored unconditionally in the meantime; see `CONTEXT.md`.

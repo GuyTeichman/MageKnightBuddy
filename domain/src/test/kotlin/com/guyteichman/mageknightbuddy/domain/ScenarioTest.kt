@@ -19,6 +19,7 @@ class ScenarioTest {
         assertEquals(Scenario.LifeAndDeath, Scenario.fromId("life_and_death"))
         assertEquals(Scenario.LostRelic, Scenario.fromId("lost_relic"))
         assertEquals(Scenario.AgainstTheApocalypse, Scenario.fromId("against_the_apocalypse"))
+        assertEquals(Scenario.SoloConquestChallenge, Scenario.fromId("solo_conquest_challenge"))
         assertEquals(Scenario.VolkaresQuest, Scenario.fromId("volkares_quest"))
         assertEquals(Scenario.VolkaresReturn, Scenario.fromId("volkares_return"))
     }
@@ -39,6 +40,7 @@ class ScenarioTest {
                 Scenario.LifeAndDeath,
                 Scenario.LostRelic,
                 Scenario.AgainstTheApocalypse,
+                Scenario.SoloConquestChallenge,
                 Scenario.VolkaresQuest,
                 Scenario.VolkaresReturn,
             ),

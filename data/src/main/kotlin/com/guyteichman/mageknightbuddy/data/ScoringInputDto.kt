@@ -171,6 +171,29 @@ sealed interface ScoringInputDto {
     ) : ScoringInputDto
 
     @Serializable
+    @SerialName("solo_conquest_challenge")
+    data class SoloConquestChallenge(
+        // The Knight enum's name (see domain) - needed here as a genuine scoring input (it
+        // changes the formula), separate from ScoringSessionEntity's own top-level knight column,
+        // which is session metadata every scenario carries regardless of whether it affects scoring.
+        val knightName: String,
+        val fame: Int,
+        val standardAchievements: StandardAchievementsDto,
+        val citiesConquered: Int,
+        val roundsFinishedEarly: Int,
+        val cardsRemainingInDummyDeck: Int,
+        val endOfRoundAnnounced: Boolean,
+        val questPoints: Int,
+        val woundCardsOnUnits: Int,
+        val distinctCrystalColorsInInventory: Int,
+        val puppetMasterHighestFameValue: Int,
+        val puppetMasterDistinctFameValues: Int,
+        val allBasicActionsInDeck: Boolean,
+        val distinctAdvancedActionColorsInDeck: Int,
+        val finalSpaceMoveCostAtNight: Int,
+    ) : ScoringInputDto
+
+    @Serializable
     @SerialName("volkares_quest")
     data class VolkaresQuest(
         val fame: Int,

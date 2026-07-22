@@ -27,6 +27,7 @@ fun ScoringInput.score(): Int = when (this) {
     is LifeAndDeathScoringInput -> LifeAndDeathScoring.score(this)
     is LostRelicScoringInput -> LostRelicScoring.score(this)
     is AgainstTheApocalypseScoringInput -> AgainstTheApocalypseScoring.score(this)
+    is SoloConquestChallengeScoringInput -> SoloConquestChallengeScoring.score(this)
     is VolkaresQuestScoringInput -> VolkaresQuestScoring.score(this)
     is VolkaresReturnScoringInput -> VolkaresReturnScoring.score(this)
 }
@@ -45,6 +46,7 @@ fun ScoringInput.outcome(): Outcome = when (this) {
     is LifeAndDeathScoringInput -> LifeAndDeathScoring.outcome(this)
     is LostRelicScoringInput -> LostRelicScoring.outcome(this)
     is AgainstTheApocalypseScoringInput -> AgainstTheApocalypseScoring.outcome(this)
+    is SoloConquestChallengeScoringInput -> SoloConquestChallengeScoring.outcome(this)
     is VolkaresQuestScoringInput -> VolkaresQuestScoring.outcome(this)
     is VolkaresReturnScoringInput -> VolkaresReturnScoring.outcome(this)
 }
@@ -63,6 +65,7 @@ fun ScoringInput.breakdown(): List<ScoreLineItem> = when (this) {
     is LifeAndDeathScoringInput -> LifeAndDeathScoring.breakdown(this)
     is LostRelicScoringInput -> LostRelicScoring.breakdown(this)
     is AgainstTheApocalypseScoringInput -> AgainstTheApocalypseScoring.breakdown(this)
+    is SoloConquestChallengeScoringInput -> SoloConquestChallengeScoring.breakdown(this)
     is VolkaresQuestScoringInput -> VolkaresQuestScoring.breakdown(this)
     is VolkaresReturnScoringInput -> VolkaresReturnScoring.breakdown(this)
 }

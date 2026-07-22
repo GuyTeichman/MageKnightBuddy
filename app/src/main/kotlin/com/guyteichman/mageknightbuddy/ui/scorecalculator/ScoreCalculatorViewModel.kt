@@ -31,6 +31,7 @@ import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.domain.ScoringInput
 import com.guyteichman.mageknightbuddy.domain.ScoringSession
+import com.guyteichman.mageknightbuddy.domain.SoloConquestChallengeScoringInput
 import com.guyteichman.mageknightbuddy.domain.SoloConquestScoringInput
 import com.guyteichman.mageknightbuddy.domain.StandardAchievements
 import com.guyteichman.mageknightbuddy.domain.UnitTally
@@ -125,6 +126,30 @@ class ScoreCalculatorViewModel(
     // floor number.
     var zigguratFloorConquered: Boolean by savedStateHandle.saveable("zigguratFloorConquered") { mutableStateOf(false) }
     var pyramidFloorConquered: Boolean by savedStateHandle.saveable("pyramidFloorConquered") { mutableStateOf(false) }
+
+    // Solo Conquest Challenge's Knight-specific fields below - only one Knight's block is ever
+    // read for a given session (see the `when (knight)` in [input]'s SoloConquestChallenge
+    // branch), so leaving the others at their defaults for a different Knight is harmless.
+    var woundCardsOnUnits: String by savedStateHandle.saveable("woundCardsOnUnits") { mutableStateOf("0") }
+    // Goldyx: one checkbox per CardColor, deriving distinctCrystalColorsInInventory the same way
+    // Solo Conquest's city1Conquered/city2Conquered derive citiesConquered.
+    var goldyxRedCrystal: Boolean by savedStateHandle.saveable("goldyxRedCrystal") { mutableStateOf(false) }
+    var goldyxGreenCrystal: Boolean by savedStateHandle.saveable("goldyxGreenCrystal") { mutableStateOf(false) }
+    var goldyxBlueCrystal: Boolean by savedStateHandle.saveable("goldyxBlueCrystal") { mutableStateOf(false) }
+    var goldyxWhiteCrystal: Boolean by savedStateHandle.saveable("goldyxWhiteCrystal") { mutableStateOf(false) }
+    var puppetMasterHighestFameValue: String by savedStateHandle.saveable("puppetMasterHighestFameValue") { mutableStateOf("0") }
+    var puppetMasterDistinctFameValues: String by savedStateHandle.saveable("puppetMasterDistinctFameValues") { mutableStateOf("0") }
+    var allBasicActionsInDeck: Boolean by savedStateHandle.saveable("allBasicActionsInDeck") { mutableStateOf(false) }
+    // Braevalar: one checkbox per CardColor, deriving distinctAdvancedActionColorsInDeck.
+    var braevalarRedAdvancedAction: Boolean by savedStateHandle.saveable("braevalarRedAdvancedAction") { mutableStateOf(false) }
+    var braevalarGreenAdvancedAction: Boolean by savedStateHandle.saveable("braevalarGreenAdvancedAction") { mutableStateOf(false) }
+    var braevalarBlueAdvancedAction: Boolean by savedStateHandle.saveable("braevalarBlueAdvancedAction") { mutableStateOf(false) }
+    var braevalarWhiteAdvancedAction: Boolean by savedStateHandle.saveable("braevalarWhiteAdvancedAction") { mutableStateOf(false) }
+    // An Int (not String), driven by NumberPillPicker(2..5) - same rationale as graveyardsSealed.
+    // Defaults to 2 (the range's minimum), matching the domain field's own non-zero default -
+    // see SoloConquestChallengeScoringInput.finalSpaceMoveCostAtNight's KDoc for why 0 can't be
+    // used as the usual "not this Knight" sentinel here.
+    var finalSpaceMoveCostAtNight: Int by savedStateHandle.saveable("finalSpaceMoveCostAtNight") { mutableStateOf(2) }
 
     // Combat/Race Level are shared by both Volkare scenarios (same two enums, same
     // VOLKARE_DIFFICULTY page). cardsRemainingInVolkaresDeck is also shared, even though the two
@@ -265,6 +290,33 @@ class ScoreCalculatorViewModel(
                 cardsRemainingInDummyDeck = cardsRemainingInDummyDeck.toIntOrZero(),
                 endOfRoundAnnounced = endOfRoundAnnounced,
             )
+            Scenario.SoloConquestChallenge -> SoloConquestChallengeScoringInput(
+                knight = knight,
+                fame = fame.toIntOrZero(),
+                standardAchievements = standardAchievements,
+                citiesConquered = listOf(city1Conquered, city2Conquered).count { it },
+                roundsFinishedEarly = roundsFinishedEarly.toIntOrZero(),
+                cardsRemainingInDummyDeck = cardsRemainingInDummyDeck.toIntOrZero(),
+                endOfRoundAnnounced = endOfRoundAnnounced,
+                questPoints = questPoints.toIntOrZero(),
+                woundCardsOnUnits = woundCardsOnUnits.toIntOrZero(),
+                distinctCrystalColorsInInventory = listOf(
+                    goldyxRedCrystal,
+                    goldyxGreenCrystal,
+                    goldyxBlueCrystal,
+                    goldyxWhiteCrystal,
+                ).count { it },
+                puppetMasterHighestFameValue = puppetMasterHighestFameValue.toIntOrZero(),
+                puppetMasterDistinctFameValues = puppetMasterDistinctFameValues.toIntOrZero(),
+                allBasicActionsInDeck = allBasicActionsInDeck,
+                distinctAdvancedActionColorsInDeck = listOf(
+                    braevalarRedAdvancedAction,
+                    braevalarGreenAdvancedAction,
+                    braevalarBlueAdvancedAction,
+                    braevalarWhiteAdvancedAction,
+                ).count { it },
+                finalSpaceMoveCostAtNight = finalSpaceMoveCostAtNight,
+            )
             Scenario.VolkaresQuest -> VolkaresQuestScoringInput(
                 fame = fame.toIntOrZero(),
                 standardAchievements = standardAchievements,
@@ -330,6 +382,19 @@ class ScoreCalculatorViewModel(
         destroyedSiteTokens = "0"
         zigguratFloorConquered = false
         pyramidFloorConquered = false
+        woundCardsOnUnits = "0"
+        goldyxRedCrystal = false
+        goldyxGreenCrystal = false
+        goldyxBlueCrystal = false
+        goldyxWhiteCrystal = false
+        puppetMasterHighestFameValue = "0"
+        puppetMasterDistinctFameValues = "0"
+        allBasicActionsInDeck = false
+        braevalarRedAdvancedAction = false
+        braevalarGreenAdvancedAction = false
+        braevalarBlueAdvancedAction = false
+        braevalarWhiteAdvancedAction = false
+        finalSpaceMoveCostAtNight = 2
         combatLevel = CombatLevel.entries.first()
         raceLevel = RaceLevel.entries.first()
         volkareCitiesConquered = 0

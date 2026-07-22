@@ -9,6 +9,13 @@ private const val TOTAL_CITIES_IN_SOLO_CONQUEST_CHALLENGE = 2
 // colors" tallies (crystals held, Advanced Actions in deck) can never exceed 4.
 private const val TOTAL_CARD_COLORS = 4
 
+// Normal Move cost at Night ranges 2-5 across all terrain types with a defined cost (more than
+// 4 terrain types exist, but their Night Move costs all fall within this range) - docs/rules/
+// solo-conquest-challenge.md's examples are Mountains = 5, Lakes = 2. Not private: the app layer's
+// wizard page needs the same range for its NumberPillPicker, so this is the one source of truth
+// for it rather than a second, easy-to-drift hardcoded `2..5` in the UI.
+val BRAEVALAR_FINAL_SPACE_MOVE_COST_RANGE = 2..5
+
 // The Wound/Shield/Unit-level thresholds each Knight's additional objective checks against
 // (docs/rules/solo-conquest-challenge.md, "Outcome" section). Named per-Knight so the
 // `outcome()` when-block below reads like the rulebook table it mirrors.
@@ -56,9 +63,12 @@ data class SoloConquestChallengeScoringInput(
     // Braevalar: how many distinct colors (0-4) have at least one Advanced Action in deck.
     val distinctAdvancedActionColorsInDeck: Int = 0,
     // Braevalar: normal Move cost at Night of the space the game ended on (Mountains = 5,
-    // Lakes = 2) - scored directly as bonus Fame.
-    val finalSpaceMoveCostAtNight: Int = 0,
-) {
+    // Lakes = 2) - scored directly as bonus Fame. Defaults to the range's minimum (a real, legal
+    // value) rather than 0 - unlike this class's other Knight-specific fields, 0 isn't itself a
+    // valid move cost, so it can't double as the "not this Knight" sentinel the other fields'
+    // 0 defaults do.
+    val finalSpaceMoveCostAtNight: Int = BRAEVALAR_FINAL_SPACE_MOVE_COST_RANGE.first,
+) : ScoringInput {
     // init runs on every construction (including copy()), so an out-of-range tally can never
     // reach the scoring math below - it fails fast at the point the bad value was created.
     init {
@@ -72,6 +82,10 @@ data class SoloConquestChallengeScoringInput(
         require(distinctAdvancedActionColorsInDeck in 0..TOTAL_CARD_COLORS) {
             "distinctAdvancedActionColorsInDeck must be between 0 and $TOTAL_CARD_COLORS, " +
                 "was $distinctAdvancedActionColorsInDeck"
+        }
+        require(finalSpaceMoveCostAtNight in BRAEVALAR_FINAL_SPACE_MOVE_COST_RANGE) {
+            "finalSpaceMoveCostAtNight must be in $BRAEVALAR_FINAL_SPACE_MOVE_COST_RANGE, " +
+                "was $finalSpaceMoveCostAtNight"
         }
     }
 }

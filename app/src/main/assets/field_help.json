@@ -123,6 +123,30 @@
     "text": "+5 Fame for each of the ziggurat and the pyramid you conquered at least one floor of — a flat bonus per site, not scaled by which exact floor you reached. Conquering a floor of both is also required to Win.",
     "source": "Against the Apocalypse scoring, Solo, Apocalypse Dragon rulebook p.28"
   },
+  "Wound Cards on Units": {
+    "text": "Arythea only: your Wound cards attached to Units, added to your Wounds in deck for her Win condition (at least 10 total). Her Greatest Beating also scores 0 regardless of Wounds in deck.",
+    "source": "Solo Conquest Challenge, Apocalypse Dragon rulebook p.42"
+  },
+  "Crystal Colors in Inventory": {
+    "text": "Goldyx only: check every crystal color you have at least one of in your Inventory. Having all 4, plus at least 4 Spells in your deck, is required to Win.",
+    "source": "Solo Conquest Challenge, Apocalypse Dragon rulebook p.42"
+  },
+  "Puppet Master": {
+    "text": "Krang only: replaces all six Standard Achievements. Score Fame equal to the highest Fame value among Enemy tokens still held from the Puppet Master Skill, plus 2 Fame for each distinct Fame value among those tokens. Having at least 4 distinct Fame values is also required to Win.",
+    "source": "Solo Conquest Challenge, Apocalypse Dragon rulebook p.42"
+  },
+  "All Basic Actions in Deck": {
+    "text": "Braevalar only: whether every Basic Action card is still in your deck (none thrown away) — required, along with having an Advanced Action of every color, to Win.",
+    "source": "Solo Conquest Challenge, Apocalypse Dragon rulebook p.42"
+  },
+  "Advanced Action Colors in Deck": {
+    "text": "Braevalar only: check every color you have at least one Advanced Action card of in your deck. Having all 4 is required to Win.",
+    "source": "Solo Conquest Challenge, Apocalypse Dragon rulebook p.42"
+  },
+  "Final Space Move Cost": {
+    "text": "Braevalar only: +Fame equal to the normal Move cost (at Night) of the space you finish the game on, e.g. Mountains = 5, Lakes = 2.",
+    "source": "Solo Conquest Challenge, Apocalypse Dragon rulebook p.42"
+  },
   "Combat Level": {
     "text": "How tough Volkare and the city are, chosen before setup — Daring, Heroic, or Legendary. This is also the base value (30/40/50) the Volkare Combat Bonus starts from if you defeat him.",
     "source": "Volkare's Quest / Volkare's Return, Scenario difficulty, Lost Legion rulebook p.17/p.14"

@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
@@ -77,6 +76,10 @@ import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
+import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
+import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
+import com.guyteichman.mageknightbuddy.ui.components.label
+import com.guyteichman.mageknightbuddy.ui.components.swatch
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.help.HelpButton
 import kotlinx.coroutines.launch
@@ -513,45 +516,9 @@ private fun MiniCard(color: CardColor) {
     )
 }
 
-/** A small colored square used as a compact per-color legend marker. [size] is the square's edge. */
-@Composable
-private fun CardColorDot(color: CardColor, size: Dp = 10.dp) {
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(RoundedCornerShape(3.dp))
-            .background(color.swatch)
-            .then(if (color == CardColor.WHITE) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(3.dp)) else Modifier),
-    )
-}
-
-/**
- * A small diamond standing in for one crystal in the Inventory, sized to fill exactly a [size] x
- * [size] box - same as [CardColorDot] - so the two read as the same size given the same [size].
- * Drawn as an explicit [DiamondShape] rather than a rotated square: a rotated square's rendered
- * pixels extend past its own layout bounds (rotate() doesn't change reported layout size), which
- * left it up to whatever container this sits in (e.g. FilterChip's icon slot) whether that
- * overflow is visible or clipped - too fragile to guarantee matching [CardColorDot] reliably.
- */
-@Composable
-private fun CrystalIcon(color: CardColor, size: Dp = 17.dp) {
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(DiamondShape)
-            .background(color.swatch)
-            .then(if (color == CardColor.WHITE) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, DiamondShape) else Modifier),
-    )
-}
-
-/** A diamond/rhombus shape filling its full bounding box - the [CrystalIcon] glyph. */
-private val DiamondShape = GenericShape { size, _ ->
-    moveTo(size.width / 2f, 0f)
-    lineTo(size.width, size.height / 2f)
-    lineTo(size.width / 2f, size.height)
-    lineTo(0f, size.height / 2f)
-    close()
-}
+// CardColorDot, CrystalIcon, DiamondShape, and the CardColor.swatch/label mappings moved to
+// ui/components/CardColorIcons.kt - the Score Calculator's Solo Conquest Challenge pages need the
+// same color icons for its Knight-specific color checkboxes, so this is no longer single-use.
 
 /** One row of the event log: an icon standing in for the event kind, then its title/meta/description. */
 @Composable
@@ -783,13 +750,3 @@ private fun ColorPickerRow(
     }
 }
 
-private val CardColor.label: String
-    get() = name.lowercase().replaceFirstChar { it.uppercase() }
-
-private val CardColor.swatch: Color
-    get() = when (this) {
-        CardColor.RED -> Color(0xFFB5423A)
-        CardColor.GREEN -> Color(0xFF3E7C4A)
-        CardColor.BLUE -> Color(0xFF3768A6)
-        CardColor.WHITE -> Color(0xFFFBFAFF)
-    }

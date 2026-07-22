@@ -75,6 +75,11 @@ sealed interface Scenario {
         override val displayName = "Against the Apocalypse"
     }
 
+    data object SoloConquestChallenge : Scenario {
+        override val id = "solo_conquest_challenge"
+        override val displayName = "Solo Conquest Challenge"
+    }
+
     data object VolkaresQuest : Scenario {
         override val id = "volkares_quest"
         override val displayName = "Volkare's Quest"
@@ -101,6 +106,7 @@ sealed interface Scenario {
             LifeAndDeath,
             LostRelic,
             AgainstTheApocalypse,
+            SoloConquestChallenge,
             VolkaresQuest,
             VolkaresReturn,
         )

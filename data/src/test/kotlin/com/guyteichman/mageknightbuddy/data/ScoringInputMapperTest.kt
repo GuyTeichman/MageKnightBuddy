@@ -9,12 +9,14 @@ import com.guyteichman.mageknightbuddy.domain.FirstReconnaissanceScoringInput
 import com.guyteichman.mageknightbuddy.domain.ForTheCouncilScoringInput
 import com.guyteichman.mageknightbuddy.domain.FracturedLandsScoringInput
 import com.guyteichman.mageknightbuddy.domain.HiddenValleyScoringInput
+import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.LifeAndDeathScoringInput
 import com.guyteichman.mageknightbuddy.domain.LostRelicScoringInput
 import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
 import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.ScoringInput
+import com.guyteichman.mageknightbuddy.domain.SoloConquestChallengeScoringInput
 import com.guyteichman.mageknightbuddy.domain.SoloConquestScoringInput
 import com.guyteichman.mageknightbuddy.domain.StandardAchievements
 import com.guyteichman.mageknightbuddy.domain.UnitTally
@@ -220,6 +222,25 @@ class ScoringInputMapperTest {
             roundsFinishedEarly = 1,
             cardsRemainingInDummyDeck = 5,
             endOfRoundAnnounced = false,
+        )
+
+        assertRoundTrips(input)
+    }
+
+    @Test
+    fun `SoloConquestChallengeScoringInput round-trips through ScoringInputDto and JSON, Knight-specific fields included`() {
+        val input = SoloConquestChallengeScoringInput(
+            knight = Knight.BRAEVALAR,
+            fame = 45,
+            standardAchievements = achievements,
+            citiesConquered = 2,
+            roundsFinishedEarly = 1,
+            cardsRemainingInDummyDeck = 5,
+            endOfRoundAnnounced = false,
+            questPoints = 6,
+            allBasicActionsInDeck = true,
+            distinctAdvancedActionColorsInDeck = 3,
+            finalSpaceMoveCostAtNight = 5,
         )
 
         assertRoundTrips(input)
