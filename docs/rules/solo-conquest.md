@@ -25,6 +25,11 @@ This is the **v1 target scenario** for the Score Calculator.
 - When taking Tactics, the player always chooses first; the Dummy Player then takes one random card from those remaining.
 - At the end of each Day or Night, both used Tactic cards are removed from the game — each Tactic card is picked exactly once during the whole scenario.
 
+## Variants
+
+- "You may adjust the city levels to set up the right challenge for you" — the Level 5 / Level 8 split above is the default, not a fixed rule; scoring itself (+10/city, +15 for all cities) is unaffected by which levels are actually in play.
+- You may also use a Megapolis (see the rulebook's Variants section for Megapolis rules).
+
 ## Scenario end
 
 When all cities are conquered, the player has one last turn (the Dummy Player does not get one). If not all cities are conquered by the Round limit, the scenario simply ends at Round 6.
