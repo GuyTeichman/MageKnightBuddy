@@ -23,6 +23,7 @@ import androidx.navigation.compose.rememberNavController
 import com.guyteichman.mageknightbuddy.R
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
+import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.ui.dummyplayer.DummyPlayerTab
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.scoreboard.ScoreboardTab
@@ -51,6 +52,7 @@ private val tabs = listOf(Tab.Scoreboard, Tab.ScoreCalculator, Tab.DummyPlayer)
 fun MageKnightBuddyApp(
     repository: ScoringSessionRepository,
     dummyPlayerRepository: DummyPlayerSessionRepository,
+    volkareRepository: VolkareSessionRepository,
     fieldHelp: Map<String, FieldHelp>,
 ) {
     // rememberNavController creates the NavController once and keeps the same instance
@@ -112,7 +114,9 @@ fun MageKnightBuddyApp(
                     onDone = { navigateToTab(Tab.Scoreboard.route) },
                 )
             }
-            composable(Tab.DummyPlayer.route) { DummyPlayerTab(repository = dummyPlayerRepository, fieldHelp = fieldHelp) }
+            composable(Tab.DummyPlayer.route) {
+                DummyPlayerTab(repository = dummyPlayerRepository, volkareRepository = volkareRepository, fieldHelp = fieldHelp)
+            }
         }
     }
 }

@@ -68,6 +68,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
+import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
@@ -83,6 +84,7 @@ import kotlinx.coroutines.launch
 
 private const val DUMMY_PLAYER_SETUP_ROUTE = "dummy_player_setup"
 private const val DUMMY_PLAYER_AI_ROUTE = "dummy_player_ai"
+private const val VOLKARE_AI_ROUTE = "volkare_ai"
 
 /**
  * Root composable for the Dummy Player tab: the Knight-select setup screen is the tab's start
@@ -96,17 +98,20 @@ private const val DUMMY_PLAYER_AI_ROUTE = "dummy_player_ai"
  * reference (issue #88).
  */
 @Composable
-fun DummyPlayerTab(repository: DummyPlayerSessionRepository, fieldHelp: Map<String, FieldHelp>) {
+fun DummyPlayerTab(repository: DummyPlayerSessionRepository, volkareRepository: VolkareSessionRepository, fieldHelp: Map<String, FieldHelp>) {
     val nestedNavController = rememberNavController()
 
     NavHost(navController = nestedNavController, startDestination = DUMMY_PLAYER_SETUP_ROUTE) {
         composable(DUMMY_PLAYER_SETUP_ROUTE) {
             DummyPlayerSetupScreen(
                 repository = repository,
+                volkareRepository = volkareRepository,
                 // Both Start and Restore Game land on the same AI-screen route - once a session
                 // exists (freshly started or restored), the AI screen just loads whatever's saved.
                 onStart = { nestedNavController.navigate(DUMMY_PLAYER_AI_ROUTE) },
                 onRestore = { nestedNavController.navigate(DUMMY_PLAYER_AI_ROUTE) },
+                onStartVolkare = { nestedNavController.navigate(VOLKARE_AI_ROUTE) },
+                onRestoreVolkare = { nestedNavController.navigate(VOLKARE_AI_ROUTE) },
             )
         }
         composable(DUMMY_PLAYER_AI_ROUTE) {
@@ -114,21 +119,34 @@ fun DummyPlayerTab(repository: DummyPlayerSessionRepository, fieldHelp: Map<Stri
             // (per #27).
             DummyPlayerAiScreen(repository = repository, fieldHelp = fieldHelp, onBack = { nestedNavController.popBackStack() })
         }
+        composable(VOLKARE_AI_ROUTE) {
+            VolkareAiScreen(repository = volkareRepository, onBack = { nestedNavController.popBackStack() })
+        }
     }
 }
 
 /**
- * The Knight-select setup screen: pick a Knight (or "Random"), then either Start a fresh session
- * or Restore a previously saved one.
+ * The setup screen: pick a Knight (or "Random"), or "Volkare" to switch into Volkare mode's own
+ * fields ([VolkareSetupFields]) instead - see `CONTEXT.md`'s "Volkare" entry: Volkare replaces the
+ * whole picker step, there's no Knight backing selection underneath it. Either way, Start or
+ * Restore Game lands on the matching AI screen. Hosts both [DummyPlayerSetupViewModel] and
+ * [VolkareSetupViewModel] side by side (only one drives the visible fields/Start at a time, per
+ * [volkareSelected]) so switching between them mid-setup doesn't lose either one's state, and so
+ * Restore Game can compare both repositories' recency regardless of which is currently selected.
  */
 @Composable
 private fun DummyPlayerSetupScreen(
     repository: DummyPlayerSessionRepository,
+    volkareRepository: VolkareSessionRepository,
     onStart: () -> Unit,
     onRestore: () -> Unit,
+    onStartVolkare: () -> Unit,
+    onRestoreVolkare: () -> Unit,
 ) {
     val viewModel: DummyPlayerSetupViewModel = viewModel(factory = DummyPlayerSetupViewModel.factory(repository))
+    val volkareViewModel: VolkareSetupViewModel = viewModel(factory = VolkareSetupViewModel.factory(volkareRepository))
     val scope = rememberCoroutineScope()
+    var volkareSelected by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -139,17 +157,37 @@ private fun DummyPlayerSetupScreen(
         KnightPicker(
             knight = viewModel.knight,
             wasRandom = viewModel.wasRandom,
-            onKnightSelected = viewModel::pickKnight,
-            onRandomSelected = viewModel::pickRandom,
+            volkareSelected = volkareSelected,
+            onKnightSelected = { viewModel.pickKnight(it); volkareSelected = false },
+            onRandomSelected = { viewModel.pickRandom(); volkareSelected = false },
+            onVolkareSelected = { volkareSelected = true },
         )
+
+        if (volkareSelected) {
+            VolkareSetupFields(
+                scenario = volkareViewModel.scenario,
+                raceLevel = volkareViewModel.raceLevel,
+                woundCount = volkareViewModel.woundCount,
+                woundCountIsCustom = volkareViewModel.woundCountIsCustom,
+                onScenarioSelected = volkareViewModel::pickScenario,
+                onRaceLevelSelected = volkareViewModel::pickRaceLevel,
+                onWoundCountChanged = volkareViewModel::changeWoundCount,
+            )
+        }
 
         Button(
             onClick = {
                 // Building the session and autosaving it is a suspend call (Room I/O), so it
-                // needs a coroutine scope; onStart() only runs after that save completes.
+                // needs a coroutine scope; onStart()/onStartVolkare() only run after that save
+                // completes.
                 scope.launch {
-                    viewModel.start()
-                    onStart()
+                    if (volkareSelected) {
+                        volkareViewModel.start()
+                        onStartVolkare()
+                    } else {
+                        viewModel.start()
+                        onStart()
+                    }
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -158,8 +196,15 @@ private fun DummyPlayerSetupScreen(
         }
 
         OutlinedButton(
-            onClick = onRestore,
-            enabled = viewModel.hasSavedSession,
+            onClick = {
+                // Restore Game always resumes whichever of the two saved sessions is most recent,
+                // regardless of what's currently selected above - see this function's doc comment.
+                scope.launch {
+                    val volkareIsNewer = (volkareRepository.updatedAt() ?: -1) > (repository.updatedAt() ?: -1)
+                    if (volkareIsNewer) onRestoreVolkare() else onRestore()
+                }
+            },
+            enabled = viewModel.hasSavedSession || volkareViewModel.hasSavedSession,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Restore Game")
@@ -176,17 +221,29 @@ private fun DummyPlayerSetupScreen(
  * been sourced (issue #69), falling back to a generic shield glyph for Coral until hers lands too.
  * "Random" reuses that same generic glyph with a "?" overlaid (see [RandomShieldIcon]) to mark
  * it as the wildcard choice, distinct from the plain per-Knight entries.
+ *
+ * "Volkare" is a further entry, after every Knight - see `CONTEXT.md`'s "Volkare" entry: picking
+ * it replaces the whole rest of the setup screen with Volkare mode's own fields, so it's excluded
+ * from "Random" on purpose (Volkare is a deliberate choice, never a random substitute for a
+ * Knight). [volkareSelected] drives the field's displayed value/icon once picked; unlike "Random"
+ * it carries no other state of its own here (see [VolkareSetupViewModel] for the fields it reveals).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun KnightPicker(
     knight: Knight,
     wasRandom: Boolean,
+    volkareSelected: Boolean,
     onKnightSelected: (Knight) -> Unit,
     onRandomSelected: () -> Unit,
+    onVolkareSelected: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val displayText = if (wasRandom) "${knight.displayName} (Random)" else knight.displayName
+    val displayText = when {
+        volkareSelected -> "Volkare"
+        wasRandom -> "${knight.displayName} (Random)"
+        else -> knight.displayName
+    }
 
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
         OutlinedTextField(
@@ -194,7 +251,7 @@ private fun KnightPicker(
             onValueChange = {},
             readOnly = true,
             label = { Text("Knight") },
-            leadingIcon = { KnightShieldIcon(knight = knight) },
+            leadingIcon = { if (volkareSelected) VolkareShieldIcon() else KnightShieldIcon(knight = knight) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
@@ -222,6 +279,14 @@ private fun KnightPicker(
                     },
                 )
             }
+            DropdownMenuItem(
+                text = { Text("Volkare") },
+                leadingIcon = { VolkareShieldIcon() },
+                onClick = {
+                    onVolkareSelected()
+                    expanded = false
+                },
+            )
         }
     }
 }
@@ -239,6 +304,25 @@ private fun RandomShieldIcon(size: Dp = 24.dp) {
             "?",
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.padding(bottom = size * 0.04f),
+        )
+    }
+}
+
+/**
+ * The "Volkare" dropdown entry's icon - the same generic shield glyph [KnightShieldIcon]'s
+ * fallback uses, tinted with the theme's error color and a skull overlaid, to read as the
+ * antagonist rather than a Knight/wildcard choice (contrast [RandomShieldIcon]'s neutral "?").
+ * Not `private`: also used from `VolkareScreen.kt`'s `VolkareHeaderRow`.
+ */
+@Composable
+internal fun VolkareShieldIcon(size: Dp = 24.dp) {
+    Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
+        Icon(Icons.Filled.Shield, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(size))
+        Text(
+            "☠",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onError,
             modifier = Modifier.padding(bottom = size * 0.04f),
         )
     }
