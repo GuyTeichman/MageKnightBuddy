@@ -67,3 +67,15 @@ _Avoid_: Dummy Player (Volkare replaces the Dummy Player in his scenarios but ha
 **Proxy Player**:
 A more elaborate, interactive drop-in replacement for the Dummy Player, introduced in the Apocalypse Dragon expansion. Not limited to Apocalypse Dragon scenarios — like Volkare, it's usable as the Dummy Player substitute in any solo/coop scenario that calls for one, not just scenarios the expansion added (e.g. Against the Dragon, Apocalypse is Here). A mode of the Dummy Player tab, not a separate tab. Not yet modeled; deferred to a later phase.
 _Avoid_: Dummy player (they are different mechanics from different rulebooks, even though both now live under the same tab)
+
+**Volkare Session**:
+The `VolkareSession` domain model backing the Dummy Player tab's Volkare mode (Volkare's Return / Volkare's Quest) — the Volkare-mode counterpart to a Dummy Player session. Holds Volkare's own deck (`deckOrder`), discard pile, current Round, and a log of `VolkareEvent`s, the same shape as a Dummy Player session, but deliberately narrower in what it tracks: it reveals cards from Volkare's deck for the player to interpret by hand against the physical rulebook's movement/combat procedure, rather than simulating Volkare's board position, army, or combat outcomes — see ADR-0004.
+_Avoid_: Dummy Player Session (not a real term used elsewhere, but keep the two straight - Volkare Session is a distinct, narrower mechanic)
+
+**Frenzy**:
+The state Volkare enters in Volkare's Return once his deck has no cards left: rather than the deck reshuffling (unlike the standard Dummy Player, whose deck reshuffles at End of Round) or the scenario ending, Volkare stays playable turn after turn with an empty deck - each further `playTurn()` call logs a `VolkareEvent.Frenzy` entry instead of a card reveal. Return-only: Volkare's Quest has no Frenzy state - its deck running out instead sets `VolkareSession.lost = true` and ends the scenario in a loss.
+_Avoid_: Game over, deck empty (Frenzy is Volkare's Return's specific response to an empty deck, not the empty-deck condition itself, which behaves differently in Volkare's Quest)
+
+**City Revealed**:
+A manually-toggled flag (`VolkareSession.cityRevealed`) on a Volkare's Return session only, tracking whether the city Volkare is racing toward has been revealed on the physical board yet - this changes how the player interprets a logged card reveal's guidance for Volkare's next move (see ADR-0004). Captured on each `VolkareEvent.CardRevealed` entry at the moment that card was revealed, not read live off the session when the log is displayed later, so toggling it afterward never retroactively changes how already-logged reveals read. Always `false` and not surfaced in the UI for Volkare's Quest, which has no equivalent city-reveal step.
+_Avoid_: City conquered (a separate, later game state tracked by Score Calculator inputs, not by this flag - this only tracks whether the city tile has been revealed/explored)
