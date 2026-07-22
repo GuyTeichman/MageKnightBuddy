@@ -302,7 +302,7 @@ private val WoundSwatch = Color(0xFF5C1220)
 private val WoundBorder = Color(0xFF2A0A10)
 
 /** Competitive Spell mini-cards' trim - a light gold, echoing [ManaColor.GOLD]'s swatch, to read as "magical" against any of the 4 [CardColor] fills a Spell can have. */
-private val SpellTrim = Color(0xFFD9BE6E)
+private val SpellTrim = Color(0xFFF6D667)
 
 /**
  * One card-shaped tile in [VolkareTableauCard]'s pile - a Volkare-mode copy of `DummyPlayerScreen.kt`'s
