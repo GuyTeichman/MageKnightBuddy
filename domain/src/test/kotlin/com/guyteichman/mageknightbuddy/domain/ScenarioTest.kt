@@ -6,6 +6,14 @@ import kotlin.test.assertEquals
 class ScenarioTest {
 
     @Test
+    fun `SoloConquest displayName is Conquest, not the rulebook's Solo Conquest`() {
+        // App is solo-only, so "Solo" is redundant in every UI spot displayName appears (issue #102).
+        // The stable id is untouched, so persisted sessions still resolve correctly.
+        assertEquals("Conquest", Scenario.SoloConquest.displayName)
+        assertEquals("solo_conquest", Scenario.SoloConquest.id)
+    }
+
+    @Test
     fun `fromId looks up a Scenario by its stable id`() {
         assertEquals(Scenario.SoloConquest, Scenario.fromId("solo_conquest"))
         assertEquals(Scenario.FirstReconnaissance, Scenario.fromId("first_reconnaissance"))
