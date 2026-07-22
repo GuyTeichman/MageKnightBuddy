@@ -32,8 +32,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
@@ -56,6 +54,7 @@ import com.guyteichman.mageknightbuddy.ui.components.NumberField
 import com.guyteichman.mageknightbuddy.ui.components.NumberPillPicker
 import com.guyteichman.mageknightbuddy.ui.components.ReputationTrackPicker
 import com.guyteichman.mageknightbuddy.ui.components.UnitLevelRow
+import com.guyteichman.mageknightbuddy.ui.components.difficultyPillColor
 import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.help.HelpButton
@@ -758,16 +757,6 @@ private fun ColorCheckbox(icon: @Composable () -> Unit, label: String, checked: 
         Text(label)
     }
 }
-
-// White (easiest) to gold (hardest) - the same gold used by ReputationTrackPicker's positive
-// end, for visual consistency across the app's two difficulty-flavored gradients.
-private val DifficultyPillStart = Color(0xFFFFFFFF)
-private val DifficultyPillEnd = Color(0xFFC9A227)
-
-// Shared by both CombatLevel and RaceLevel's LabelPillPicker on the VOLKARE_DIFFICULTY page -
-// [ordinal]/[total] position along the 3-step gradient, not tied to either enum type specifically.
-private fun difficultyPillColor(ordinal: Int, total: Int): Color =
-    lerp(DifficultyPillStart, DifficultyPillEnd, ordinal / (total - 1).toFloat())
 
 /** The final Result page's summary card: the computed total score and derived Won/Lost outcome. */
 @Composable
