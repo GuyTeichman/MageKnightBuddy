@@ -383,14 +383,18 @@ private fun WizardContent(
                 WizardPage.SETUP -> {
                     LabeledDropdown(
                         label = "Scenario",
-                        options = Scenario.entries,
+                        // Sorted alphabetically by displayName for the picker only (issue #110) -
+                        // Scenario.entries itself stays in rulebook/release order, since other code
+                        // (e.g. wizardPagesFor's exhaustive `when`) has no reason to care about
+                        // dropdown ordering.
+                        options = Scenario.entries.sortedBy { it.displayName },
                         selected = viewModel.scenario,
                         displayName = { it.displayName },
                         onSelected = { viewModel.scenarioId = it.id },
                     )
                     LabeledDropdown(
                         label = "Knight",
-                        options = Knight.entries,
+                        options = Knight.entries.sortedBy { it.displayName },
                         selected = viewModel.knight,
                         displayName = { it.displayName },
                         onSelected = { viewModel.knight = it },
