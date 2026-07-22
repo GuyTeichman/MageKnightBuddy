@@ -285,24 +285,42 @@ private fun VolkareTableauCard(session: VolkareSession) {
     }
 }
 
-/** Groups [VolkareTableauCard]'s pile by kind/color rather than by [VolkareSession.deckOrder]'s actual (order-revealing) position. */
+/**
+ * Groups [VolkareTableauCard]'s pile by color, Spell right after that color's 4 Basic Actions -
+ * not by [VolkareSession.deckOrder]'s actual (order-revealing) position. Wounds carry no color, so
+ * they sort last, after every color's group.
+ */
 private val VolkareCard.tableauSortKey: Int
     get() = when (this) {
-        is VolkareCard.BasicAction -> color.ordinal
-        is VolkareCard.CompetitiveSpell -> 10 + color.ordinal
+        is VolkareCard.BasicAction -> color.ordinal * 2
+        is VolkareCard.CompetitiveSpell -> color.ordinal * 2 + 1
         VolkareCard.Wound -> 100
     }
 
-/** One card-shaped tile in [VolkareTableauCard]'s pile - a Volkare-mode copy of `DummyPlayerScreen.kt`'s `MiniCard`, extended for the 3-kind [VolkareCard] shape instead of a plain [CardColor]. */
+/** Wound mini-cards' burgundy fill and near-black border - deliberately distinct from every [CardColor] swatch, since a Wound carries no color of its own. */
+private val WoundSwatch = Color(0xFF5C1220)
+private val WoundBorder = Color(0xFF2A0A10)
+
+/** Competitive Spell mini-cards' trim - a light gold, echoing [ManaColor.GOLD]'s swatch, to read as "magical" against any of the 4 [CardColor] fills a Spell can have. */
+private val SpellTrim = Color(0xFFD9BE6E)
+
+/**
+ * One card-shaped tile in [VolkareTableauCard]'s pile - a Volkare-mode copy of `DummyPlayerScreen.kt`'s
+ * `MiniCard`, extended for the 3-kind [VolkareCard] shape instead of a plain [CardColor]: a Wound
+ * gets its own [WoundSwatch]/[WoundBorder] and a blood-drop glyph, and a Spell gets a gold [SpellTrim]
+ * border and a small sparkle glyph (the same "✦" used for Spell reveals in the log) on top of its
+ * color's own fill, so the two card kinds read apart from a same-color Basic Action at a glance.
+ */
 @Composable
 private fun VolkareMiniCard(card: VolkareCard) {
-    val color = when (card) {
+    val background = when (card) {
         is VolkareCard.BasicAction -> card.color.swatch
         is VolkareCard.CompetitiveSpell -> card.color.swatch
-        VolkareCard.Wound -> Color(0xFF4A4A4A) // Wounds carry no CardColor of their own.
+        VolkareCard.Wound -> WoundSwatch
     }
     val border = when {
-        card is VolkareCard.CompetitiveSpell -> Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
+        card is VolkareCard.CompetitiveSpell -> Modifier.border(2.dp, SpellTrim, RoundedCornerShape(4.dp))
+        card is VolkareCard.Wound -> Modifier.border(1.5.dp, WoundBorder, RoundedCornerShape(4.dp))
         card is VolkareCard.BasicAction && card.color == CardColor.WHITE -> Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
         else -> Modifier
     }
@@ -310,9 +328,16 @@ private fun VolkareMiniCard(card: VolkareCard) {
         modifier = Modifier
             .size(width = 20.dp, height = 28.dp)
             .clip(RoundedCornerShape(4.dp))
-            .background(color)
+            .background(background)
             .then(border),
-    )
+        contentAlignment = Alignment.Center,
+    ) {
+        when (card) {
+            VolkareCard.Wound -> Text("🩸", fontSize = 11.sp)
+            is VolkareCard.CompetitiveSpell -> Text("✦", fontSize = 11.sp, color = SpellTrim)
+            is VolkareCard.BasicAction -> {}
+        }
+    }
 }
 
 /** One row of the event log - a Volkare-mode copy of `DummyPlayerScreen.kt`'s `LogRow`. */
@@ -417,7 +442,7 @@ private fun VolkareEvent.describe(scenario: Scenario): VolkareLogEntryText = whe
         meta = "Round $round",
         description = listOf(
             VolkareDescriptionSpan.Words(
-                "His deck is empty - he's already made his final move and entered the portal. You lost this scenario.",
+                "That was his last non-Wound card - his final move takes him into the portal. You lost this scenario.",
             ),
         ),
     )

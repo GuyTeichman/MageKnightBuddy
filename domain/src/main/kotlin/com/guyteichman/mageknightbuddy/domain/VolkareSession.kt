@@ -29,12 +29,19 @@ data class VolkareSession private constructor(
 ) {
     /**
      * Plays one Volkare turn: reveals the top card of [deckOrder] onto [discardPile] and logs it.
-     * If the deck is already empty, behavior forks by scenario - Volkare's Return logs a [Frenzy]
-     * event and stays playable forever (his deck never reshuffles - see `CONTEXT.md`'s "Frenzy"
-     * entry); Volkare's Quest instead sets [lost] to true and logs [QuestLost]. Mirrors
-     * [DummyPlayerSession.playTurn]'s early-return guard pattern: once [lost] is true, further
-     * calls are a no-op, since [lost] never becomes true in Volkare's Return, this guard only
-     * ever actually blocks Volkare's Quest.
+     * If the deck is already empty (a defensive fallback - see below for the real trigger), the
+     * fork is by scenario: Volkare's Return logs a [Frenzy] event and stays playable forever (his
+     * deck never reshuffles - see `CONTEXT.md`'s "Frenzy" entry); Volkare's Quest sets [lost] to
+     * true and logs [QuestLost]. Mirrors [DummyPlayerSession.playTurn]'s early-return guard
+     * pattern: once [lost] is true, further calls are a no-op, since [lost] never becomes true in
+     * Volkare's Return, this guard only ever actually blocks Volkare's Quest.
+     *
+     * In Volkare's Quest, though, the real losing moment is earlier than an empty deck: revealing
+     * the *last* non-Wound card is already Volkare's final move into the portal (Wounds don't move
+     * him at all, so under correct play he should already be at the portal by the time non-Wound
+     * cards run out - see `CONTEXT.md`'s "Frenzy" entry). So [lost] is set the instant that card is
+     * revealed, whether or not Wounds still trail it in the deck - those trailing Wounds are simply
+     * never drawn, since [playTurn] no-ops once [lost] is true.
      *
      * [manaRoll] is the mana die result to use *if* the revealed card turns out to be a
      * [VolkareCard.Wound] (only Wound reveals ever roll the die - see `CONTEXT.md`'s "Wound"
@@ -54,16 +61,23 @@ data class VolkareSession private constructor(
         }
 
         val card = deckOrder.first()
-        return copy(
-            deckOrder = deckOrder.drop(1),
-            discardPile = discardPile + card,
-            log = log + VolkareEvent.CardRevealed(
-                round = round,
-                card = card,
-                cityRevealed = cityRevealed,
-                manaRoll = if (card is VolkareCard.Wound) manaRoll else null,
-            ),
+        val remainingDeck = deckOrder.drop(1)
+        val cardRevealed = VolkareEvent.CardRevealed(
+            round = round,
+            card = card,
+            cityRevealed = cityRevealed,
+            manaRoll = if (card is VolkareCard.Wound) manaRoll else null,
         )
+
+        val isFinalMoveInQuest = scenario == Scenario.VolkaresQuest &&
+            card !is VolkareCard.Wound &&
+            remainingDeck.none { it !is VolkareCard.Wound }
+
+        return if (isFinalMoveInQuest) {
+            copy(deckOrder = remainingDeck, discardPile = discardPile + card, lost = true, log = log + cardRevealed + VolkareEvent.QuestLost(round))
+        } else {
+            copy(deckOrder = remainingDeck, discardPile = discardPile + card, log = log + cardRevealed)
+        }
     }
 
     /**

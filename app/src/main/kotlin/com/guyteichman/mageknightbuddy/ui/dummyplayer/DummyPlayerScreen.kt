@@ -1,5 +1,6 @@
 package com.guyteichman.mageknightbuddy.ui.dummyplayer
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.buildAnnotatedString
@@ -68,6 +70,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.guyteichman.mageknightbuddy.R
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
@@ -314,22 +317,17 @@ private fun RandomShieldIcon(size: Dp = 24.dp) {
 }
 
 /**
- * The "Volkare" dropdown entry's icon - the same generic shield glyph [KnightShieldIcon]'s
- * fallback uses, tinted with the theme's error color and a skull overlaid, to read as the
- * antagonist rather than a Knight/wildcard choice (contrast [RandomShieldIcon]'s neutral "?").
- * Not `private`: also used from `VolkareScreen.kt`'s `VolkareHeaderRow`.
+ * The "Volkare" dropdown entry's icon - his official portrait art (a circular crop of his Lost
+ * Legion box/rulebook illustration), the antagonist counterpart to [KnightShieldIcon]'s per-Knight
+ * shield tokens. Not `private`: also used from `VolkareScreen.kt`'s `VolkareHeaderRow`.
  */
 @Composable
 internal fun VolkareShieldIcon(size: Dp = 24.dp) {
-    Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
-        Icon(Icons.Filled.Shield, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(size))
-        Text(
-            "☠",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onError,
-            modifier = Modifier.padding(bottom = size * 0.04f),
-        )
-    }
+    Image(
+        painter = painterResource(R.drawable.volkare_shield),
+        contentDescription = null,
+        modifier = Modifier.size(size),
+    )
 }
 
 /**

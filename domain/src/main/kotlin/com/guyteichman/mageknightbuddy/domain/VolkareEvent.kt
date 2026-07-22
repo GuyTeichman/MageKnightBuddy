@@ -34,9 +34,11 @@ sealed interface VolkareEvent {
     data class RoundEnded(val round: Int) : VolkareEvent
 
     /**
-     * Recorded in Volkare's Quest only, when [VolkareSession.playTurn] is called with an empty
-     * deck: unlike Volkare's Return's [Frenzy], an empty deck here means the scenario is lost
-     * (see [VolkareSession.lost] and docs/rules/volkares-quest.md's "Scenario end").
+     * Recorded in Volkare's Quest only, the instant [VolkareSession.playTurn] reveals the *last*
+     * non-Wound card left in the deck (immediately after the matching [CardRevealed] entry for
+     * that same card) - see [VolkareSession.playTurn]'s doc comment for why that reveal, not an
+     * empty deck, is the real losing moment. Unlike Volkare's Return's [Frenzy], this means the
+     * scenario is lost (see [VolkareSession.lost] and docs/rules/volkares-quest.md's "Scenario end").
      */
     data class QuestLost(val round: Int) : VolkareEvent
 }
