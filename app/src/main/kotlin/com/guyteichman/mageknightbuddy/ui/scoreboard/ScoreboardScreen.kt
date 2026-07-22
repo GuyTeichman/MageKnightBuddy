@@ -131,16 +131,18 @@ private fun ScoreboardListScreen(
     }
 }
 
-// Bold column-title row (Knight / Score / Outcome) drawn above the session list.
+// Bold column-title row (Scenario / Knight / Score / Outcome) drawn above the session list.
 @Composable
 private fun ScoreboardHeaderRow() {
     Column {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            // weight(1f) on every Text here splits the Row's width evenly across the three
-            // columns; it only works because Row is the parent (it's RowScope.weight).
+            // weight() on every Text here splits the Row's width across the four columns
+            // (RowScope.weight); Scenario gets more than the others since its names run longer
+            // (e.g. "Against the Apocalypse") than a Knight name, the score digits, or Won/Lost.
+            Text("Scenario", modifier = Modifier.weight(1.6f), fontWeight = FontWeight.Bold)
             Text("Knight", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-            Text("Score", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-            Text("Outcome", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+            Text("Score", modifier = Modifier.weight(0.7f), fontWeight = FontWeight.Bold)
+            Text("Outcome", modifier = Modifier.weight(0.9f), fontWeight = FontWeight.Bold)
         }
         HorizontalDivider()
     }
@@ -168,9 +170,10 @@ private fun ScoreboardRow(session: ScoringSession, onClick: () -> Unit) {
                 .clickable(onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
+            Text(session.scenario.displayName, modifier = Modifier.weight(1.6f))
             Text(session.knight.displayName, modifier = Modifier.weight(1f))
-            Text(session.score.toString(), modifier = Modifier.weight(1f))
-            Text(if (session.outcome == Outcome.WON) "Won" else "Lost", modifier = Modifier.weight(1f))
+            Text(session.score.toString(), modifier = Modifier.weight(0.7f))
+            Text(if (session.outcome == Outcome.WON) "Won" else "Lost", modifier = Modifier.weight(0.9f))
         }
         HorizontalDivider()
     }
