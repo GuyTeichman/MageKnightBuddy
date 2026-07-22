@@ -19,11 +19,15 @@ sealed interface VolkareEventDto {
     /**
      * Mirrors [com.guyteichman.mageknightbuddy.domain.VolkareEvent.CardRevealed]. [card] nests
      * the [VolkareCardDto] mirror rather than a raw domain [com.guyteichman.mageknightbuddy.domain.VolkareCard],
-     * for the same domain-purity reason as everything else in this file.
+     * for the same domain-purity reason as everything else in this file. [manaRoll] mirrors the
+     * domain's nullable [com.guyteichman.mageknightbuddy.domain.ManaColor] as its plain enum-name
+     * `String` (same convention as [VolkareSessionEntity.raceLevel]), rather than a `Dto` mirror
+     * type of its own - [ManaColor][com.guyteichman.mageknightbuddy.domain.ManaColor] is a plain
+     * enum with no subtypes to discriminate, so it doesn't need one.
      */
     @Serializable
     @SerialName("card_revealed")
-    data class CardRevealed(val round: Int, val card: VolkareCardDto, val cityRevealed: Boolean) : VolkareEventDto
+    data class CardRevealed(val round: Int, val card: VolkareCardDto, val cityRevealed: Boolean, val manaRoll: String? = null) : VolkareEventDto
 
     /** Mirrors [com.guyteichman.mageknightbuddy.domain.VolkareEvent.Frenzy]. */
     @Serializable

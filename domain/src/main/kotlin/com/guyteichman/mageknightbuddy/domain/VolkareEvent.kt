@@ -16,9 +16,11 @@ sealed interface VolkareEvent {
      * is the session's City Revealed flag *as it was at the moment this card was revealed*, not
      * read live off the session when this log entry is later displayed - see ADR-0004 and
      * `CONTEXT.md`'s "City Revealed" entry for why: toggling the flag afterward must never
-     * retroactively change how an already-logged reveal reads.
+     * retroactively change how an already-logged reveal reads. [manaRoll] is non-null if and only
+     * if [card] is [VolkareCard.Wound] - the app rolls Volkare's mana die itself and reports the
+     * result, rather than asking the player to roll a physical die (see [ManaColor]).
      */
-    data class CardRevealed(val round: Int, val card: VolkareCard, val cityRevealed: Boolean) : VolkareEvent
+    data class CardRevealed(val round: Int, val card: VolkareCard, val cityRevealed: Boolean, val manaRoll: ManaColor? = null) : VolkareEvent
 
     /**
      * Recorded in Volkare's Return only, each time [VolkareSession.playTurn] is called with an

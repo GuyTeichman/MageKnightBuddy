@@ -111,18 +111,52 @@ class VolkareSessionTest {
             deckOrder = listOf(VolkareCard.Wound, VolkareCard.Wound),
         ).toggleCityRevealed() // City revealed = true before the first card is played.
 
-        val afterFirstReveal = session.playTurn()
+        val afterFirstReveal = session.playTurn(manaRoll = ManaColor.RED)
         val afterToggleBack = afterFirstReveal.toggleCityRevealed() // Flip back to false...
-        val afterSecondReveal = afterToggleBack.playTurn()
+        val afterSecondReveal = afterToggleBack.playTurn(manaRoll = ManaColor.WHITE)
 
         // ...the first reveal's logged event must still say true, unaffected by the later toggle.
         assertEquals(
-            VolkareEvent.CardRevealed(round = 1, card = VolkareCard.Wound, cityRevealed = true),
+            VolkareEvent.CardRevealed(round = 1, card = VolkareCard.Wound, cityRevealed = true, manaRoll = ManaColor.RED),
             afterFirstReveal.log.last(),
         )
         assertEquals(
-            VolkareEvent.CardRevealed(round = 1, card = VolkareCard.Wound, cityRevealed = false),
+            VolkareEvent.CardRevealed(round = 1, card = VolkareCard.Wound, cityRevealed = false, manaRoll = ManaColor.WHITE),
             afterSecondReveal.log.last(),
+        )
+    }
+
+    @Test
+    fun `playTurn on a Wound rolls the given mana die color and logs it`() {
+        val session = VolkareSession.start(
+            Scenario.VolkaresReturn,
+            RaceLevel.FAIR,
+            woundCount = 1,
+            deckOrder = listOf(VolkareCard.Wound),
+        )
+
+        val next = session.playTurn(manaRoll = ManaColor.GOLD)
+
+        assertEquals(
+            VolkareEvent.CardRevealed(round = 1, card = VolkareCard.Wound, cityRevealed = false, manaRoll = ManaColor.GOLD),
+            next.log.last(),
+        )
+    }
+
+    @Test
+    fun `playTurn on a non-Wound card never logs a mana roll, even if one is passed`() {
+        val session = VolkareSession.start(
+            Scenario.VolkaresReturn,
+            RaceLevel.FAIR,
+            woundCount = 0,
+            deckOrder = listOf(VolkareCard.BasicAction(CardColor.RED)),
+        )
+
+        val next = session.playTurn(manaRoll = ManaColor.BLACK)
+
+        assertEquals(
+            VolkareEvent.CardRevealed(round = 1, card = VolkareCard.BasicAction(CardColor.RED), cityRevealed = false, manaRoll = null),
+            next.log.last(),
         )
     }
 

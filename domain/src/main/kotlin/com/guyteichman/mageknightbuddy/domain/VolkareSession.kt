@@ -35,8 +35,14 @@ data class VolkareSession private constructor(
      * [DummyPlayerSession.playTurn]'s early-return guard pattern: once [lost] is true, further
      * calls are a no-op, since [lost] never becomes true in Volkare's Return, this guard only
      * ever actually blocks Volkare's Quest.
+     *
+     * [manaRoll] is the mana die result to use *if* the revealed card turns out to be a
+     * [VolkareCard.Wound] (only Wound reveals ever roll the die - see `CONTEXT.md`'s "Wound"
+     * handling). Defaults to a fresh random roll, same spirit as [start]'s `deckOrder` defaulting
+     * to a fresh shuffle - passing it explicitly (as tests do) skips the randomness for
+     * deterministic assertions. Ignored (never logged) when the revealed card isn't a Wound.
      */
-    fun playTurn(): VolkareSession {
+    fun playTurn(manaRoll: ManaColor = ManaColor.entries.random()): VolkareSession {
         if (lost) return this
 
         if (deckOrder.isEmpty()) {
@@ -51,7 +57,12 @@ data class VolkareSession private constructor(
         return copy(
             deckOrder = deckOrder.drop(1),
             discardPile = discardPile + card,
-            log = log + VolkareEvent.CardRevealed(round, card, cityRevealed),
+            log = log + VolkareEvent.CardRevealed(
+                round = round,
+                card = card,
+                cityRevealed = cityRevealed,
+                manaRoll = if (card is VolkareCard.Wound) manaRoll else null,
+            ),
         )
     }
 
