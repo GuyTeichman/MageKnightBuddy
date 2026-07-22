@@ -192,4 +192,30 @@ sealed interface ScoringInputDto {
         val distinctAdvancedActionColorsInDeck: Int,
         val finalSpaceMoveCostAtNight: Int,
     ) : ScoringInputDto
+
+    @Serializable
+    @SerialName("volkares_quest")
+    data class VolkaresQuest(
+        val fame: Int,
+        val standardAchievements: StandardAchievementsDto,
+        val citiesConquered: Int,
+        // CombatLevel/RaceLevel enum names (see domain) - same by-name persistence pattern as
+        // ForTheCouncil's reputationTrackSpaceName.
+        val combatLevelName: String,
+        val raceLevelName: String,
+        val volkareDefeated: Boolean,
+        val cardsRemainingInVolkaresDeck: Int,
+    ) : ScoringInputDto
+
+    @Serializable
+    @SerialName("volkares_return")
+    data class VolkaresReturn(
+        val fame: Int,
+        val standardAchievements: StandardAchievementsDto,
+        val cityConquered: Boolean,
+        val volkareDefeated: Boolean,
+        val combatLevelName: String,
+        val raceLevelName: String,
+        val cardsRemainingInVolkareDeck: Int,
+    ) : ScoringInputDto
 }

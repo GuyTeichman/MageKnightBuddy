@@ -4,6 +4,7 @@ import com.guyteichman.mageknightbuddy.domain.AgainstTheApocalypseScoringInput
 import com.guyteichman.mageknightbuddy.domain.AgainstTheDragonScoringInput
 import com.guyteichman.mageknightbuddy.domain.AgainstTheHorsemenScoringInput
 import com.guyteichman.mageknightbuddy.domain.ApocalypseIsHereScoringInput
+import com.guyteichman.mageknightbuddy.domain.CombatLevel
 import com.guyteichman.mageknightbuddy.domain.FirstReconnaissanceScoringInput
 import com.guyteichman.mageknightbuddy.domain.ForTheCouncilScoringInput
 import com.guyteichman.mageknightbuddy.domain.FracturedLandsScoringInput
@@ -11,6 +12,7 @@ import com.guyteichman.mageknightbuddy.domain.HiddenValleyScoringInput
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.LifeAndDeathScoringInput
 import com.guyteichman.mageknightbuddy.domain.LostRelicScoringInput
+import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
 import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.ScoringInput
@@ -18,6 +20,8 @@ import com.guyteichman.mageknightbuddy.domain.SoloConquestChallengeScoringInput
 import com.guyteichman.mageknightbuddy.domain.SoloConquestScoringInput
 import com.guyteichman.mageknightbuddy.domain.StandardAchievements
 import com.guyteichman.mageknightbuddy.domain.UnitTally
+import com.guyteichman.mageknightbuddy.domain.VolkaresQuestScoringInput
+import com.guyteichman.mageknightbuddy.domain.VolkaresReturnScoringInput
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlinx.serialization.encodeToString
@@ -237,6 +241,36 @@ class ScoringInputMapperTest {
             allBasicActionsInDeck = true,
             distinctAdvancedActionColorsInDeck = 3,
             finalSpaceMoveCostAtNight = 5,
+        )
+
+        assertRoundTrips(input)
+    }
+
+    @Test
+    fun `VolkaresQuestScoringInput round-trips through ScoringInputDto and JSON`() {
+        val input = VolkaresQuestScoringInput(
+            fame = 32,
+            standardAchievements = achievements,
+            citiesConquered = 2,
+            combatLevel = CombatLevel.HEROIC,
+            raceLevel = RaceLevel.TIGHT,
+            volkareDefeated = true,
+            cardsRemainingInVolkaresDeck = 5,
+        )
+
+        assertRoundTrips(input)
+    }
+
+    @Test
+    fun `VolkaresReturnScoringInput round-trips through ScoringInputDto and JSON`() {
+        val input = VolkaresReturnScoringInput(
+            fame = 27,
+            standardAchievements = achievements,
+            cityConquered = true,
+            volkareDefeated = false,
+            combatLevel = CombatLevel.LEGENDARY,
+            raceLevel = RaceLevel.THRILLING,
+            cardsRemainingInVolkareDeck = 8,
         )
 
         assertRoundTrips(input)

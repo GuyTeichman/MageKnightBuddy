@@ -4,6 +4,7 @@ import com.guyteichman.mageknightbuddy.domain.AgainstTheApocalypseScoringInput
 import com.guyteichman.mageknightbuddy.domain.AgainstTheDragonScoringInput
 import com.guyteichman.mageknightbuddy.domain.AgainstTheHorsemenScoringInput
 import com.guyteichman.mageknightbuddy.domain.ApocalypseIsHereScoringInput
+import com.guyteichman.mageknightbuddy.domain.CombatLevel
 import com.guyteichman.mageknightbuddy.domain.FirstReconnaissanceScoringInput
 import com.guyteichman.mageknightbuddy.domain.ForTheCouncilScoringInput
 import com.guyteichman.mageknightbuddy.domain.FracturedLandsScoringInput
@@ -11,6 +12,7 @@ import com.guyteichman.mageknightbuddy.domain.HiddenValleyScoringInput
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.LifeAndDeathScoringInput
 import com.guyteichman.mageknightbuddy.domain.LostRelicScoringInput
+import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.RealmOfTheDeadScoringInput
 import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.ScoringInput
@@ -18,6 +20,8 @@ import com.guyteichman.mageknightbuddy.domain.SoloConquestChallengeScoringInput
 import com.guyteichman.mageknightbuddy.domain.SoloConquestScoringInput
 import com.guyteichman.mageknightbuddy.domain.StandardAchievements
 import com.guyteichman.mageknightbuddy.domain.UnitTally
+import com.guyteichman.mageknightbuddy.domain.VolkaresQuestScoringInput
+import com.guyteichman.mageknightbuddy.domain.VolkaresReturnScoringInput
 
 private fun StandardAchievements.toDto(): StandardAchievementsDto = StandardAchievementsDto(
     spellsInDeck = spellsInDeck,
@@ -158,6 +162,24 @@ fun ScoringInput.toDto(): ScoringInputDto = when (this) {
         distinctAdvancedActionColorsInDeck = distinctAdvancedActionColorsInDeck,
         finalSpaceMoveCostAtNight = finalSpaceMoveCostAtNight,
     )
+    is VolkaresQuestScoringInput -> ScoringInputDto.VolkaresQuest(
+        fame = fame,
+        standardAchievements = standardAchievements.toDto(),
+        citiesConquered = citiesConquered,
+        combatLevelName = combatLevel.name,
+        raceLevelName = raceLevel.name,
+        volkareDefeated = volkareDefeated,
+        cardsRemainingInVolkaresDeck = cardsRemainingInVolkaresDeck,
+    )
+    is VolkaresReturnScoringInput -> ScoringInputDto.VolkaresReturn(
+        fame = fame,
+        standardAchievements = standardAchievements.toDto(),
+        cityConquered = cityConquered,
+        volkareDefeated = volkareDefeated,
+        combatLevelName = combatLevel.name,
+        raceLevelName = raceLevel.name,
+        cardsRemainingInVolkareDeck = cardsRemainingInVolkareDeck,
+    )
 }
 
 /** Converts any [ScoringInputDto] variant back to its domain [ScoringInput]; the inverse of [ScoringInput.toDto]. */
@@ -272,5 +294,23 @@ fun ScoringInputDto.toDomain(): ScoringInput = when (this) {
         allBasicActionsInDeck = allBasicActionsInDeck,
         distinctAdvancedActionColorsInDeck = distinctAdvancedActionColorsInDeck,
         finalSpaceMoveCostAtNight = finalSpaceMoveCostAtNight,
+    )
+    is ScoringInputDto.VolkaresQuest -> VolkaresQuestScoringInput(
+        fame = fame,
+        standardAchievements = standardAchievements.toDomain(),
+        citiesConquered = citiesConquered,
+        combatLevel = CombatLevel.valueOf(combatLevelName),
+        raceLevel = RaceLevel.valueOf(raceLevelName),
+        volkareDefeated = volkareDefeated,
+        cardsRemainingInVolkaresDeck = cardsRemainingInVolkaresDeck,
+    )
+    is ScoringInputDto.VolkaresReturn -> VolkaresReturnScoringInput(
+        fame = fame,
+        standardAchievements = standardAchievements.toDomain(),
+        cityConquered = cityConquered,
+        volkareDefeated = volkareDefeated,
+        combatLevel = CombatLevel.valueOf(combatLevelName),
+        raceLevel = RaceLevel.valueOf(raceLevelName),
+        cardsRemainingInVolkareDeck = cardsRemainingInVolkareDeck,
     )
 }

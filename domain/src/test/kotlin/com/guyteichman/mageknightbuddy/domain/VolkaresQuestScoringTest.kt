@@ -2,6 +2,7 @@ package com.guyteichman.mageknightbuddy.domain
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class VolkaresQuestScoringTest {
 
@@ -121,13 +122,27 @@ class VolkaresQuestScoringTest {
     fun `outcome is Lost even with a positive score, since defeating Volkare is the only win condition`() {
         val input = minimalInput(
             fame = 50,
-            citiesConquered = 3,
+            citiesConquered = 2,
             volkareDefeated = false,
         )
 
-        // 50 fame + 0 achievements + 15 cities (3*5) + 0 Volkare combat bonus = 65, still a Loss
-        assertEquals(65, VolkaresQuestScoring.score(input))
+        // 50 fame + 0 achievements + 10 cities (2*5) + 0 Volkare combat bonus = 60, still a Loss
+        assertEquals(60, VolkaresQuestScoring.score(input))
         assertEquals(Outcome.LOST, VolkaresQuestScoring.outcome(input))
+    }
+
+    @Test
+    fun `citiesConquered above the 2-city total is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(citiesConquered = 3, volkareDefeated = false)
+        }
+    }
+
+    @Test
+    fun `negative citiesConquered is rejected`() {
+        assertFailsWith<IllegalArgumentException> {
+            minimalInput(citiesConquered = -1, volkareDefeated = false)
+        }
     }
 
     private fun minimalInput(

@@ -8,6 +8,10 @@ private const val FAME_PER_CONQUERED_CITY = 5
 // applied (docs/rules/volkares-quest.md, Scoring step 4).
 private const val VOLKARE_COMBAT_BONUS_PER_REMAINING_CARD = 2
 
+// Solo setup always reveals exactly 2 core city tiles (docs/rules/volkares-quest.md, Setup:
+// "Core city tiles: 2, 2, 3, or 3 [solo/2/3/4 players]"), so 2 is the maximum obtainable in Solo.
+private const val TOTAL_CITIES_IN_SOLO_VOLKARES_QUEST = 2
+
 /**
  * Everything the player enters at the end of a Volkare's Quest session, matching the inputs
  * docs/rules/volkares-quest.md's Scoring section needs: base Fame, the six Standard Achievements,
@@ -22,7 +26,15 @@ data class VolkaresQuestScoringInput(
     val raceLevel: RaceLevel,
     val volkareDefeated: Boolean,
     val cardsRemainingInVolkaresDeck: Int,
-)
+) : ScoringInput {
+    // init runs on every construction (including copy()), so an out-of-range tally can never
+    // reach the scoring math below - it fails fast at the point the bad value was created.
+    init {
+        require(citiesConquered in 0..TOTAL_CITIES_IN_SOLO_VOLKARES_QUEST) {
+            "citiesConquered must be between 0 and $TOTAL_CITIES_IN_SOLO_VOLKARES_QUEST, was $citiesConquered"
+        }
+    }
+}
 
 /**
  * Scoring engine for Volkare's Quest (docs/rules/volkares-quest.md, "Scoring" and "Outcome"
