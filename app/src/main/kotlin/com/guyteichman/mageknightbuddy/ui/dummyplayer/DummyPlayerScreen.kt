@@ -50,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -146,7 +147,10 @@ private fun DummyPlayerSetupScreen(
     val viewModel: DummyPlayerSetupViewModel = viewModel(factory = DummyPlayerSetupViewModel.factory(repository))
     val volkareViewModel: VolkareSetupViewModel = viewModel(factory = VolkareSetupViewModel.factory(volkareRepository))
     val scope = rememberCoroutineScope()
-    var volkareSelected by remember { mutableStateOf(false) }
+    // rememberSaveable, not plain remember: this drives which of the two ViewModels above is
+    // "active", so it needs to survive navigating away to the AI screen and back (plain remember
+    // state is lost when Navigation Compose disposes this composable while another route is shown).
+    var volkareSelected by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
