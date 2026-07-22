@@ -43,6 +43,10 @@ internal fun <T> LabeledDropdown(
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
+            // `?.let { ... }` here is not a null-guard on leadingIcon's *value* - it's building a
+            // new zero-arg composable lambda `{ it(selected) }` (the shape OutlinedTextField's own
+            // leadingIcon parameter expects), only when a leadingIcon was actually supplied. When
+            // absent, this whole expression is null and OutlinedTextField renders no leading icon.
             leadingIcon = leadingIcon?.let { { it(selected) } },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
