@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -138,11 +139,12 @@ private fun ScoreboardHeaderRow() {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             // weight() on every Text here splits the Row's width across the four columns
             // (RowScope.weight); Scenario gets more than the others since its names run longer
-            // (e.g. "Against the Apocalypse") than a Knight name, the score digits, or Won/Lost.
-            Text("Scenario", modifier = Modifier.weight(1.6f), fontWeight = FontWeight.Bold)
-            Text("Knight", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-            Text("Score", modifier = Modifier.weight(0.7f), fontWeight = FontWeight.Bold)
-            Text("Outcome", modifier = Modifier.weight(0.9f), fontWeight = FontWeight.Bold)
+            // (e.g. "Against the Apocalypse", "Solo Conquest Challenge") than a Knight name, the
+            // score digits, or Won/Lost.
+            Text("Scenario", modifier = Modifier.weight(2f), fontWeight = FontWeight.Bold)
+            Text("Knight", modifier = Modifier.weight(0.9f), fontWeight = FontWeight.Bold)
+            Text("Score", modifier = Modifier.weight(0.6f), fontWeight = FontWeight.Bold)
+            Text("Outcome", modifier = Modifier.weight(0.8f), fontWeight = FontWeight.Bold)
         }
         HorizontalDivider()
     }
@@ -170,10 +172,23 @@ private fun ScoreboardRow(session: ScoringSession, onClick: () -> Unit) {
                 .clickable(onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            Text(session.scenario.displayName, modifier = Modifier.weight(1.6f))
-            Text(session.knight.displayName, modifier = Modifier.weight(1f))
-            Text(session.score.toString(), modifier = Modifier.weight(0.7f))
-            Text(if (session.outcome == Outcome.WON) "Won" else "Lost", modifier = Modifier.weight(0.9f))
+            // maxLines/overflow guard the two name columns against wrapping to a second line on
+            // the longest names (e.g. "Solo Conquest Challenge" paired with "Braevalar") - without
+            // it, one wrapped cell would make the row taller than its siblings and look lopsided.
+            Text(
+                session.scenario.displayName,
+                modifier = Modifier.weight(2f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                session.knight.displayName,
+                modifier = Modifier.weight(0.9f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(session.score.toString(), modifier = Modifier.weight(0.6f))
+            Text(if (session.outcome == Outcome.WON) "Won" else "Lost", modifier = Modifier.weight(0.8f))
         }
         HorizontalDivider()
     }
