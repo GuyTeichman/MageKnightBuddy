@@ -209,7 +209,10 @@ private fun KnightPicker(
                     expanded = false
                 },
             )
-            Knight.entries.forEach { option ->
+            // Sorted alphabetically by displayName for the picker only (matches the Score
+            // Calculator's Setup page Knight picker, issue #110) - Knight.entries itself stays
+            // in rulebook/release order, since other code has no reason to care about it.
+            Knight.entries.sortedBy { it.displayName }.forEach { option ->
                 DropdownMenuItem(
                     text = { Text(option.displayName) },
                     leadingIcon = { KnightShieldIcon(knight = option) },
