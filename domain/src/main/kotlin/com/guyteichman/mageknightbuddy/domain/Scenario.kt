@@ -13,9 +13,17 @@ sealed interface Scenario {
     // `data object` is a singleton (only one instance ever exists) that also gets
     // free equals()/toString(), similar to a one-value enum entry but implementing
     // the sealed interface above.
+    //
+    // displayName is "Conquest", not the rulebook's "Solo Conquest" (docs/rules/solo-conquest.md) -
+    // this app is solo-only, so "Solo" is redundant everywhere it'd appear in the UI (issue #102).
+    // id stays "solo_conquest" (a stable persistence key, not shown to the player). The help
+    // dialog's "source" citations (app/src/main/assets/field_help.json) also keep "Solo Conquest" -
+    // those ARE user-facing (rendered in HelpButton's Rule details dialog), but they cite the exact
+    // section title printed on rulebook p.19, so renaming them would misdirect a player checking
+    // the physical book.
     data object SoloConquest : Scenario {
         override val id = "solo_conquest"
-        override val displayName = "Solo Conquest"
+        override val displayName = "Conquest"
     }
 
     // Titles below match each scenario's docs/rules/*.md title exactly, so the picker's
