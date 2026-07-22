@@ -18,7 +18,10 @@ import androidx.compose.ui.Modifier
 /**
  * A read-only text field that opens a dropdown of `options` when tapped (used for the Setup
  * page's Scenario and Knight pickers). Generic over `T` so it works for any enum-like option
- * type; `displayName` supplies the human-readable label for each option.
+ * type; `displayName` supplies the human-readable label for each option. `leadingIcon` is
+ * optional (defaults to none, e.g. the Scenario picker) - callers that want a per-option glyph
+ * (e.g. the Knight picker's shield art, issue #111) pass one and it's rendered both on the
+ * closed field (for the currently `selected` option) and on every option row in the open menu.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +31,7 @@ internal fun <T> LabeledDropdown(
     selected: T,
     displayName: (T) -> String,
     onSelected: (T) -> Unit,
+    leadingIcon: (@Composable (T) -> Unit)? = null,
 ) {
     // Whether the dropdown is currently open - local UI state, not a wizard field, so plain
     // `remember` (not the ViewModel) is the right home for it.
@@ -39,6 +43,11 @@ internal fun <T> LabeledDropdown(
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
+            // `?.let { ... }` here is not a null-guard on leadingIcon's *value* - it's building a
+            // new zero-arg composable lambda `{ it(selected) }` (the shape OutlinedTextField's own
+            // leadingIcon parameter expects), only when a leadingIcon was actually supplied. When
+            // absent, this whole expression is null and OutlinedTextField renders no leading icon.
+            leadingIcon = leadingIcon?.let { { it(selected) } },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
@@ -48,6 +57,7 @@ internal fun <T> LabeledDropdown(
             options.forEach { option ->
                 DropdownMenuItem(
                     text = { Text(displayName(option)) },
+                    leadingIcon = leadingIcon?.let { { it(option) } },
                     onClick = {
                         onSelected(option)
                         expanded = false
