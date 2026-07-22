@@ -66,8 +66,12 @@ private fun DummyPlayerEventDto.toDomain(): DummyPlayerEvent = when (this) {
  * (Room has no direct `Map` column support), and the deck order / discard pile / event log are
  * each serialized to a JSON string column since Room can't store `List`/sealed-class values
  * directly either.
+ *
+ * [updatedAt] defaults to "now" (epoch millis) since the common case is "save this as of right
+ * now"; it's an explicit parameter (rather than always reading the clock internally) so tests can
+ * pin it to a fixed value instead of asserting against a moving `System.currentTimeMillis()`.
  */
-fun DummyPlayerSession.toEntity(): DummyPlayerSessionEntity = DummyPlayerSessionEntity(
+fun DummyPlayerSession.toEntity(updatedAt: Long = System.currentTimeMillis()): DummyPlayerSessionEntity = DummyPlayerSessionEntity(
     knight = knight.name,
     wasRandom = wasRandom,
     deckOrderJson = deckOrder.toJson(),
@@ -81,6 +85,7 @@ fun DummyPlayerSession.toEntity(): DummyPlayerSessionEntity = DummyPlayerSession
     // log.map { it.toDto() } converts each domain event to its DTO mirror before the whole list
     // is serialized to a single JSON string for the logJson column.
     logJson = Json.encodeToString(log.map { it.toDto() }),
+    updatedAt = updatedAt,
 )
 
 /**

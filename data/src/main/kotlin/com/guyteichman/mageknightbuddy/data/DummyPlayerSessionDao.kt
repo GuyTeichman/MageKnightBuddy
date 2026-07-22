@@ -35,4 +35,14 @@ interface DummyPlayerSessionDao {
      */
     @Query("SELECT * FROM dummy_player_sessions WHERE id = ${DummyPlayerSessionEntity.SINGLETON_ID} LIMIT 1")
     suspend fun get(): DummyPlayerSessionEntity?
+
+    /**
+     * Reads just the autosaved session's [DummyPlayerSessionEntity.updatedAt], or `null` if
+     * nothing has been saved yet - a cheap recency check for the setup screen's "Restore Game"
+     * flow, which needs to compare this session's freshness against a saved
+     * [com.guyteichman.mageknightbuddy.domain.VolkareSession] without paying the cost of decoding
+     * [get]'s full JSON columns just to read one field.
+     */
+    @Query("SELECT updatedAt FROM dummy_player_sessions WHERE id = ${DummyPlayerSessionEntity.SINGLETON_ID} LIMIT 1")
+    suspend fun getUpdatedAt(): Long?
 }

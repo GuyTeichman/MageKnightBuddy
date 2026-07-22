@@ -5,6 +5,7 @@ import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class DummyPlayerSessionMapperTest {
 
@@ -23,5 +24,25 @@ class DummyPlayerSessionMapperTest {
         val roundTripped = session.toEntity().toDomain()
 
         assertEquals(session, roundTripped)
+    }
+
+    @Test
+    fun `toEntity stamps the given updatedAt onto the entity`() {
+        val session = DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardColor.RED))
+
+        val entity = session.toEntity(updatedAt = 99L)
+
+        assertEquals(99L, entity.updatedAt)
+    }
+
+    @Test
+    fun `toEntity defaults updatedAt to roughly the current time when not given explicitly`() {
+        val session = DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardColor.RED))
+        val before = System.currentTimeMillis()
+
+        val entity = session.toEntity()
+
+        val after = System.currentTimeMillis()
+        assertTrue(entity.updatedAt in before..after)
     }
 }

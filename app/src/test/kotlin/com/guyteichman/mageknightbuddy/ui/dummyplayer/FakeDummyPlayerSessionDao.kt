@@ -18,4 +18,6 @@ class FakeDummyPlayerSessionDao : DummyPlayerSessionDao {
     }
 
     override suspend fun get(): DummyPlayerSessionEntity? = stored
+
+    override suspend fun getUpdatedAt(): Long? = stored?.updatedAt
 }
