@@ -449,12 +449,12 @@ private fun WizardContent(
                 )
                 WizardPage.CITIES_CONQUERED -> {
                     LabeledCheckbox(
-                        label = "City 1 (Level 5) conquered",
+                        label = "First city conquered",
                         checked = viewModel.city1Conquered,
                         onCheckedChange = { viewModel.city1Conquered = it },
                     )
                     LabeledCheckbox(
-                        label = "City 2 (Level 8) conquered",
+                        label = "Second city conquered",
                         checked = viewModel.city2Conquered,
                         onCheckedChange = { viewModel.city2Conquered = it },
                     )
