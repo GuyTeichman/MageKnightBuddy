@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
 // behind the scenes. `exportSchema = false` skips writing that schema to a JSON file on disk,
 // since this project isn't tracking schema history for migrations yet.
 @Database(
-    entities = [ScoringSessionEntity::class, DummyPlayerSessionEntity::class],
+    entities = [ScoringSessionEntity::class, DummyPlayerSessionEntity::class, VolkareSessionEntity::class],
     // Bumped 2 -> 3: ScoringSessionEntity's ~22 wide columns collapsed into a single inputJson
     // column (see ScoringInputDto). Bumped 3 -> 4: ScoringInputDto.ForTheCouncil's own shape
     // changed (reputationModifier/shieldOnXSpace/reputation -> one reputationTrackPosition).
@@ -27,10 +27,13 @@ import androidx.room.RoomDatabase
     // ReputationTrackSpace. Room's column-level schema didn't change (inputJson is still just a
     // String column), but the JSON *content* inside it did, and kotlinx.serialization fails to
     // decode old-shaped JSON by default. Any ScoringInputDto shape change needs a version bump for
-    // this same reason, even when no entity/column actually changed. No hand-written migration -
-    // the app has never been published, so fallbackToDestructiveMigration (see createDatabase())
-    // is fine pre-release.
-    version = 5,
+    // this same reason, even when no entity/column actually changed. Bumped 5 -> 6: added the new
+    // VolkareSessionEntity table (volkare_sessions), plus an updatedAt column on the existing
+    // DummyPlayerSessionEntity table - both needed so the setup screen's "Restore Game" flow can
+    // compare recency between a Dummy Player session and a Volkare session (issue #129). No
+    // hand-written migration - the app has never been published, so fallbackToDestructiveMigration
+    // (see createDatabase()) is fine pre-release.
+    version = 6,
     exportSchema = false,
 )
 abstract class MageKnightBuddyDatabase : RoomDatabase() {
@@ -38,4 +41,5 @@ abstract class MageKnightBuddyDatabase : RoomDatabase() {
     // to this database, so callers just call these functions to get a working DAO instance.
     abstract fun scoringSessionDao(): ScoringSessionDao
     abstract fun dummyPlayerSessionDao(): DummyPlayerSessionDao
+    abstract fun volkareSessionDao(): VolkareSessionDao
 }

@@ -19,6 +19,12 @@ import androidx.room.PrimaryKey
  * `List`/sealed-class columns directly; see [DummyPlayerSessionMapper] for the JSON conversion.
  * Similarly, the crystal counts map (one `Int` per [com.guyteichman.mageknightbuddy.domain.CardColor])
  * is flattened into four separate columns here, since Room has no direct `Map` column support.
+ *
+ * [updatedAt] is epoch-millis timestamp of the last save, stamped by [DummyPlayerSessionMapper]'s
+ * `toEntity`, not part of the domain [com.guyteichman.mageknightbuddy.domain.DummyPlayerSession]
+ * itself - it exists purely so the setup screen's "Restore Game" flow can compare this session's
+ * recency against a saved [com.guyteichman.mageknightbuddy.domain.VolkareSession] without having
+ * to deserialize either session's full JSON columns (see [DummyPlayerSessionDao.getUpdatedAt]).
  */
 @Entity(tableName = "dummy_player_sessions")
 data class DummyPlayerSessionEntity(
@@ -36,6 +42,7 @@ data class DummyPlayerSessionEntity(
     val round: Int,
     val roundEnded: Boolean,
     val logJson: String,
+    val updatedAt: Long,
 ) {
     companion object {
         /** The fixed primary key every saved row uses, enforcing the single-slot autosave design above. */

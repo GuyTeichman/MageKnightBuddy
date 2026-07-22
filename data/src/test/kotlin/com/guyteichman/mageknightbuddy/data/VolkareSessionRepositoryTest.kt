@@ -2,9 +2,9 @@ package com.guyteichman.mageknightbuddy.data
 
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import com.guyteichman.mageknightbuddy.domain.CardColor
-import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
-import com.guyteichman.mageknightbuddy.domain.Knight
+import com.guyteichman.mageknightbuddy.domain.RaceLevel
+import com.guyteichman.mageknightbuddy.domain.Scenario
+import com.guyteichman.mageknightbuddy.domain.VolkareSession
 import java.io.File
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -13,18 +13,18 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlinx.coroutines.test.runTest
 
-class DummyPlayerSessionRepositoryTest {
+class VolkareSessionRepositoryTest {
     private lateinit var database: MageKnightBuddyDatabase
     private lateinit var dbFile: File
-    private lateinit var repository: DummyPlayerSessionRepository
+    private lateinit var repository: VolkareSessionRepository
 
     @BeforeTest
     fun setUp() {
-        dbFile = File.createTempFile("test-dummy-player-repository", ".db")
+        dbFile = File.createTempFile("test-volkare-repository", ".db")
         database = Room.databaseBuilder<MageKnightBuddyDatabase>(name = dbFile.absolutePath)
             .setDriver(BundledSQLiteDriver())
             .build()
-        repository = DummyPlayerSessionRepository(database.dummyPlayerSessionDao())
+        repository = VolkareSessionRepository(database.volkareSessionDao())
     }
 
     @AfterTest
@@ -39,8 +39,8 @@ class DummyPlayerSessionRepositoryTest {
     }
 
     @Test
-    fun `save then restore round-trips a DummyPlayerSession through Room`() = runTest {
-        val session = DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardColor.RED, CardColor.GREEN))
+    fun `save then restore round-trips a VolkareSession through Room`() = runTest {
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR)
 
         repository.save(session)
 
@@ -49,8 +49,8 @@ class DummyPlayerSessionRepositoryTest {
 
     @Test
     fun `save silently overwrites the previously saved session`() = runTest {
-        val first = DummyPlayerSession.start(Knight.GOLDYX)
-        val second = DummyPlayerSession.start(Knight.CORAL)
+        val first = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR)
+        val second = VolkareSession.start(Scenario.VolkaresQuest, RaceLevel.TIGHT)
 
         repository.save(first)
         repository.save(second)
@@ -65,7 +65,7 @@ class DummyPlayerSessionRepositoryTest {
 
     @Test
     fun `updatedAt returns the timestamp save was called with, without needing the full session`() = runTest {
-        val session = DummyPlayerSession.start(Knight.GOLDYX)
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR)
 
         repository.save(session, updatedAt = 42L)
 
