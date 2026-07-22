@@ -61,8 +61,20 @@ _Avoid_: AI player, bot, opponent
 The tab (not yet built — see architecture.md's tab roadmap) that runs whichever player-simulation mode the current scenario needs: Dummy Player, Volkare, or Proxy Player. Exactly one mode is active per scenario, chosen via a mode selector on this one tab — not three separate tabs.
 
 **Volkare**:
-The antagonist from The Lost Legion expansion who replaces the Dummy Player in **Volkare's Return** and **Volkare's Quest** — his own deck (an unused Hero's Basic Actions + removed competitive Spells + Wounds) and a movement/combat-driving AI more elaborate than the standard Dummy Player's simple card-flip turn (exploring, pacing toward his target, attacking, retreating). A mode of the Dummy Player tab, not a separate mechanic from it.
+The antagonist from The Lost Legion expansion who replaces the Dummy Player in **Volkare's Return** and **Volkare's Quest**. A distinct mode of the **Dummy Player tab**, modeled by **Volkare Session** rather than **Dummy Player Session** — the two share a tab but not an implementation, since Volkare's deck and turn rules diverge too far to reuse.
 _Avoid_: Dummy Player (Volkare replaces the Dummy Player in his scenarios but has distinct, more elaborate turn logic — don't conflate the two)
+
+**Volkare Session**:
+One playthrough's tracked state for Volkare: his deck (16 generic Basic Action cards + the 4 Competitive Spells + a Race Level-sized batch of Wounds, drawn exactly once, never reshuffled), which Scenario he's driving (Volkare's Return or Volkare's Quest — their Wound-reveal and deck-exhaustion rules diverge, see `docs/rules/volkares-return.md`/`volkares-quest.md`), and his event log. Each turn reveals one card and logs a one-sentence, rules-derived description of its implication (move direction, a Source die reroll, a combat trigger, **Frenzy**) — the app narrates what the card means without simulating the map, combat, or Volkare's actual board position; the player resolves the real consequence at the table. See [ADR-0004](docs/adr/0004-volkare-narrates-cards-not-simulates-board.md).
+_Avoid_: Dummy Player Session (a separate domain type, despite living under the same tab)
+
+**Frenzy**:
+Volkare's Return-only behavior once his deck is exhausted: every subsequent turn is narrated as if a Spell had been revealed (double move, treated as blue for direction), with no Source die reroll, forever. The rulebook defines no equivalent for Volkare's Quest — there, an empty deck instead means Volkare has already reached the portal, so the app treats it as an immediate loss rather than inventing an undefined continuation.
+_Avoid_: Applying Frenzy to Volkare's Quest (Return-only rule — see **Volkare Session**)
+
+**City Revealed**:
+A manual, one-way toggle on the Volkare's Return play screen (Volkare's Return only) marking that the city tile has been revealed on the physical board. Before it's set, card reveals are narrated with Exploring-phase wording (a fixed compass direction per card color); after, with Race/Battle-for-the-City wording (move toward the city). The rulebook's separate Race-for-the-City and Battle-for-the-City phases are deliberately collapsed into this one on/off signal, since telling them apart requires knowing Volkare's exact adjacency to the city — board state this app doesn't track.
+_Avoid_: Movement Phase (there's no three-way phase concept in the model, just this one toggle)
 
 **Proxy Player**:
 A more elaborate, interactive drop-in replacement for the Dummy Player, introduced in the Apocalypse Dragon expansion. Not limited to Apocalypse Dragon scenarios — like Volkare, it's usable as the Dummy Player substitute in any solo/coop scenario that calls for one, not just scenarios the expansion added (e.g. Against the Dragon, Apocalypse is Here). A mode of the Dummy Player tab, not a separate tab. Not yet modeled; deferred to a later phase.

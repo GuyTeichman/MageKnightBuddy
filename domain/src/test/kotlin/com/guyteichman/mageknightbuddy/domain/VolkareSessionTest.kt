@@ -1,0 +1,240 @@
+package com.guyteichman.mageknightbuddy.domain
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class VolkareSessionTest {
+
+    @Test
+    fun `start builds a deck of 16 Basic Actions, 4 competitive Spells, and the default Fair Wound count for Volkares Return`() {
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR)
+
+        val basicActions = session.deckOrder.filterIsInstance<VolkareCard.BasicAction>()
+        val spells = session.deckOrder.filterIsInstance<VolkareCard.CompetitiveSpell>()
+        val wounds = session.deckOrder.filterIsInstance<VolkareCard.Wound>()
+
+        assertEquals(16, basicActions.size)
+        assertEquals(
+            mapOf(
+                CardColor.RED to 4,
+                CardColor.GREEN to 4,
+                CardColor.BLUE to 4,
+                CardColor.WHITE to 4,
+            ),
+            CardColor.entries.associateWith { color -> basicActions.count { it.color == color } },
+        )
+        assertEquals(4, spells.size)
+        assertEquals(
+            setOf(CardColor.RED, CardColor.GREEN, CardColor.BLUE, CardColor.WHITE),
+            spells.map { it.color }.toSet(),
+        )
+        assertEquals(18, wounds.size) // Fair Race Level, Volkare's Return - see docs/rules/volkares-return.md.
+        assertEquals(16 + 4 + 18, session.deckOrder.size)
+    }
+
+    @Test
+    fun `start uses the Tight and Thrilling default Wound counts for Volkares Return`() {
+        assertEquals(
+            15,
+            VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.TIGHT)
+                .deckOrder.count { it is VolkareCard.Wound },
+        )
+        assertEquals(
+            12,
+            VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.THRILLING)
+                .deckOrder.count { it is VolkareCard.Wound },
+        )
+    }
+
+    @Test
+    fun `start uses Volkares Quest's own default Wound counts, distinct from Volkares Return`() {
+        assertEquals(
+            20,
+            VolkareSession.start(Scenario.VolkaresQuest, RaceLevel.FAIR)
+                .deckOrder.count { it is VolkareCard.Wound },
+        )
+        assertEquals(
+            16,
+            VolkareSession.start(Scenario.VolkaresQuest, RaceLevel.TIGHT)
+                .deckOrder.count { it is VolkareCard.Wound },
+        )
+        assertEquals(
+            12,
+            VolkareSession.start(Scenario.VolkaresQuest, RaceLevel.THRILLING)
+                .deckOrder.count { it is VolkareCard.Wound },
+        )
+    }
+
+    @Test
+    fun `start accepts a custom Wound count override instead of the Race Level default`() {
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR, woundCount = 3)
+
+        assertEquals(3, session.deckOrder.count { it is VolkareCard.Wound })
+        assertEquals(16 + 4 + 3, session.deckOrder.size)
+    }
+
+    @Test
+    fun `start begins on Round 1, unrevealed city, not lost, with a RoundStarted log entry`() {
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR)
+
+        assertEquals(1, session.round)
+        assertEquals(false, session.cityRevealed)
+        assertEquals(false, session.lost)
+        assertEquals(listOf(VolkareEvent.RoundStarted(round = 1)), session.log)
+    }
+
+    @Test
+    fun `playTurn reveals the top card of the deck onto the discard pile and logs it`() {
+        val session = VolkareSession.start(
+            Scenario.VolkaresReturn,
+            RaceLevel.FAIR,
+            woundCount = 0,
+            deckOrder = listOf(VolkareCard.BasicAction(CardColor.RED), VolkareCard.Wound),
+        )
+
+        val next = session.playTurn()
+
+        assertEquals(listOf(VolkareCard.Wound), next.deckOrder)
+        assertEquals(listOf(VolkareCard.BasicAction(CardColor.RED)), next.discardPile)
+        assertEquals(
+            VolkareEvent.CardRevealed(round = 1, card = VolkareCard.BasicAction(CardColor.RED), cityRevealed = false),
+            next.log.last(),
+        )
+    }
+
+    @Test
+    fun `playTurn's logged CardRevealed captures cityRevealed as it was at reveal time, not live`() {
+        val session = VolkareSession.start(
+            Scenario.VolkaresReturn,
+            RaceLevel.FAIR,
+            woundCount = 0,
+            deckOrder = listOf(VolkareCard.Wound, VolkareCard.Wound),
+        ).toggleCityRevealed() // City revealed = true before the first card is played.
+
+        val afterFirstReveal = session.playTurn()
+        val afterToggleBack = afterFirstReveal.toggleCityRevealed() // Flip back to false...
+        val afterSecondReveal = afterToggleBack.playTurn()
+
+        // ...the first reveal's logged event must still say true, unaffected by the later toggle.
+        assertEquals(
+            VolkareEvent.CardRevealed(round = 1, card = VolkareCard.Wound, cityRevealed = true),
+            afterFirstReveal.log.last(),
+        )
+        assertEquals(
+            VolkareEvent.CardRevealed(round = 1, card = VolkareCard.Wound, cityRevealed = false),
+            afterSecondReveal.log.last(),
+        )
+    }
+
+    @Test
+    fun `playTurn on an empty deck in Volkares Return logs Frenzy and stays playable`() {
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR, woundCount = 0, deckOrder = emptyList())
+
+        val next = session.playTurn()
+
+        assertEquals(VolkareEvent.Frenzy(round = 1), next.log.last())
+        assertEquals(emptyList(), next.deckOrder)
+        assertEquals(false, next.lost)
+    }
+
+    @Test
+    fun `Frenzy never blocks further turns - every subsequent playTurn keeps logging Frenzy`() {
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR, woundCount = 0, deckOrder = emptyList())
+
+        val afterMany = session.playTurn().playTurn().playTurn()
+
+        assertEquals(
+            listOf(VolkareEvent.Frenzy(round = 1), VolkareEvent.Frenzy(round = 1), VolkareEvent.Frenzy(round = 1)),
+            afterMany.log.drop(1), // Drop the initial RoundStarted entry.
+        )
+        assertEquals(emptyList(), afterMany.deckOrder)
+    }
+
+    @Test
+    fun `playTurn on an empty deck in Volkares Quest sets lost and logs QuestLost`() {
+        val session = VolkareSession.start(Scenario.VolkaresQuest, RaceLevel.FAIR, woundCount = 0, deckOrder = emptyList())
+
+        val next = session.playTurn()
+
+        assertEquals(true, next.lost)
+        assertEquals(VolkareEvent.QuestLost(round = 1), next.log.last())
+    }
+
+    @Test
+    fun `playTurn is a no-op once lost is already true`() {
+        val lost = VolkareSession.start(Scenario.VolkaresQuest, RaceLevel.FAIR, woundCount = 0, deckOrder = emptyList()).playTurn()
+
+        val next = lost.playTurn()
+
+        assertEquals(lost.lost, next.lost)
+        assertEquals(lost.log, next.log)
+        assertEquals(lost.deckOrder, next.deckOrder)
+    }
+
+    @Test
+    fun `endRound only increments round and logs RoundEnded - deck and discard are untouched`() {
+        val session = VolkareSession.start(
+            Scenario.VolkaresReturn,
+            RaceLevel.FAIR,
+            woundCount = 0,
+            deckOrder = listOf(VolkareCard.BasicAction(CardColor.RED)),
+        ).playTurn()
+
+        val next = session.endRound()
+
+        assertEquals(2, next.round)
+        assertEquals(session.deckOrder, next.deckOrder)
+        assertEquals(session.discardPile, next.discardPile)
+        assertEquals(VolkareEvent.RoundEnded(round = 1), next.log.last())
+    }
+
+    @Test
+    fun `endRound is always callable, even mid-round with cards still in the deck`() {
+        val session = VolkareSession.start(
+            Scenario.VolkaresReturn,
+            RaceLevel.FAIR,
+            woundCount = 0,
+            deckOrder = listOf(VolkareCard.BasicAction(CardColor.RED)),
+        )
+
+        val next = session.endRound()
+
+        assertEquals(2, next.round)
+        assertEquals(session.deckOrder, next.deckOrder)
+    }
+
+    @Test
+    fun `toggleCityRevealed flips the boolean`() {
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR)
+
+        val toggledOn = session.toggleCityRevealed()
+        val toggledOff = toggledOn.toggleCityRevealed()
+
+        assertEquals(false, session.cityRevealed)
+        assertEquals(true, toggledOn.cityRevealed)
+        assertEquals(false, toggledOff.cityRevealed)
+    }
+
+    @Test
+    fun `restore reconstructs a session with the exact same state it was given`() {
+        val original = VolkareSession.start(
+            Scenario.VolkaresReturn,
+            RaceLevel.FAIR,
+            woundCount = 0,
+            deckOrder = listOf(VolkareCard.BasicAction(CardColor.RED), VolkareCard.Wound),
+        ).playTurn().toggleCityRevealed().endRound()
+
+        val restored = VolkareSession.restore(
+            scenario = original.scenario,
+            raceLevel = original.raceLevel,
+            deckOrder = original.deckOrder,
+            discardPile = original.discardPile,
+            round = original.round,
+            cityRevealed = original.cityRevealed,
+            lost = original.lost,
+            log = original.log,
+        )
+
+        assertEquals(original, restored)
+    }
+}
