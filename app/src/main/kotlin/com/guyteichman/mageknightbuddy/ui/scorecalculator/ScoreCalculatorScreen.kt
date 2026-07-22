@@ -47,6 +47,7 @@ import com.guyteichman.mageknightbuddy.domain.ReputationTrackSpace
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
+import com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon
 import com.guyteichman.mageknightbuddy.ui.components.LabelPillPicker
 import com.guyteichman.mageknightbuddy.ui.components.LabeledCheckbox
 import com.guyteichman.mageknightbuddy.ui.components.LabeledDropdown
@@ -398,6 +399,7 @@ private fun WizardContent(
                         selected = viewModel.knight,
                         displayName = { it.displayName },
                         onSelected = { viewModel.knight = it },
+                        leadingIcon = { KnightShieldIcon(knight = it) },
                     )
                     OutlinedTextField(
                         value = viewModel.playerName,
