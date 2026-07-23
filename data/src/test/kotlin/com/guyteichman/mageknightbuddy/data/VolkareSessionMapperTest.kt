@@ -1,15 +1,32 @@
 package com.guyteichman.mageknightbuddy.data
 
 import com.guyteichman.mageknightbuddy.domain.CardColor
+import com.guyteichman.mageknightbuddy.domain.ManaColor
 import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.domain.VolkareCard
+import com.guyteichman.mageknightbuddy.domain.VolkareEvent
 import com.guyteichman.mageknightbuddy.domain.VolkareSession
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class VolkareSessionMapperTest {
+
+    @Test
+    fun `toEntity then toDomain round-trips a Wound reveal's mana roll`() {
+        val session = VolkareSession.start(
+            Scenario.VolkaresReturn,
+            RaceLevel.FAIR,
+            woundCount = 1,
+            deckOrder = listOf(VolkareCard.Wound),
+        ).playTurn(manaRoll = ManaColor.BLACK)
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+        assertEquals(ManaColor.BLACK, (roundTripped.log.last() as VolkareEvent.CardRevealed).manaRoll)
+    }
 
     @Test
     fun `toEntity then toDomain round-trips a Volkares Return session covering every event log type`() {

@@ -69,7 +69,7 @@ One playthrough's tracked state for Volkare: his deck (16 generic Basic Action c
 _Avoid_: Dummy Player Session (a separate domain type, despite living under the same tab)
 
 **Frenzy**:
-Volkare's Return-only behavior once his deck is exhausted: every subsequent turn is narrated as if a Spell had been revealed (double move, treated as blue for direction), with no Source die reroll, forever. The rulebook defines no equivalent for Volkare's Quest — there, an empty deck instead means Volkare has already reached the portal, so the app treats it as an immediate loss rather than inventing an undefined continuation.
+Volkare's Return-only behavior once his deck is exhausted: every subsequent turn is narrated as if a Spell had been revealed (double move, treated as blue for direction), with no Source die reroll, forever. The rulebook defines no equivalent for Volkare's Quest — there, revealing the *last card that could still move him toward the portal* (a green/blue/white Basic Action or Competitive Spell — Wounds never move him, and red cards only ever trigger an attack in Quest, never a move) instead means that reveal was already his final move into the portal, so the app treats that reveal as an immediate loss rather than inventing an undefined continuation. Any Wounds or red cards still trailing it in the deck are simply never drawn.
 _Avoid_: Applying Frenzy to Volkare's Quest (Return-only rule — see **Volkare Session**)
 
 **City Revealed**:

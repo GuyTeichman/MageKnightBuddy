@@ -23,6 +23,7 @@ class MainActivity : ComponentActivity() {
                 MageKnightBuddyApp(
                     repository = app.scoringSessionRepository,
                     dummyPlayerRepository = app.dummyPlayerSessionRepository,
+                    volkareRepository = app.volkareSessionRepository,
                     fieldHelp = app.fieldHelp,
                 )
             }

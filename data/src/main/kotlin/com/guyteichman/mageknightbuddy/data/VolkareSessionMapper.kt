@@ -8,6 +8,7 @@
 package com.guyteichman.mageknightbuddy.data
 
 import com.guyteichman.mageknightbuddy.domain.CardColor
+import com.guyteichman.mageknightbuddy.domain.ManaColor
 import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.domain.VolkareCard
@@ -49,7 +50,7 @@ private fun String.toVolkareCardList(): List<VolkareCard> = Json.decodeFromStrin
 // without an extra cast.
 private fun VolkareEvent.toDto(): VolkareEventDto = when (this) {
     is VolkareEvent.RoundStarted -> VolkareEventDto.RoundStarted(round)
-    is VolkareEvent.CardRevealed -> VolkareEventDto.CardRevealed(round, card.toDto(), cityRevealed)
+    is VolkareEvent.CardRevealed -> VolkareEventDto.CardRevealed(round, card.toDto(), cityRevealed, manaRoll?.name)
     is VolkareEvent.Frenzy -> VolkareEventDto.Frenzy(round)
     is VolkareEvent.RoundEnded -> VolkareEventDto.RoundEnded(round)
     is VolkareEvent.QuestLost -> VolkareEventDto.QuestLost(round)
@@ -58,7 +59,7 @@ private fun VolkareEvent.toDto(): VolkareEventDto = when (this) {
 // The reverse of toDto() above: DTO variant back to the matching domain event variant.
 private fun VolkareEventDto.toDomain(): VolkareEvent = when (this) {
     is VolkareEventDto.RoundStarted -> VolkareEvent.RoundStarted(round)
-    is VolkareEventDto.CardRevealed -> VolkareEvent.CardRevealed(round, card.toDomain(), cityRevealed)
+    is VolkareEventDto.CardRevealed -> VolkareEvent.CardRevealed(round, card.toDomain(), cityRevealed, manaRoll?.let { ManaColor.valueOf(it) })
     is VolkareEventDto.Frenzy -> VolkareEvent.Frenzy(round)
     is VolkareEventDto.RoundEnded -> VolkareEvent.RoundEnded(round)
     is VolkareEventDto.QuestLost -> VolkareEvent.QuestLost(round)
