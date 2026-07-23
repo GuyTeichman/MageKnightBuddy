@@ -3,6 +3,7 @@ package com.guyteichman.mageknightbuddy.data
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.guyteichman.mageknightbuddy.domain.CardColor
+import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
 import java.io.File
@@ -40,7 +41,10 @@ class DummyPlayerSessionRepositoryTest {
 
     @Test
     fun `save then restore round-trips a DummyPlayerSession through Room`() = runTest {
-        val session = DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardColor.RED, CardColor.GREEN))
+        val session = DummyPlayerSession.start(
+            Knight.GOLDYX,
+            deckOrder = listOf(CardColor.RED, CardColor.GREEN).map { CardIdentity.SingleColor(it) },
+        )
 
         repository.save(session)
 

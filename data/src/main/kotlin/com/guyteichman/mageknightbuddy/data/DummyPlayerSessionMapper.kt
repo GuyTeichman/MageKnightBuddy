@@ -7,22 +7,36 @@
 package com.guyteichman.mageknightbuddy.data
 
 import com.guyteichman.mageknightbuddy.domain.CardColor
+import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-// `private fun List<CardColor>.toJson()` is a Kotlin extension function: it adds a `toJson()`
-// method to the existing `List<CardColor>` type (usable as `someList.toJson()`) without
+// Maps a domain CardIdentity to its DTO mirror.
+private fun CardIdentity.toDto(): CardIdentityDto = when (this) {
+    is CardIdentity.SingleColor -> CardIdentityDto.SingleColor(color.name)
+    is CardIdentity.DualColor -> CardIdentityDto.DualColor(colorA.name, colorB.name)
+}
+
+// The reverse of toDto() above.
+private fun CardIdentityDto.toDomain(): CardIdentity = when (this) {
+    is CardIdentityDto.SingleColor -> CardIdentity.SingleColor(CardColor.valueOf(color))
+    is CardIdentityDto.DualColor -> CardIdentity.DualColor(CardColor.valueOf(colorA), CardColor.valueOf(colorB))
+}
+
+// `private fun List<CardIdentity>.toJson()` is a Kotlin extension function: it adds a `toJson()`
+// method to the existing `List<CardIdentity>` type (usable as `someList.toJson()`) without
 // subclassing or wrapping it. `private` keeps it usable only within this file.
 // `Json.encodeToString` (kotlinx.serialization) serializes the given value to a JSON string; here
-// each CardColor is first mapped to its enum name so the JSON is a plain list of strings.
-private fun List<CardColor>.toJson(): String = Json.encodeToString(map { it.name })
+// each CardIdentity is first mapped to its DTO mirror so the JSON only ever contains DTO types.
+private fun List<CardIdentity>.toJson(): String = Json.encodeToString(map { it.toDto() })
 
-// The reverse: decode a JSON string back into a List<String>, then look up each name against the
-// CardColor enum with valueOf (throws if the stored name is no longer a valid enum constant).
-private fun String.toCardColorList(): List<CardColor> = Json.decodeFromString<List<String>>(this).map { CardColor.valueOf(it) }
+// The reverse: decode a JSON string back into a List<CardIdentityDto> (kotlinx.serialization uses
+// each entry's @SerialName discriminator to pick single- vs. dual-color), then convert each DTO
+// back to its domain CardIdentity.
+private fun String.toCardIdentityList(): List<CardIdentity> = Json.decodeFromString<List<CardIdentityDto>>(this).map { it.toDomain() }
 
 // Maps each domain DummyPlayerEvent variant to its DummyPlayerEventDto counterpart. The `when`
 // here is exhaustive over the sealed interface's variants (RoundStarted, TurnPlayed, ...) - the
@@ -33,13 +47,13 @@ private fun DummyPlayerEvent.toDto(): DummyPlayerEventDto = when (this) {
     is DummyPlayerEvent.RoundStarted -> DummyPlayerEventDto.RoundStarted(round)
     is DummyPlayerEvent.TurnPlayed -> DummyPlayerEventDto.TurnPlayed(
         round = round,
-        initialReveal = initialReveal.map { it.name },
-        additionalReveal = additionalReveal.map { it.name },
+        initialReveal = initialReveal.map { it.toDto() },
+        additionalReveal = additionalReveal.map { it.toDto() },
     )
     is DummyPlayerEvent.EndOfRoundAnnounced -> DummyPlayerEventDto.EndOfRoundAnnounced(round)
     is DummyPlayerEvent.RoundEnded -> DummyPlayerEventDto.RoundEnded(
         round = round,
-        advancedActionOfferColor = advancedActionOfferColor.name,
+        advancedActionOfferColor = advancedActionOfferColor.toDto(),
         spellOfferColor = spellOfferColor.name,
     )
 }
@@ -49,13 +63,13 @@ private fun DummyPlayerEventDto.toDomain(): DummyPlayerEvent = when (this) {
     is DummyPlayerEventDto.RoundStarted -> DummyPlayerEvent.RoundStarted(round)
     is DummyPlayerEventDto.TurnPlayed -> DummyPlayerEvent.TurnPlayed(
         round = round,
-        initialReveal = initialReveal.map { CardColor.valueOf(it) },
-        additionalReveal = additionalReveal.map { CardColor.valueOf(it) },
+        initialReveal = initialReveal.map { it.toDomain() },
+        additionalReveal = additionalReveal.map { it.toDomain() },
     )
     is DummyPlayerEventDto.EndOfRoundAnnounced -> DummyPlayerEvent.EndOfRoundAnnounced(round)
     is DummyPlayerEventDto.RoundEnded -> DummyPlayerEvent.RoundEnded(
         round = round,
-        advancedActionOfferColor = CardColor.valueOf(advancedActionOfferColor),
+        advancedActionOfferColor = advancedActionOfferColor.toDomain(),
         spellOfferColor = CardColor.valueOf(spellOfferColor),
     )
 }
@@ -96,8 +110,8 @@ fun DummyPlayerSession.toEntity(updatedAt: Long = System.currentTimeMillis()): D
 fun DummyPlayerSessionEntity.toDomain(): DummyPlayerSession = DummyPlayerSession.restore(
     knight = Knight.valueOf(knight),
     wasRandom = wasRandom,
-    deckOrder = deckOrderJson.toCardColorList(),
-    discardPile = discardPileJson.toCardColorList(),
+    deckOrder = deckOrderJson.toCardIdentityList(),
+    discardPile = discardPileJson.toCardIdentityList(),
     crystals = mapOf(
         CardColor.RED to crystalsRed,
         CardColor.GREEN to crystalsGreen,

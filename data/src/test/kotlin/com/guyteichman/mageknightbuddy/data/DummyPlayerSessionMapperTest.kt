@@ -1,6 +1,7 @@
 package com.guyteichman.mageknightbuddy.data
 
 import com.guyteichman.mageknightbuddy.domain.CardColor
+import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
 import kotlin.test.Test
@@ -15,9 +16,9 @@ class DummyPlayerSessionMapperTest {
         // playTurn on an empty deck), RoundEnded (endRound) - exercises every DummyPlayerEvent case.
         val session = DummyPlayerSession.start(
             Knight.CORAL,
-            deckOrder = listOf(CardColor.RED, CardColor.GREEN),
+            deckOrder = listOf(CardColor.RED, CardColor.GREEN).map { CardIdentity.SingleColor(it) },
         ).playTurn().playTurn().endRound(
-            advancedActionOfferColor = CardColor.WHITE,
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
             spellOfferColor = CardColor.BLUE,
         )
 
@@ -28,7 +29,10 @@ class DummyPlayerSessionMapperTest {
 
     @Test
     fun `toEntity stamps the given updatedAt onto the entity`() {
-        val session = DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardColor.RED))
+        val session = DummyPlayerSession.start(
+            Knight.GOLDYX,
+            deckOrder = listOf(CardIdentity.SingleColor(CardColor.RED)),
+        )
 
         val entity = session.toEntity(updatedAt = 99L)
 
@@ -37,12 +41,33 @@ class DummyPlayerSessionMapperTest {
 
     @Test
     fun `toEntity defaults updatedAt to roughly the current time when not given explicitly`() {
-        val session = DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardColor.RED))
+        val session = DummyPlayerSession.start(
+            Knight.GOLDYX,
+            deckOrder = listOf(CardIdentity.SingleColor(CardColor.RED)),
+        )
         val before = System.currentTimeMillis()
 
         val entity = session.toEntity()
 
         val after = System.currentTimeMillis()
         assertTrue(entity.updatedAt in before..after)
+    }
+
+    @Test
+    fun `toEntity and toDomain round-trip a deck containing a Dual-Color Advanced Action card`() {
+        val session = DummyPlayerSession.start(
+            Knight.CORAL,
+            deckOrder = listOf(
+                CardIdentity.SingleColor(CardColor.RED),
+                CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE),
+            ),
+        ).endRound(
+            advancedActionOfferColor = CardIdentity.DualColor(CardColor.WHITE, CardColor.RED),
+            spellOfferColor = CardColor.BLUE,
+        )
+
+        val restored = session.toEntity(updatedAt = 0L).toDomain()
+
+        assertEquals(session, restored)
     }
 }

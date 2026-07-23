@@ -26,17 +26,13 @@ sealed interface DummyPlayerEventDto {
     @SerialName("round_started")
     data class RoundStarted(val round: Int) : DummyPlayerEventDto
 
-    /**
-     * Mirrors [com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent.TurnPlayed]. Card colors
-     * are stored as their enum name (a plain `String`) rather than the `CardColor` enum itself,
-     * since `CardColor` lives in `domain/` and this DTO hierarchy must not reference domain types.
-     */
+    /** Mirrors [com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent.TurnPlayed]. */
     @Serializable
     @SerialName("turn_played")
     data class TurnPlayed(
         val round: Int,
-        val initialReveal: List<String>,
-        val additionalReveal: List<String>,
+        val initialReveal: List<CardIdentityDto>,
+        val additionalReveal: List<CardIdentityDto>,
     ) : DummyPlayerEventDto
 
     /** Mirrors [com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent.EndOfRoundAnnounced]. */
@@ -49,7 +45,7 @@ sealed interface DummyPlayerEventDto {
     @SerialName("round_ended")
     data class RoundEnded(
         val round: Int,
-        val advancedActionOfferColor: String,
+        val advancedActionOfferColor: CardIdentityDto,
         val spellOfferColor: String,
     ) : DummyPlayerEventDto
 }
