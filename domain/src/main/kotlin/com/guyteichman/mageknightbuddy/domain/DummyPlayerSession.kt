@@ -30,7 +30,18 @@ data class DummyPlayerSession private constructor(
     val round: Int,
     val roundEnded: Boolean,
     val log: List<DummyPlayerEvent>,
+    // Whether this session began on a night Round (Round 1 = night) instead of the usual day
+    // start - set once at setup, never changed afterward. See [isDay].
+    val startsAtNight: Boolean = false,
 ) {
+    /**
+     * Whether the current [round] is a day round - see [isDayRound] for the odd/even derivation
+     * from [startsAtNight]. No Dummy Player rule currently reads this; it's tracked for parity
+     * with [ProxyPlayerSession]/[VolkareSession] ahead of a planned day/night indicator.
+     */
+    val isDay: Boolean
+        get() = isDayRound(round, startsAtNight)
+
     /**
      * How many cards of each [CardColor] remain in the deck - e.g. to show the player how close the
      * Dummy Player is to running out (the rulebook notes its deck can empty faster than a real
@@ -119,6 +130,7 @@ data class DummyPlayerSession private constructor(
             deckOrder: List<CardIdentity> = CardColor.entries
                 .flatMap { color -> List(4) { CardIdentity.SingleColor(color) } }
                 .shuffled(),
+            startsAtNight: Boolean = false,
         ): DummyPlayerSession = DummyPlayerSession(
             knight = knight,
             wasRandom = wasRandom,
@@ -128,6 +140,7 @@ data class DummyPlayerSession private constructor(
             round = 1,
             roundEnded = false,
             log = listOf(DummyPlayerEvent.RoundStarted(round = 1)),
+            startsAtNight = startsAtNight,
         )
 
         /**
@@ -135,9 +148,9 @@ data class DummyPlayerSession private constructor(
          * the Dummy Player" step in docs/rules/dummy-player.md ("Setup"). Picks a random [Knight]
          * and delegates to [start] with [wasRandom] set to true.
          */
-        fun startRandom(random: Random = Random): DummyPlayerSession {
+        fun startRandom(random: Random = Random, startsAtNight: Boolean = false): DummyPlayerSession {
             val knight = Knight.entries.toList().random(random)
-            return start(knight, wasRandom = true)
+            return start(knight, wasRandom = true, startsAtNight = startsAtNight)
         }
 
         /**
@@ -154,6 +167,7 @@ data class DummyPlayerSession private constructor(
             round: Int,
             roundEnded: Boolean,
             log: List<DummyPlayerEvent>,
+            startsAtNight: Boolean = false,
         ): DummyPlayerSession = DummyPlayerSession(
             knight = knight,
             wasRandom = wasRandom,
@@ -163,6 +177,7 @@ data class DummyPlayerSession private constructor(
             round = round,
             roundEnded = roundEnded,
             log = log,
+            startsAtNight = startsAtNight,
         )
     }
 }

@@ -71,7 +71,16 @@ class DummyPlayerSessionDaoTest {
         assertEquals(12345L, dao.getUpdatedAt())
     }
 
-    private fun testEntity(round: Int, updatedAt: Long = 0L) = DummyPlayerSessionEntity(
+    @Test
+    fun `upsert then get round-trips startsAtNight`() = runTest {
+        val dao = database.dummyPlayerSessionDao()
+
+        dao.upsert(testEntity(round = 1, startsAtNight = true))
+
+        assertEquals(true, dao.get()?.startsAtNight)
+    }
+
+    private fun testEntity(round: Int, updatedAt: Long = 0L, startsAtNight: Boolean = false) = DummyPlayerSessionEntity(
         knight = "GOLDYX",
         wasRandom = false,
         deckOrderJson = "[]",
@@ -84,5 +93,6 @@ class DummyPlayerSessionDaoTest {
         roundEnded = false,
         logJson = "[]",
         updatedAt = updatedAt,
+        startsAtNight = startsAtNight,
     )
 }

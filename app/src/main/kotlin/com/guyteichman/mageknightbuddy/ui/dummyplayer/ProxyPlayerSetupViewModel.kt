@@ -59,9 +59,13 @@ class ProxyPlayerSetupViewModel(
         wasRandom = true
     }
 
-    /** Builds a new session for the chosen Knight and autosaves it, overwriting any previously saved Proxy Player session. */
-    suspend fun start() {
-        repository.save(ProxyPlayerSession.start(knight = knight, wasRandom = wasRandom))
+    /**
+     * Builds a new session for the chosen Knight and autosaves it, overwriting any previously
+     * saved Proxy Player session. [startsAtNight] comes from the shared setup screen's
+     * "Starts at night?" checkbox (default false - most scenarios start at day).
+     */
+    suspend fun start(startsAtNight: Boolean = false) {
+        repository.save(ProxyPlayerSession.start(knight = knight, wasRandom = wasRandom, startsAtNight = startsAtNight))
         // hasSavedSession is otherwise only set from the init-block check, which doesn't re-run
         // when returning to this screen via a nested-NavHost back-pop (the ViewModel survives
         // that pop) - so without this, Restore Game stays stale/disabled right after Start.

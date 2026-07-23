@@ -83,4 +83,14 @@ class ProxyPlayerSessionMapperTest {
 
         assertEquals(session, restored)
     }
+
+    @Test
+    fun `toEntity then toDomain round-trips startsAtNight`() {
+        val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList(), startsAtNight = true)
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+        assertEquals(true, roundTripped.startsAtNight)
+    }
 }

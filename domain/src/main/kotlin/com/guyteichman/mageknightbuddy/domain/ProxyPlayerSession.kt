@@ -25,7 +25,18 @@ data class ProxyPlayerSession private constructor(
     val objectiveCard: ProxyPlayerCard?,
     val objectiveShields: Int,
     val log: List<ProxyPlayerEvent>,
+    // Whether this session began on a night Round (Round 1 = night) instead of the usual day
+    // start - set once at setup, never changed afterward. See [isDay].
+    val startsAtNight: Boolean = false,
 ) {
+    /**
+     * Whether the current [round] is a day round - see [isDayRound] for the odd/even derivation
+     * from [startsAtNight]. Consumed by the movement-points mana-die bonus
+     * (docs/rules/proxy-player.md's "Movement points": a Gold die only counts by day).
+     */
+    val isDay: Boolean
+        get() = isDayRound(round, startsAtNight)
+
     /**
      * How many of [deckOrder]'s remaining cards match each [CardColor] - mirrors
      * [DummyPlayerSession.remainingByColor] exactly, for the same per-color tally the UI's deck
@@ -177,6 +188,7 @@ data class ProxyPlayerSession private constructor(
             knight: Knight,
             wasRandom: Boolean = false,
             deckOrder: List<ProxyPlayerCard> = buildStartingDeck(knight).shuffled(),
+            startsAtNight: Boolean = false,
         ): ProxyPlayerSession = ProxyPlayerSession(
             knight = knight,
             wasRandom = wasRandom,
@@ -188,12 +200,13 @@ data class ProxyPlayerSession private constructor(
             objectiveCard = null,
             objectiveShields = 0,
             log = listOf(ProxyPlayerEvent.RoundStarted(round = 1)),
+            startsAtNight = startsAtNight,
         )
 
         /** Begins a new session with a randomly-chosen [Knight] - mirrors [DummyPlayerSession.startRandom]. */
-        fun startRandom(random: Random = Random): ProxyPlayerSession {
+        fun startRandom(random: Random = Random, startsAtNight: Boolean = false): ProxyPlayerSession {
             val knight = Knight.entries.toList().random(random)
-            return start(knight, wasRandom = true)
+            return start(knight, wasRandom = true, startsAtNight = startsAtNight)
         }
 
         /** Reconstructs a session from its full persisted state - not for general use; [start]/[startRandom] begin a new session. */
@@ -208,6 +221,7 @@ data class ProxyPlayerSession private constructor(
             objectiveCard: ProxyPlayerCard?,
             objectiveShields: Int,
             log: List<ProxyPlayerEvent>,
+            startsAtNight: Boolean = false,
         ): ProxyPlayerSession = ProxyPlayerSession(
             knight = knight,
             wasRandom = wasRandom,
@@ -219,6 +233,7 @@ data class ProxyPlayerSession private constructor(
             objectiveCard = objectiveCard,
             objectiveShields = objectiveShields,
             log = log,
+            startsAtNight = startsAtNight,
         )
     }
 }

@@ -40,8 +40,9 @@ import androidx.room.RoomDatabase
     // docs/rules/proxy-player.md - plus a startsAtNight column on VolkareSessionEntity, for the
     // setup screen's new "Starts at night?" checkbox. No hand-written migration -
     // fallbackToDestructiveMigration (see createDatabase()) is fine pre-release, same as every
-    // prior bump.
-    version = 8,
+    // prior bump. Bumped 8 -> 9: added the same startsAtNight column to DummyPlayerSessionEntity
+    // and ProxyPlayerSessionEntity, for parity across all 3 Dummy Player tab modes.
+    version = 9,
     exportSchema = false,
 )
 abstract class MageKnightBuddyDatabase : RoomDatabase() {

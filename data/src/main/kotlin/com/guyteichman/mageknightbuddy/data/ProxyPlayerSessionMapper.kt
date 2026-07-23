@@ -88,6 +88,7 @@ fun ProxyPlayerSession.toEntity(updatedAt: Long = System.currentTimeMillis()): P
     objectiveShields = objectiveShields,
     logJson = Json.encodeToString(log.map { it.toDto() }),
     updatedAt = updatedAt,
+    startsAtNight = startsAtNight,
 )
 
 /** Converts a persisted Room row back into a domain session, via [ProxyPlayerSession.restore] (the reverse of [toEntity] above). */
@@ -107,4 +108,5 @@ fun ProxyPlayerSessionEntity.toDomain(): ProxyPlayerSession = ProxyPlayerSession
     objectiveCard = objectiveCardJson.toProxyPlayerCardOrNull(),
     objectiveShields = objectiveShields,
     log = Json.decodeFromString<List<ProxyPlayerEventDto>>(logJson).map { it.toDomain() },
+    startsAtNight = startsAtNight,
 )

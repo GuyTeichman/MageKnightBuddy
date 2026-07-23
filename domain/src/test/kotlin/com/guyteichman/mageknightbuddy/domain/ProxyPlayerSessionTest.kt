@@ -106,6 +106,27 @@ class ProxyPlayerSessionTest {
     }
 
     @Test
+    fun `isDay derives from round and startsAtNight via isDayRound, defaulting startsAtNight to false`() {
+        val defaultSession = ProxyPlayerSession.start(Knight.CORAL)
+        assertEquals(isDayRound(round = 1, startsAtNight = false), defaultSession.isDay)
+
+        val nightStartSession = ProxyPlayerSession.restore(
+            knight = Knight.CORAL,
+            wasRandom = false,
+            deckOrder = emptyList(),
+            discardPile = emptyList(),
+            crystals = startingCrystals(Knight.CORAL),
+            round = 2,
+            roundEnded = false,
+            objectiveCard = null,
+            objectiveShields = 0,
+            log = emptyList(),
+            startsAtNight = true,
+        )
+        assertEquals(isDayRound(round = 2, startsAtNight = true), nightStartSession.isDay)
+    }
+
+    @Test
     fun `playTurn on an empty deck announces End of Round instead of flipping`() {
         val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
 

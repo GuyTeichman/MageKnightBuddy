@@ -291,4 +291,23 @@ class DummyPlayerSessionTest {
 
         assertEquals(original, restored)
     }
+
+    @Test
+    fun `isDay derives from round and startsAtNight via isDayRound, defaulting startsAtNight to false`() {
+        val defaultSession = DummyPlayerSession.start(Knight.CORAL)
+        assertEquals(isDayRound(round = 1, startsAtNight = false), defaultSession.isDay)
+
+        val nightStartSession = DummyPlayerSession.restore(
+            knight = Knight.CORAL,
+            wasRandom = false,
+            deckOrder = emptyList(),
+            discardPile = emptyList(),
+            crystals = startingCrystals(Knight.CORAL),
+            round = 2,
+            roundEnded = false,
+            log = emptyList(),
+            startsAtNight = true,
+        )
+        assertEquals(isDayRound(round = 2, startsAtNight = true), nightStartSession.isDay)
+    }
 }
