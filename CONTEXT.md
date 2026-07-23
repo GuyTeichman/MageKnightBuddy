@@ -57,8 +57,8 @@ The eventual place a player chooses which expansions and optional scoring varian
 The automated non-player character used to pace solo and cooperative games — it takes a simplified turn each round by flipping cards from its own deck. Some scenarios' scoring (e.g. Solo Conquest) counts cards remaining in the Dummy Player's deck. The default mode of the Dummy Player tab (below); most scenarios use this mode. Modeled by `DummyPlayerSession`, whose deck/discard pile are lists of **CardIdentity** — the type shared with the future **Proxy Player Session** so a Dual-Color Advanced Action card can enter either mode's deck.
 _Avoid_: AI player, bot, opponent
 
-**Dummy Player tab** (stub):
-The tab (not yet built — see architecture.md's tab roadmap) that runs whichever player-simulation mode the current scenario needs: Dummy Player, Volkare, or Proxy Player. Exactly one mode is active per scenario, chosen via a mode selector on this one tab — not three separate tabs.
+**Dummy Player tab**:
+The tab (see architecture.md's tab roadmap) that runs whichever player-simulation mode the current scenario needs: Dummy Player, Volkare, or Proxy Player. Exactly one mode is active per scenario, chosen via a 3-way mode selector at the top of this one tab's setup screen — not three separate tabs.
 
 **Volkare**:
 The antagonist from The Lost Legion expansion who replaces the Dummy Player in **Volkare's Return** and **Volkare's Quest**. A distinct mode of the **Dummy Player tab**, modeled by **Volkare Session** rather than **Dummy Player Session** — the two share a tab but not an implementation, since Volkare's deck and turn rules diverge too far to reuse.
