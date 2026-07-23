@@ -610,13 +610,31 @@ private fun DeckPanel(showSummary: Boolean, onToggleSummary: () -> Unit, content
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TableauBody(session: DummyPlayerSession) {
-    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
-        Text(
-            "cards left in deck",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    // Deck count and Crystals side by side - issue feedback was that Crystals sat alone at the
+    // panel's bottom while the top of the panel had unused space beside the card count; pairing
+    // them here matches ProxyPlayerScreen.kt's ProxyPlayerTableauBody and the Proxy Player
+    // Objective section's Shields/Movement pairing.
+    Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
+            Text(
+                "cards left in deck",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "Crystals",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                CardColor.entries.forEach { color ->
+                    repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
+                }
+            }
+        }
     }
 
     // heightIn(min) reserves 2 rows' worth of space always, so the panel shrinks/grows by at most
@@ -640,17 +658,6 @@ private fun TableauBody(session: DummyPlayerSession) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        }
-    }
-
-    Text(
-        "Crystals",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        CardColor.entries.forEach { color ->
-            repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
         }
     }
 }
@@ -1037,7 +1044,14 @@ internal fun ColorPickerRow(
 internal fun IdentityPickerRow(label: String, selected: CardIdentity, onSelect: (CardIdentity) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Centered (not left-packed): the 4 single-color chips usually fill their row edge-to-edge,
+        // but the 4 dual-color chips below wrap 2-per-row and, left-aligned, left a lopsided gap of
+        // empty space on the right - issue feedback was to center those wrapped rows instead.
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             ADVANCED_ACTION_OFFER_OPTIONS.forEach { identity ->
                 FilterChip(
                     selected = identity == selected,

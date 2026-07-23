@@ -227,8 +227,8 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                         Text("No current objective - tap Play Turn to draw one.")
                     } else {
                         // Computed up front (not inline where each was previously read) since the
-                        // Movement Points block now renders above the mana-die question that used
-                        // to precede it - see the Shields/Movement row below.
+                        // Movement Points block now renders in the header row, above the mana-die
+                        // question that used to precede it - see the header Row below.
                         //
                         // Names the actual color(s) to check for, dropping the vague "matching" -
                         // and the "or a Gold die" clause only appears on day Rounds, since Gold
@@ -252,12 +252,12 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
 
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                // Enlarged (~2x the deck tray's 20x28.dp) as the section's visual
-                                // anchor - same split-swatch/star-badge rendering as the deck
-                                // tracker's MiniCards, just bigger, rather than a second way of
-                                // drawing card color on this screen.
-                                MiniCard(colors = objectiveCard.colors(), isNonBasic = objectiveCard.isNonBasic(), width = 40.dp, height = 56.dp)
-                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                // ~1.5x the deck tray's 20x28.dp (shrunk from an initial 2x/3x pass)
+                                // as the section's visual anchor - same split-swatch/star-badge
+                                // rendering as the deck tracker's MiniCards, just bigger, rather
+                                // than a second way of drawing card color on this screen.
+                                MiniCard(colors = objectiveCard.colors(), isNonBasic = objectiveCard.isNonBasic(), width = 30.dp, height = 42.dp)
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(objectiveCard.displayText(), style = MaterialTheme.typography.titleMedium)
                                         HelpButton(keys = listOf("Proxy Player Objective"), fieldHelp = fieldHelp)
@@ -268,27 +268,11 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                                     // action the app can't actually determine.
                                     Text(objectiveCard.objectiveLabel(), style = MaterialTheme.typography.bodyMedium)
                                 }
-                            }
-
-                            // Shields and Movement Points side by side - both are compact,
-                            // single-purpose stats (an icon row and a number), so pairing them
-                            // frees a full row instead of stacking every element in this section
-                            // vertically.
-                            Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(
-                                        "Shields",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        // Bare repeated icons, no numeral - same pattern as the
-                                        // crystal rows, using the Knight's own shield-token art
-                                        // (matches ProxyPlayerHeroRow).
-                                        repeat(session.objectiveShields) { KnightShieldIcon(knight = session.knight, size = 16.dp) }
-                                    }
-                                }
-                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                // Movement Points moved up into the header row (was its own row
+                                // below, paired with Shields) - issue feedback was to use the
+                                // header row's spare width now that the card/title column doesn't
+                                // need it all.
+                                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Text(pointsText, style = MaterialTheme.typography.headlineLarge)
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                         Text(
@@ -301,11 +285,25 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                                 }
                             }
 
-                            // Question and Yes/No chips condensed onto one row (previously the
-                            // question was its own line above the chips) now that Shields/Movement
-                            // moved up into their own row above.
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    "Shields",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    // Bare repeated icons, no numeral - same pattern as the crystal
+                                    // rows, using the Knight's own shield-token art (matches
+                                    // ProxyPlayerHeroRow).
+                                    repeat(session.objectiveShields) { KnightShieldIcon(knight = session.knight, size = 16.dp) }
+                                }
+                            }
+
+                            // Question and Yes/No chips kept close together (no weight(1f) pushing
+                            // the chips to the far edge) - issue feedback was that a wide gap made
+                            // them read as unrelated.
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(dieQuestion, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                                Text(dieQuestion, style = MaterialTheme.typography.bodyMedium)
                                 // Exactly one tap from UNANSWERED to either answer - neither chip
                                 // starts selected, unlike a 2-state toggle that would need to cycle.
                                 FilterChip(
@@ -429,13 +427,30 @@ private fun ProxyPlayerDeckPanel(showSummary: Boolean, onToggleSummary: () -> Un
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ProxyPlayerTableauBody(session: ProxyPlayerSession) {
-    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
-        Text(
-            "cards left in deck",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    // Deck count and Crystals side by side - issue feedback was that Crystals sat alone at the
+    // panel's bottom while the top of the panel had unused space beside the card count; pairing
+    // them here matches the Objective section's Shields/Movement pairing.
+    Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
+            Text(
+                "cards left in deck",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "Crystals",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                CardColor.entries.forEach { color ->
+                    repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
+                }
+            }
+        }
     }
     FlowRow(
         modifier = Modifier.heightIn(min = 61.dp),
@@ -454,16 +469,6 @@ private fun ProxyPlayerTableauBody(session: ProxyPlayerSession) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        }
-    }
-    Text(
-        "Crystals",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        CardColor.entries.forEach { color ->
-            repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
         }
     }
 }
