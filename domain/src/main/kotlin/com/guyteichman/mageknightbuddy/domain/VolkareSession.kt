@@ -26,7 +26,18 @@ data class VolkareSession private constructor(
     // Quest-only in practice: Volkare's Return never sets this - it enters Frenzy instead.
     val lost: Boolean,
     val log: List<VolkareEvent>,
+    // Whether this session began on a night Round (Round 1 = night) instead of the usual day
+    // start - set once at setup, never changed afterward. See [isDay].
+    val startsAtNight: Boolean = false,
 ) {
+    /**
+     * Whether the current [round] is a day round - see [isDayRound] for the odd/even derivation
+     * from [startsAtNight]. No rule of Volkare's currently reads this; it's tracked for parity
+     * with [DummyPlayerSession]/[ProxyPlayerSession] ahead of a planned day/night indicator.
+     */
+    val isDay: Boolean
+        get() = isDayRound(round, startsAtNight)
+
     /**
      * Plays one Volkare turn: reveals the top card of [deckOrder] onto [discardPile] and logs it.
      * If the deck is already empty (a defensive fallback - see below for the real trigger), the
@@ -129,6 +140,7 @@ data class VolkareSession private constructor(
             raceLevel: RaceLevel,
             woundCount: Int = volkareWoundCount(scenario, raceLevel),
             deckOrder: List<VolkareCard> = buildDeck(woundCount).shuffled(),
+            startsAtNight: Boolean = false,
         ): VolkareSession = VolkareSession(
             scenario = scenario,
             raceLevel = raceLevel,
@@ -138,6 +150,7 @@ data class VolkareSession private constructor(
             cityRevealed = false,
             lost = false,
             log = listOf(VolkareEvent.RoundStarted(round = 1)),
+            startsAtNight = startsAtNight,
         )
 
         /**
@@ -154,6 +167,7 @@ data class VolkareSession private constructor(
             cityRevealed: Boolean,
             lost: Boolean,
             log: List<VolkareEvent>,
+            startsAtNight: Boolean = false,
         ): VolkareSession = VolkareSession(
             scenario = scenario,
             raceLevel = raceLevel,
@@ -163,6 +177,7 @@ data class VolkareSession private constructor(
             cityRevealed = cityRevealed,
             lost = lost,
             log = log,
+            startsAtNight = startsAtNight,
         )
     }
 }

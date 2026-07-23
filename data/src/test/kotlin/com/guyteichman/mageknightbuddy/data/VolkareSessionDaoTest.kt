@@ -71,7 +71,16 @@ class VolkareSessionDaoTest {
         assertEquals(12345L, dao.getUpdatedAt())
     }
 
-    private fun testEntity(round: Int, updatedAt: Long = 0L) = VolkareSessionEntity(
+    @Test
+    fun `upsert then get round-trips startsAtNight`() = runTest {
+        val dao = database.volkareSessionDao()
+
+        dao.upsert(testEntity(round = 1, startsAtNight = true))
+
+        assertEquals(true, dao.get()?.startsAtNight)
+    }
+
+    private fun testEntity(round: Int, updatedAt: Long = 0L, startsAtNight: Boolean = false) = VolkareSessionEntity(
         scenario = "volkares_return",
         raceLevel = "FAIR",
         deckOrderJson = "[]",
@@ -81,5 +90,6 @@ class VolkareSessionDaoTest {
         lost = false,
         logJson = "[]",
         updatedAt = updatedAt,
+        startsAtNight = startsAtNight,
     )
 }

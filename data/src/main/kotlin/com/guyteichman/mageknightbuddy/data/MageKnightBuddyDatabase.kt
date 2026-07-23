@@ -32,8 +32,9 @@ import androidx.room.RoomDatabase
     // DummyPlayerSessionEntity table - both needed so the setup screen's "Restore Game" flow can
     // compare recency between a Dummy Player session and a Volkare session (issue #129). No
     // hand-written migration - the app has never been published, so fallbackToDestructiveMigration
-    // (see createDatabase()) is fine pre-release.
-    version = 6,
+    // (see createDatabase()) is fine pre-release. Bumped 6 -> 7: added a startsAtNight column to
+    // VolkareSessionEntity, for the setup screen's new "Starts at night?" checkbox.
+    version = 7,
     exportSchema = false,
 )
 abstract class MageKnightBuddyDatabase : RoomDatabase() {
