@@ -103,32 +103,6 @@ data class DummyPlayerSession private constructor(
 
     companion object {
         /**
-         * Starting crystal dots per Knight, from docs/rules/dummy-player.md ("Setup"): the Dummy
-         * Player starts with one crystal per colored dot on the bottom of its Hero card (e.g.
-         * Goldyx's dots are green, green, blue, so it starts with 2 green + 1 blue crystal). The
-         * base rulebook only shows Goldyx as its worked example - the other 7 Knights' values were
-         * sourced by visually reading their actual Hero cards (see the full per-Knight table and
-         * source citations in docs/rules/dummy-player.md, or research tickets #31/#66/#70). Feeds
-         * [startingCrystals] below.
-         */
-        private val STARTING_CRYSTAL_DOTS: Map<Knight, List<CardColor>> = mapOf(
-            Knight.TOVAK to listOf(CardColor.RED, CardColor.BLUE, CardColor.BLUE),
-            Knight.GOLDYX to listOf(CardColor.GREEN, CardColor.GREEN, CardColor.BLUE),
-            Knight.NOROWAS to listOf(CardColor.GREEN, CardColor.WHITE, CardColor.WHITE),
-            Knight.WOLFHAWK to listOf(CardColor.WHITE, CardColor.WHITE, CardColor.BLUE),
-            Knight.ARYTHEA to listOf(CardColor.RED, CardColor.RED, CardColor.WHITE),
-            Knight.KRANG to listOf(CardColor.RED, CardColor.RED, CardColor.GREEN),
-            Knight.BRAEVALAR to listOf(CardColor.GREEN, CardColor.BLUE, CardColor.BLUE),
-            Knight.CORAL to listOf(CardColor.WHITE, CardColor.WHITE, CardColor.RED),
-        )
-
-        /** Converts a Knight's starting dots (see [STARTING_CRYSTAL_DOTS]) into a color-to-count map for the initial `crystals` inventory. */
-        private fun startingCrystals(knight: Knight): Map<CardColor, Int> {
-            val dots = STARTING_CRYSTAL_DOTS.getValue(knight)
-            return CardColor.entries.associateWith { color -> dots.count { it == color } }
-        }
-
-        /**
          * Begins a new Dummy Player session for a chosen [Knight] - session setup per
          * docs/rules/dummy-player.md ("Setup"): a shuffled starting deck of that Knight's 16 Basic
          * Action cards (the default [deckOrder] builds this as 4 cards of each [CardColor], then
@@ -191,4 +165,31 @@ data class DummyPlayerSession private constructor(
             log = log,
         )
     }
+}
+
+/**
+ * Starting crystal dots per Knight, from docs/rules/dummy-player.md ("Setup"): the Dummy
+ * Player (and, per docs/rules/proxy-player.md's "At the start of the game", the Proxy Player
+ * too) starts with one crystal per colored dot on the bottom of its Hero card (e.g. Goldyx's
+ * dots are green, green, blue, so it starts with 2 green + 1 blue crystal). The base rulebook
+ * only shows Goldyx as its worked example - the other 7 Knights' values were sourced by
+ * visually reading their actual Hero cards (see the full per-Knight table and source citations
+ * in docs/rules/dummy-player.md, or research tickets #31/#66/#70). Feeds [startingCrystals]
+ * below. `internal` (not `private`) so [ProxyPlayerSession] can reuse it too.
+ */
+internal val STARTING_CRYSTAL_DOTS: Map<Knight, List<CardColor>> = mapOf(
+    Knight.TOVAK to listOf(CardColor.RED, CardColor.BLUE, CardColor.BLUE),
+    Knight.GOLDYX to listOf(CardColor.GREEN, CardColor.GREEN, CardColor.BLUE),
+    Knight.NOROWAS to listOf(CardColor.GREEN, CardColor.WHITE, CardColor.WHITE),
+    Knight.WOLFHAWK to listOf(CardColor.WHITE, CardColor.WHITE, CardColor.BLUE),
+    Knight.ARYTHEA to listOf(CardColor.RED, CardColor.RED, CardColor.WHITE),
+    Knight.KRANG to listOf(CardColor.RED, CardColor.RED, CardColor.GREEN),
+    Knight.BRAEVALAR to listOf(CardColor.GREEN, CardColor.BLUE, CardColor.BLUE),
+    Knight.CORAL to listOf(CardColor.WHITE, CardColor.WHITE, CardColor.RED),
+)
+
+/** Converts a Knight's starting dots (see [STARTING_CRYSTAL_DOTS]) into a color-to-count map for the initial crystal Inventory. Shared by [DummyPlayerSession] and [ProxyPlayerSession]. */
+internal fun startingCrystals(knight: Knight): Map<CardColor, Int> {
+    val dots = STARTING_CRYSTAL_DOTS.getValue(knight)
+    return CardColor.entries.associateWith { color -> dots.count { it == color } }
 }
