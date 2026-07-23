@@ -12,7 +12,7 @@ package com.guyteichman.mageknightbuddy.domain
  * error if a new event type is ever added without being handled everywhere.
  */
 sealed interface DummyPlayerEvent {
-    /** Recorded when a new Round begins - see [DummyPlayerSession.start] and `endRound()`. */
+    /** Recorded when a new Round begins - only [DummyPlayerSession.start] logs this; `endRound()` logs [RoundEnded] instead, never a fresh `RoundStarted`. */
     data class RoundStarted(val round: Int) : DummyPlayerEvent
 
     /**

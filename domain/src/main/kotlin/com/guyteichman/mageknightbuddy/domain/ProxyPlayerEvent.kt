@@ -6,7 +6,7 @@ package com.guyteichman.mageknightbuddy.domain
  * set of cases" shape (see [DummyPlayerEvent]'s doc comment for why `sealed` matters here).
  */
 sealed interface ProxyPlayerEvent {
-    /** Recorded when a new Round begins - see [ProxyPlayerSession.start] and `endRound()`. */
+    /** Recorded when a new Round begins - only [ProxyPlayerSession.start] logs this; `endRound()` logs [RoundEnded] instead, never a fresh `RoundStarted`. */
     data class RoundStarted(val round: Int) : ProxyPlayerEvent
 
     /**

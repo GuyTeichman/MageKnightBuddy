@@ -42,6 +42,7 @@ import com.guyteichman.mageknightbuddy.domain.ProxyPlayerObjectiveResolution
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
 import com.guyteichman.mageknightbuddy.ui.components.LabeledCheckbox
+import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.help.HelpButton
 import kotlinx.coroutines.launch
@@ -52,11 +53,11 @@ import kotlinx.coroutines.launch
  * Advanced Action (single- or dual-color) - see [ProxyPlayerCard.movementBonus].
  */
 private fun ProxyPlayerCard.displayText(): String = when (this) {
-    is ProxyPlayerCard.BasicAction -> "${color.name.lowercase().replaceFirstChar { it.uppercase() }} (Basic Action)"
-    is ProxyPlayerCard.UniqueAction -> "${color.name.lowercase().replaceFirstChar { it.uppercase() }} (Unique)"
+    is ProxyPlayerCard.BasicAction -> "${color.label} (Basic Action)"
+    is ProxyPlayerCard.UniqueAction -> "${color.label} (Unique)"
     is ProxyPlayerCard.AdvancedAction -> when (val id = identity) {
-        is CardIdentity.SingleColor -> "${id.color.name.lowercase().replaceFirstChar { it.uppercase() }} (Advanced Action)"
-        is CardIdentity.DualColor -> "${id.colorA.name.lowercase().replaceFirstChar { it.uppercase() }}/${id.colorB.name.lowercase().replaceFirstChar { it.uppercase() }} (Advanced Action)"
+        is CardIdentity.SingleColor -> "${id.color.label} (Advanced Action)"
+        is CardIdentity.DualColor -> "${id.colorA.label}/${id.colorB.label} (Advanced Action)"
     }
 }
 
