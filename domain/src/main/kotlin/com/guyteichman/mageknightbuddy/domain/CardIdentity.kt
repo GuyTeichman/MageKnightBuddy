@@ -62,3 +62,21 @@ fun CardIdentity.matchingCrystalCount(crystals: Map<CardColor, Int>): Int = when
     is CardIdentity.SingleColor -> crystals.getValue(color)
     is CardIdentity.DualColor -> maxOf(crystals.getValue(colorA), crystals.getValue(colorB))
 }
+
+/**
+ * The Proxy Player objective label for a card of this identity - see [CardColor.objectiveLabel].
+ * A [CardIdentity.DualColor] card counts as both colors for movement targeting
+ * (docs/rules/proxy-player.md's "Objective"), so in principle both colors' labels apply - except
+ * when one of them is [CardColor.BLUE]: Blue's own rule already covers "whichever of the other
+ * three applies, on a site further from the portal", making a joined label redundant - Blue's
+ * label alone is shown instead of "Blue's label or the other color's label".
+ */
+val CardIdentity.objectiveLabel: String
+    get() = when (this) {
+        is CardIdentity.SingleColor -> color.objectiveLabel
+        is CardIdentity.DualColor -> if (colorA == CardColor.BLUE || colorB == CardColor.BLUE) {
+            CardColor.BLUE.objectiveLabel
+        } else {
+            listOf(colorA, colorB).sortedBy { it.ordinal }.joinToString(" or ") { it.objectiveLabel }
+        }
+    }
