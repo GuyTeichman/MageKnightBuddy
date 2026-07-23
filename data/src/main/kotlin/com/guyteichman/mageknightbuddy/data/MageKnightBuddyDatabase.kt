@@ -37,8 +37,10 @@ import androidx.room.RoomDatabase
     // dual-color Advanced Action cards) - destructive migration, no real user data (see
     // docs/adr/0005-shared-advanced-action-card-type-for-dual-color-cards.md). Bumped 7 -> 8: added
     // the new ProxyPlayerSessionEntity table (proxy_player_sessions) - see
-    // docs/rules/proxy-player.md. No hand-written migration - fallbackToDestructiveMigration
-    // (see createDatabase()) is fine pre-release, same as every prior bump.
+    // docs/rules/proxy-player.md - plus a startsAtNight column on VolkareSessionEntity, for the
+    // setup screen's new "Starts at night?" checkbox. No hand-written migration -
+    // fallbackToDestructiveMigration (see createDatabase()) is fine pre-release, same as every
+    // prior bump.
     version = 8,
     exportSchema = false,
 )

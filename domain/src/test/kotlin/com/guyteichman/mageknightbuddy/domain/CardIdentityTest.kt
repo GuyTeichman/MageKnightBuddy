@@ -62,4 +62,33 @@ class CardIdentityTest {
             CardIdentity.DUAL_COLOR_CARDS,
         )
     }
+
+    @Test
+    fun `objectiveLabel for SingleColor delegates straight to that color's objectiveLabel`() {
+        assertEquals(CardColor.WHITE.objectiveLabel, CardIdentity.SingleColor(CardColor.WHITE).objectiveLabel)
+    }
+
+    @Test
+    fun `objectiveLabel for a non-Blue DualColor pair joins both colors' labels with 'or', in declared color order`() {
+        assertEquals(
+            "Conquer Fortified Site or Interact",
+            CardIdentity.DualColor(CardColor.RED, CardColor.WHITE).objectiveLabel,
+        )
+        assertEquals(
+            "Conquer Fortified Site or Conquer Adventure Site",
+            CardIdentity.DualColor(CardColor.GREEN, CardColor.RED).objectiveLabel, // reversed input order
+        )
+    }
+
+    @Test
+    fun `objectiveLabel for any DualColor pair containing Blue is Blue's own label alone, not a joined string`() {
+        assertEquals(
+            CardColor.BLUE.objectiveLabel,
+            CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE).objectiveLabel,
+        )
+        assertEquals(
+            CardColor.BLUE.objectiveLabel,
+            CardIdentity.DualColor(CardColor.BLUE, CardColor.WHITE).objectiveLabel,
+        )
+    }
 }

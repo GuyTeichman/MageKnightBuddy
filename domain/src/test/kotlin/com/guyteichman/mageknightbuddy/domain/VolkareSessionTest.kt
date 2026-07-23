@@ -429,4 +429,23 @@ class VolkareSessionTest {
 
         assertEquals(original, restored)
     }
+
+    @Test
+    fun `isDay derives from round and startsAtNight via isDayRound, defaulting startsAtNight to false`() {
+        val defaultSession = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR, woundCount = 0, deckOrder = emptyList())
+        assertEquals(isDayRound(round = 1, startsAtNight = false), defaultSession.isDay)
+
+        val nightStartSession = VolkareSession.restore(
+            scenario = Scenario.VolkaresReturn,
+            raceLevel = RaceLevel.FAIR,
+            deckOrder = emptyList(),
+            discardPile = emptyList(),
+            round = 2,
+            cityRevealed = false,
+            lost = false,
+            log = emptyList(),
+            startsAtNight = true,
+        )
+        assertEquals(isDayRound(round = 2, startsAtNight = true), nightStartSession.isDay)
+    }
 }

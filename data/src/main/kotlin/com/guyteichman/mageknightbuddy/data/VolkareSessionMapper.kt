@@ -88,6 +88,7 @@ fun VolkareSession.toEntity(updatedAt: Long = System.currentTimeMillis()): Volka
     // is serialized to a single JSON string for the logJson column.
     logJson = Json.encodeToString(log.map { it.toDto() }),
     updatedAt = updatedAt,
+    startsAtNight = startsAtNight,
 )
 
 /**
@@ -106,4 +107,5 @@ fun VolkareSessionEntity.toDomain(): VolkareSession = VolkareSession.restore(
     // (kotlinx.serialization uses the @SerialName discriminators from VolkareEventDto to pick the
     // right subtype for each list entry), then each DTO is converted to its domain event.
     log = Json.decodeFromString<List<VolkareEventDto>>(logJson).map { it.toDomain() },
+    startsAtNight = startsAtNight,
 )
