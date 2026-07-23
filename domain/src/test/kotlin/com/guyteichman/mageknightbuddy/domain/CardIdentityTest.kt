@@ -2,10 +2,20 @@ package com.guyteichman.mageknightbuddy.domain
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class CardIdentityTest {
+
+    @Test
+    fun `DualColor rejects being constructed with the same color twice`() {
+        // A DualColor card with colorA == colorB would silently double-count that one color's
+        // crystals in matchingCrystalCount - this must never be a constructible value.
+        assertFailsWith<IllegalArgumentException> {
+            CardIdentity.DualColor(CardColor.RED, CardColor.RED)
+        }
+    }
 
     @Test
     fun `SingleColor matches only its own color`() {

@@ -49,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -784,8 +785,23 @@ private fun EndRoundDialog(
     // Whether the Advanced Action offer's card is one of the 4 Dual-Color cards - unchecked by
     // default, since most Advanced Action cards are single-color.
     var isDualColor by remember { mutableStateOf(false) }
-    // The card's 2nd color; only read when isDualColor is checked.
-    var secondColor by remember { mutableStateOf(CardColor.entries.first()) }
+    // The card's 2nd color; only read when isDualColor is checked. Defaults to a color distinct
+    // from advancedActionColor's initial value - CardIdentity.DualColor's init block rejects
+    // colorA == colorB, so this default (plus the "Second color" picker excluding
+    // advancedActionColor's current value below, and the LaunchedEffect keeping them apart if
+    // advancedActionColor changes afterward) keeps that combination unreachable through this UI.
+    var secondColor by remember { mutableStateOf(CardColor.entries[1]) }
+
+    // LaunchedEffect re-runs its block whenever its key (advancedActionColor) changes. If the
+    // player picks an Advanced Action offer color that now matches the already-picked second
+    // color, bump secondColor to the next distinct color instead of leaving an invalid same-color
+    // pair selected (the "Second color" picker's excluded param stops the reverse case - picking
+    // a second color equal to the current advancedActionColor - from being selectable at all).
+    LaunchedEffect(advancedActionColor) {
+        if (secondColor == advancedActionColor) {
+            secondColor = CardColor.entries.first { it != advancedActionColor }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -825,6 +841,9 @@ private fun EndRoundDialog(
                         selected = secondColor,
                         onSelect = { secondColor = it },
                         chipIcon = { color -> CardColorDot(color = color, size = 12.dp) },
+                        // Excludes whatever the Advanced Action offer picker currently holds, so a
+                        // same-color DualColor pair can't be selected via the chips in the first place.
+                        excluded = advancedActionColor,
                     )
                 }
                 ColorPickerRow(
@@ -854,7 +873,9 @@ private fun EndRoundDialog(
 }
 
 /**
- * One labeled row of the 4 [CardColor] choices, rendered as selectable chips.
+ * One labeled row of [CardColor] choices, rendered as selectable chips - all 4 colors, or 3 if
+ * [excluded] is given (used by the End Round dialog's "Second color" picker to keep a
+ * [CardIdentity.DualColor] pair's two colors from ever being chosen equal, see [EndRoundDialog]).
  * FlowRow, not a plain Row - a dialog's width is too narrow to fit all 4 labeled chips on one
  * line, and a non-wrapping Row would squeeze the last chip into a near-zero-width column instead.
  * [chipIcon] lets each offer show the glyph for what its color actually denotes (a card added to
@@ -867,11 +888,12 @@ private fun ColorPickerRow(
     selected: CardColor,
     onSelect: (CardColor) -> Unit,
     chipIcon: @Composable (CardColor) -> Unit,
+    excluded: CardColor? = null,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            CardColor.entries.forEach { color ->
+            CardColor.entries.filter { it != excluded }.forEach { color ->
                 FilterChip(
                     selected = color == selected,
                     onClick = { onSelect(color) },

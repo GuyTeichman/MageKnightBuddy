@@ -22,6 +22,14 @@ sealed interface CardIdentity {
      * both [colorA] and [colorB] for crystal-chain matching.
      */
     data class DualColor(val colorA: CardColor, val colorB: CardColor) : CardIdentity {
+        // `init` blocks run as part of construction, right after the primary constructor's
+        // parameters are assigned - this makes colorA == colorB an impossible state for any
+        // DualColor instance to exist in, rather than a bug callers could accidentally trigger.
+        // Without this, matchingCrystalCount would silently double-count that one color's crystals.
+        init {
+            require(colorA != colorB) { "DualColor's two colors must be different, got $colorA twice" }
+        }
+
         override fun matches(color: CardColor): Boolean = color == colorA || color == colorB
     }
 }
