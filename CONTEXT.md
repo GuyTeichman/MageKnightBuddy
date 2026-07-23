@@ -58,7 +58,7 @@ The automated non-player character used to pace solo and cooperative games — i
 _Avoid_: AI player, bot, opponent
 
 **Dummy Player tab**:
-The tab (see architecture.md's tab roadmap) that runs whichever player-simulation mode the current scenario needs: Dummy Player, Volkare, or Proxy Player. Exactly one mode is active per scenario, chosen via a 3-way mode selector at the top of this one tab's setup screen — not three separate tabs.
+The tab (see architecture.md's tab roadmap) that runs whichever player-simulation mode the current scenario needs: Dummy Player, Volkare, or Proxy Player. Exactly one mode is active per scenario — not three separate tabs. Setup asks in two steps, not a single 3-way choice: first Volkare vs. a Knight (Volkare has no Knight at all), then, only if a Knight was chosen, Standard vs. Proxy Player (two depths of the same Knight-backed opponent).
 
 **Volkare**:
 The antagonist from The Lost Legion expansion who replaces the Dummy Player in **Volkare's Return** and **Volkare's Quest**. A distinct mode of the **Dummy Player tab**, modeled by **Volkare Session** rather than **Dummy Player Session** — the two share a tab but not an implementation, since Volkare's deck and turn rules diverge too far to reuse.

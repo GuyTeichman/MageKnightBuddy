@@ -3,15 +3,24 @@ package com.guyteichman.mageknightbuddy.ui.dummyplayer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -19,11 +28,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,9 +47,12 @@ import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerCard
+import com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerObjectiveResolution
+import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
+import com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon
 import com.guyteichman.mageknightbuddy.ui.components.LabeledCheckbox
 import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
@@ -55,22 +67,31 @@ import kotlinx.coroutines.launch
 private fun ProxyPlayerCard.displayText(): String = when (this) {
     is ProxyPlayerCard.BasicAction -> "${color.label} (Basic Action)"
     is ProxyPlayerCard.UniqueAction -> "${color.label} (Unique)"
-    is ProxyPlayerCard.AdvancedAction -> when (val id = identity) {
-        is CardIdentity.SingleColor -> "${id.color.label} (Advanced Action)"
-        is CardIdentity.DualColor -> "${id.colorA.label}/${id.colorB.label} (Advanced Action)"
-    }
+    // CardIdentity.displayLabel already joins a Dual-Color card's 2 colors with "/" - reused here
+    // instead of re-branching on SingleColor/DualColor a second time.
+    is ProxyPlayerCard.AdvancedAction -> "${identity.displayLabel} (Advanced Action)"
 }
 
+/** The color(s) [this] card renders/matches as - see [CardIdentity.colors], which [AdvancedAction] delegates to. */
+private fun ProxyPlayerCard.colors(): List<CardColor> = when (this) {
+    is ProxyPlayerCard.BasicAction -> listOf(color)
+    is ProxyPlayerCard.UniqueAction -> listOf(color)
+    is ProxyPlayerCard.AdvancedAction -> identity.colors()
+}
+
+/** Sort key for laying out a deck of [ProxyPlayerCard]s in a stable, color-grouped order (see [CardColor]'s declaration order). */
+private fun ProxyPlayerCard.sortKey(): Int = colors().minOf { it.ordinal }
+
 /**
- * Proxy Player mode's AI (turn/round) screen: shows the current Objective Card (or a prompt to
- * play a turn, before the first one) via [displayText], its Shield count, the computed
- * movement-point total (see [com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession.movementPoints]),
- * and 3 actions - Play Turn, and (only once there's a current objective) Explored/Completed to
- * resolve it - plus an End Round dialog matching `DummyPlayerScreen.kt`'s `DummyPlayerAiScreen`
- * shape. Per docs/rules/proxy-player.md's app-scope note: this screen never decides *where* the
- * Hero moves or *what* gets conquered - only the movement-point number and Objective Card/Shield
- * bookkeeping. Not `private`: called from `DummyPlayerScreen.kt`'s `DummyPlayerTab`, the same
- * cross-file relationship `VolkareScreen.kt`'s `VolkareAiScreen` has with it.
+ * Proxy Player mode's AI (turn/round) screen: shows the Proxy Player's deck/crystal state (mirrors
+ * `DummyPlayerScreen.kt`'s `TableauCard`), the current Objective Card (or a prompt to play a turn,
+ * before the first one) via [displayText], its Shield count, the computed movement-point total
+ * (see [ProxyPlayerSession.movementPoints]), the event log, and the mutating actions - Play Turn,
+ * End Round, and (only once there's a current objective) Explored/Completed to resolve it. Per
+ * docs/rules/proxy-player.md's app-scope note: this screen never decides *where* the Hero moves or
+ * *what* gets conquered - only the movement-point number and Objective Card/Shield bookkeeping.
+ * Not `private`: called from `DummyPlayerScreen.kt`'s `DummyPlayerTab`, the same cross-file
+ * relationship `VolkareScreen.kt`'s `VolkareAiScreen` has with it.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,7 +117,50 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = {
+                    if (session != null) {
+                        RoundChip(round = session.round)
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                },
             )
+        },
+        // Bottom action row, mirroring DummyPlayerScreen.kt's DummyPlayerAiScreen - Play Turn and
+        // End Round are always available, unlike Explored/Completed below which only make sense
+        // once there's a current objective to resolve.
+        bottomBar = {
+            if (session != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                viewModel.playTurn()
+                                // hasMatchingManaDie is "is a matching die in the Source *this*
+                                // turn" - docs/rules/proxy-player.md has that die immediately
+                                // rerolled once used, so last turn's report says nothing about the
+                                // turn that just started. Reset it here rather than leaving it
+                                // checked, which would silently keep granting the +1 bonus in the
+                                // displayed movement points every subsequent turn.
+                                hasMatchingManaDie = false
+                            }
+                        },
+                        enabled = !session.roundEnded && !viewModel.isBusy,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text("Play Turn")
+                    }
+                    OutlinedButton(
+                        onClick = { showEndRoundDialog = true },
+                        enabled = !viewModel.isBusy,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text("End Round")
+                    }
+                }
+            }
         },
     ) { padding ->
         if (session == null) {
@@ -106,81 +170,67 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                 CircularProgressIndicator()
             }
         } else {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+            // A local val, not repeated session.objectiveCard reads: ProxyPlayerCard is declared
+            // in the domain module, so Kotlin can't smart-cast a nullable property read from a
+            // different module across two statements - capturing it once here gives the compiler
+            // (and this code) one non-null local to work with instead.
+            val objectiveCard = session.objectiveCard
+
+            // LazyColumn, not a plain Column: the deck tableau, objective details, and event log
+            // together can easily outgrow one screen (mirrors DummyPlayerScreen.kt's
+            // DummyPlayerAiScreen, which has the same shape of content).
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text("Round ${session.round}", style = MaterialTheme.typography.titleMedium)
+                item { ProxyPlayerHeroRow(session = session) }
+                item { ProxyPlayerTableauCard(session = session) }
+                item {
+                    if (objectiveCard == null) {
+                        Text("No current objective - tap Play Turn to draw one.")
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Objective: ${objectiveCard.displayText()}")
+                                HelpButton(keys = listOf("Proxy Player Objective"), fieldHelp = fieldHelp)
+                            }
+                            Text("Shields: ${session.objectiveShields}")
 
-                // A local val, not repeated session.objectiveCard reads: ProxyPlayerCard is
-                // declared in the domain module, so Kotlin can't smart-cast a nullable property
-                // read from a different module across two statements - capturing it once here
-                // gives the compiler (and this code) one non-null local to work with instead.
-                val objectiveCard = session.objectiveCard
-                if (objectiveCard == null) {
-                    Text("No current objective - tap Play Turn to draw one.")
-                } else {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Objective: ${objectiveCard.displayText()}")
-                        HelpButton(keys = listOf("Proxy Player Objective"), fieldHelp = fieldHelp)
-                    }
-                    Text("Shields: ${session.objectiveShields}")
-
-                    LabeledCheckbox(
-                        checked = hasMatchingManaDie,
-                        onCheckedChange = { hasMatchingManaDie = it },
-                        label = "Matching mana die in the Source",
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Movement points: ${session.movementPoints(hasMatchingManaDie)}")
-                        HelpButton(keys = listOf("Proxy Player Movement"), fieldHelp = fieldHelp)
-                    }
-                }
-
-                Button(
-                    onClick = {
-                        scope.launch {
-                            viewModel.playTurn()
-                            // hasMatchingManaDie is "is a matching die in the Source *this*
-                            // turn" - docs/rules/proxy-player.md has that die immediately
-                            // rerolled once used, so last turn's report says nothing about the
-                            // turn that just started. Reset it here rather than leaving it
-                            // checked, which would silently keep granting the +1 bonus in the
-                            // displayed movement points every subsequent turn.
-                            hasMatchingManaDie = false
-                        }
-                    },
-                    enabled = !viewModel.isBusy && !session.roundEnded,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Play Turn")
-                }
-
-                if (objectiveCard != null) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(
-                            onClick = { scope.launch { viewModel.resolveObjective(ProxyPlayerObjectiveResolution.EXPLORED) } },
-                            enabled = !viewModel.isBusy,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text("Explored")
-                        }
-                        OutlinedButton(
-                            onClick = { scope.launch { viewModel.resolveObjective(ProxyPlayerObjectiveResolution.COMPLETED) } },
-                            enabled = !viewModel.isBusy,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text("Completed")
+                            LabeledCheckbox(
+                                checked = hasMatchingManaDie,
+                                onCheckedChange = { hasMatchingManaDie = it },
+                                label = "Matching mana die in the Source",
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Movement points: ${session.movementPoints(hasMatchingManaDie)}")
+                                HelpButton(keys = listOf("Proxy Player Movement"), fieldHelp = fieldHelp)
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(
+                                    onClick = { scope.launch { viewModel.resolveObjective(ProxyPlayerObjectiveResolution.EXPLORED) } },
+                                    enabled = !viewModel.isBusy,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text("Explored")
+                                }
+                                OutlinedButton(
+                                    onClick = { scope.launch { viewModel.resolveObjective(ProxyPlayerObjectiveResolution.COMPLETED) } },
+                                    enabled = !viewModel.isBusy,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text("Completed")
+                                }
+                            }
                         }
                     }
                 }
-
-                OutlinedButton(
-                    onClick = { showEndRoundDialog = true },
-                    enabled = !viewModel.isBusy,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("End Round")
+                item {
+                    Text("Log", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                // Most-recent-first, matching DummyPlayerScreen.kt's DummyPlayerAiScreen (issue #35).
+                items(session.log.asReversed()) { event ->
+                    LogRow(entry = event.describe())
                 }
             }
         }
@@ -201,14 +251,178 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
 }
 
 /**
+ * Knight shield icon, name, and a "Random" badge if the Knight was randomly rolled at setup - a
+ * Proxy Player-mode copy of `DummyPlayerScreen.kt`'s file-private `HeroRow` (same duplication
+ * rationale as [ProxyPlayerEndRoundDialog]'s doc comment).
+ */
+@Composable
+private fun ProxyPlayerHeroRow(session: ProxyPlayerSession) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        KnightShieldIcon(knight = session.knight, size = 32.dp, tint = MaterialTheme.colorScheme.primary)
+        Text(session.knight.displayName, style = MaterialTheme.typography.titleMedium)
+        if (session.wasRandom) {
+            Surface(shape = RoundedCornerShape(percent = 50), color = MaterialTheme.colorScheme.primaryContainer) {
+                Text(
+                    "RANDOM",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The card-tableau: how many cards are left in the deck, a pile of their colors ([MiniCard] per
+ * card, via [ProxyPlayerCard.colors]), a per-color count breakdown ([ProxyPlayerSession.remainingByColor]),
+ * and the crystal Inventory - a Proxy Player-mode copy of `DummyPlayerScreen.kt`'s file-private
+ * `TableauCard` (same duplication rationale as [ProxyPlayerEndRoundDialog]'s doc comment).
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ProxyPlayerTableauCard(session: ProxyPlayerSession) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
+                Text(
+                    "cards left in deck",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            FlowRow(
+                modifier = Modifier.heightIn(min = 61.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                session.deckOrder.sortedBy { it.sortKey() }.forEach { card -> MiniCard(colors = card.colors()) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                CardColor.entries.forEach { color ->
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        CardColorDot(color = color)
+                        Text(
+                            session.remainingByColor.getValue(color).toString(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            Text(
+                "Crystals",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                CardColor.entries.forEach { color ->
+                    repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
+                }
+            }
+        }
+    }
+}
+
+/** Describes one [ProxyPlayerEvent] for [LogRow] - the Proxy Player counterpart to `DummyPlayerScreen.kt`'s file-private `DummyPlayerEvent.describe()`. */
+private fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
+    is ProxyPlayerEvent.RoundStarted -> LogEntryText(
+        icon = "◆",
+        title = "Round started",
+        meta = "Round $round",
+        description = listOf(DescriptionSpan.Words("The Proxy Player's deck is shuffled and ready.")),
+    )
+    is ProxyPlayerEvent.NewObjectiveDrawn -> LogEntryText(
+        icon = "▶",
+        title = "Objective drawn",
+        meta = "Round $round",
+        description = buildList {
+            add(DescriptionSpan.Words("New objective: "))
+            addCardDots(objectiveCard.colors())
+            add(DescriptionSpan.Words(" ${objectiveCard.displayText()}."))
+            if (discarded.isNotEmpty()) {
+                add(DescriptionSpan.Words(" Also discarded: "))
+                discarded.forEachIndexed { index, card ->
+                    if (index > 0) add(DescriptionSpan.Words(", "))
+                    addCardDots(card.colors())
+                    add(DescriptionSpan.Words(" ${card.displayText()}"))
+                }
+                add(DescriptionSpan.Words("."))
+            }
+        },
+    )
+    is ProxyPlayerEvent.TurnContinued -> LogEntryText(
+        icon = "▶",
+        title = "Turn continued",
+        meta = "Round $round",
+        description = buildList {
+            add(DescriptionSpan.Words("Objective "))
+            addCardDots(objectiveCard.colors())
+            add(DescriptionSpan.Words(" ${objectiveCard.displayText()} now has $shieldsNow Shield(s)."))
+            if (revealed.isNotEmpty()) {
+                add(DescriptionSpan.Words(" Revealed: "))
+                revealed.forEachIndexed { index, card ->
+                    if (index > 0) add(DescriptionSpan.Words(", "))
+                    addCardDots(card.colors())
+                    add(DescriptionSpan.Words(" ${card.displayText()}"))
+                }
+                add(DescriptionSpan.Words("."))
+            }
+        },
+    )
+    is ProxyPlayerEvent.EndOfRoundAnnounced -> LogEntryText(
+        icon = "⚑",
+        title = "End of Round announced",
+        meta = "Round $round",
+        description = listOf(DescriptionSpan.Words("The deck ran out - other players get one more turn each, then the Round ends.")),
+    )
+    is ProxyPlayerEvent.ObjectiveResolved -> LogEntryText(
+        icon = "⚑",
+        title = "Objective resolved",
+        meta = "Round $round",
+        description = buildList {
+            addCardDots(objectiveCard.colors())
+            add(
+                DescriptionSpan.Words(
+                    " ${objectiveCard.displayText()} - ${resolution.name.lowercase().replaceFirstChar { it.uppercase() }}.",
+                ),
+            )
+        },
+    )
+    is ProxyPlayerEvent.RoundEnded -> LogEntryText(
+        icon = "⚑",
+        title = "Round ended",
+        meta = "Round $round",
+        // Describes only the round-prep offer swap, which happens every Round regardless of why
+        // it ended - mirrors DummyPlayerEvent.RoundEnded's equivalent description, plus one extra
+        // sentence when a lingering objective was discarded (a case standard Dummy Player has no
+        // equivalent of).
+        description = buildList {
+            add(DescriptionSpan.Words("Advanced Action offer discard ("))
+            addCardDots(advancedActionOfferColor.colors())
+            add(DescriptionSpan.Words(" ${advancedActionOfferColor.displayLabel}) added to the deck. Spell offer discard ("))
+            add(DescriptionSpan.CrystalDot(spellOfferColor))
+            add(DescriptionSpan.Words(" ${spellOfferColor.label}) granted +1 crystal."))
+            // Local val, not repeated discardedObjective reads: same cross-module smart-cast
+            // limitation as ProxyPlayerAiScreen's objectiveCard (see its comment).
+            val lingeringObjective = discardedObjective
+            if (lingeringObjective != null) {
+                add(DescriptionSpan.Words(" Lingering objective "))
+                addCardDots(lingeringObjective.colors())
+                add(DescriptionSpan.Words(" ${lingeringObjective.displayText()} discarded."))
+            }
+        },
+    )
+}
+
+/**
  * The End Round dialog: a Proxy Player-mode copy of `DummyPlayerScreen.kt`'s file-private
- * `EndRoundDialog` (same fields - Advanced Action offer color, optionally dual-color via a
- * checkbox + second-color picker, and Spell offer color - since [ProxyPlayerAiViewModel.endRound]
- * takes the exact same `(CardIdentity, CardColor)` shape as the standard Dummy Player's `endRound`
- * does). Duplicated rather than shared directly because the two AI screens' ViewModels are
- * distinct types with their own `onConfirm` call sites - matching how `VolkareScreen.kt` keeps its
- * own copies of `RoundChip`/`MiniCard`/`LogRow` instead of reaching into `DummyPlayerScreen.kt`'s
- * private ones.
+ * `EndRoundDialog` (same fields - an Advanced Action offer [CardIdentity] via [IdentityPickerRow],
+ * and a Spell offer color - since [ProxyPlayerAiViewModel.endRound] takes the exact same
+ * `(CardIdentity, CardColor)` shape as the standard Dummy Player's `endRound` does). Duplicated
+ * rather than shared directly because the two AI screens' ViewModels are distinct types with their
+ * own `onConfirm` call sites - matching how `VolkareScreen.kt` keeps its own copies of
+ * `RoundChip`/`MiniCard`/`LogRow` instead of reaching into `DummyPlayerScreen.kt`'s private ones.
  */
 @Composable
 private fun ProxyPlayerEndRoundDialog(
@@ -216,28 +430,8 @@ private fun ProxyPlayerEndRoundDialog(
     onDismiss: () -> Unit,
     onConfirm: (advancedActionOfferColor: CardIdentity, spellOfferColor: CardColor) -> Unit,
 ) {
-    var advancedActionColor by remember { mutableStateOf(CardColor.entries.first()) }
+    var advancedActionIdentity by remember { mutableStateOf<CardIdentity>(CardIdentity.SingleColor(CardColor.entries.first())) }
     var spellColor by remember { mutableStateOf(CardColor.entries.first()) }
-    // Whether the Advanced Action offer's card is one of the 4 Dual-Color cards - unchecked by
-    // default, since most Advanced Action cards are single-color.
-    var isDualColor by remember { mutableStateOf(false) }
-    // The card's 2nd color; only read when isDualColor is checked. Defaults to a color distinct
-    // from advancedActionColor's initial value - CardIdentity.DualColor's init block rejects
-    // colorA == colorB, so this default (plus the "Second color" picker excluding
-    // advancedActionColor's current value below, and the LaunchedEffect keeping them apart if
-    // advancedActionColor changes afterward) keeps that combination unreachable through this UI.
-    var secondColor by remember { mutableStateOf(CardColor.entries[1]) }
-
-    // LaunchedEffect re-runs its block whenever its key (advancedActionColor) changes. If the
-    // player picks an Advanced Action offer color that now matches the already-picked second
-    // color, bump secondColor to the next distinct color instead of leaving an invalid same-color
-    // pair selected (the "Second color" picker's excluded param stops the reverse case - picking
-    // a second color equal to the current advancedActionColor - from being selectable at all).
-    LaunchedEffect(advancedActionColor) {
-        if (secondColor == advancedActionColor) {
-            secondColor = CardColor.entries.first { it != advancedActionColor }
-        }
-    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -258,30 +452,11 @@ private fun ProxyPlayerEndRoundDialog(
                     "Pick the color removed from each offer during round-prep.",
                     style = MaterialTheme.typography.bodySmall,
                 )
-                ColorPickerRow(
+                IdentityPickerRow(
                     label = "Advanced Action offer",
-                    selected = advancedActionColor,
-                    onSelect = { advancedActionColor = it },
-                    // A card of this color is what's added to the deck - CardColorDot fits. Both
-                    // chipIcons here pass the same `size` (12.dp) so the square and the diamond
-                    // read as the same size in the chip, not just the same nominal Dp value.
-                    chipIcon = { color -> CardColorDot(color = color, size = 12.dp) },
+                    selected = advancedActionIdentity,
+                    onSelect = { advancedActionIdentity = it },
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = isDualColor, onCheckedChange = { isDualColor = it })
-                    Text("Dual-color card", style = MaterialTheme.typography.bodySmall)
-                }
-                if (isDualColor) {
-                    ColorPickerRow(
-                        label = "Second color",
-                        selected = secondColor,
-                        onSelect = { secondColor = it },
-                        chipIcon = { color -> CardColorDot(color = color, size = 12.dp) },
-                        // Excludes whatever the Advanced Action offer picker currently holds, so a
-                        // same-color DualColor pair can't be selected via the chips in the first place.
-                        excluded = advancedActionColor,
-                    )
-                }
                 ColorPickerRow(
                     label = "Spell offer",
                     selected = spellColor,
@@ -292,15 +467,7 @@ private fun ProxyPlayerEndRoundDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                // Assemble the CardIdentity onConfirm expects from the checkbox + 1-2 color picks.
-                val advancedActionOfferColor = if (isDualColor) {
-                    CardIdentity.DualColor(advancedActionColor, secondColor)
-                } else {
-                    CardIdentity.SingleColor(advancedActionColor)
-                }
-                onConfirm(advancedActionOfferColor, spellColor)
-            }) { Text("Confirm") }
+            TextButton(onClick = { onConfirm(advancedActionIdentity, spellColor) }) { Text("Confirm") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
