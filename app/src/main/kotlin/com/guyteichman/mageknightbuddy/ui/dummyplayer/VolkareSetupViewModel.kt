@@ -21,9 +21,9 @@ import kotlinx.coroutines.launch
 
 /**
  * Backs Volkare mode's setup fields (Scenario, Race Level, Wound count) - the Volkare counterpart
- * to [DummyPlayerSetupViewModel]. The setup screen hosts both this and [DummyPlayerSetupViewModel]
- * side by side, switching which one drives Start/Restore based on whether "Volkare" is currently
- * selected in the shared Knight/Volkare picker (see `DummyPlayerScreen.kt`'s `KnightPicker`).
+ * to [DummyPlayerSetupViewModel]. The setup screen hosts this alongside [DummyPlayerSetupViewModel]
+ * and [ProxyPlayerSetupViewModel] side by side, switching which one drives Start/Restore based on
+ * which mode is currently selected in `DummyPlayerScreen.kt`'s `DummyPlayerModeSelector`.
  */
 @OptIn(SavedStateHandleSaveableApi::class)
 class VolkareSetupViewModel(

@@ -75,6 +75,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.guyteichman.mageknightbuddy.R
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
+import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.CardIdentity
@@ -93,6 +94,14 @@ import kotlinx.coroutines.launch
 private const val DUMMY_PLAYER_SETUP_ROUTE = "dummy_player_setup"
 private const val DUMMY_PLAYER_AI_ROUTE = "dummy_player_ai"
 private const val VOLKARE_AI_ROUTE = "volkare_ai"
+private const val PROXY_PLAYER_AI_ROUTE = "proxy_player_ai"
+
+/**
+ * Which of the Dummy Player tab's 3 modes is currently selected on the setup screen - see
+ * `CONTEXT.md`'s "Dummy Player tab" entry. Replaces the old `volkareSelected: Boolean` flag now
+ * that Proxy Player also needs its own selected state alongside Standard and Volkare.
+ */
+private enum class DummyPlayerMode { STANDARD, VOLKARE, PROXY_PLAYER }
 
 /**
  * Root composable for the Dummy Player tab: the Knight-select setup screen is the tab's start
@@ -106,7 +115,12 @@ private const val VOLKARE_AI_ROUTE = "volkare_ai"
  * reference (issue #88).
  */
 @Composable
-fun DummyPlayerTab(repository: DummyPlayerSessionRepository, volkareRepository: VolkareSessionRepository, fieldHelp: Map<String, FieldHelp>) {
+fun DummyPlayerTab(
+    repository: DummyPlayerSessionRepository,
+    volkareRepository: VolkareSessionRepository,
+    proxyPlayerRepository: ProxyPlayerSessionRepository,
+    fieldHelp: Map<String, FieldHelp>,
+) {
     val nestedNavController = rememberNavController()
 
     NavHost(navController = nestedNavController, startDestination = DUMMY_PLAYER_SETUP_ROUTE) {
@@ -114,12 +128,15 @@ fun DummyPlayerTab(repository: DummyPlayerSessionRepository, volkareRepository: 
             DummyPlayerSetupScreen(
                 repository = repository,
                 volkareRepository = volkareRepository,
+                proxyPlayerRepository = proxyPlayerRepository,
                 // Both Start and Restore Game land on the same AI-screen route - once a session
                 // exists (freshly started or restored), the AI screen just loads whatever's saved.
                 onStart = { nestedNavController.navigate(DUMMY_PLAYER_AI_ROUTE) },
                 onRestore = { nestedNavController.navigate(DUMMY_PLAYER_AI_ROUTE) },
                 onStartVolkare = { nestedNavController.navigate(VOLKARE_AI_ROUTE) },
                 onRestoreVolkare = { nestedNavController.navigate(VOLKARE_AI_ROUTE) },
+                onStartProxyPlayer = { nestedNavController.navigate(PROXY_PLAYER_AI_ROUTE) },
+                onRestoreProxyPlayer = { nestedNavController.navigate(PROXY_PLAYER_AI_ROUTE) },
             )
         }
         composable(DUMMY_PLAYER_AI_ROUTE) {
@@ -130,34 +147,44 @@ fun DummyPlayerTab(repository: DummyPlayerSessionRepository, volkareRepository: 
         composable(VOLKARE_AI_ROUTE) {
             VolkareAiScreen(repository = volkareRepository, onBack = { nestedNavController.popBackStack() })
         }
+        composable(PROXY_PLAYER_AI_ROUTE) {
+            ProxyPlayerAiScreen(repository = proxyPlayerRepository, fieldHelp = fieldHelp, onBack = { nestedNavController.popBackStack() })
+        }
     }
 }
 
 /**
- * The setup screen: pick a Knight (or "Random"), or "Volkare" to switch into Volkare mode's own
- * fields ([VolkareSetupFields]) instead - see `CONTEXT.md`'s "Volkare" entry: Volkare replaces the
- * whole picker step, there's no Knight backing selection underneath it. Either way, Start or
- * Restore Game lands on the matching AI screen. Hosts both [DummyPlayerSetupViewModel] and
- * [VolkareSetupViewModel] side by side (only one drives the visible fields/Start at a time, per
- * [volkareSelected]) so switching between them mid-setup doesn't lose either one's state, and so
- * Restore Game can compare both repositories' recency regardless of which is currently selected.
+ * The setup screen: a 3-way [DummyPlayerModeSelector] (Standard / Volkare / Proxy Player) at the
+ * top, then either a Knight picker ([KnightOnlyPicker], for Standard and Proxy Player - see
+ * `CONTEXT.md`'s "Proxy Player" entry: unlike Volkare, it picks a Knight the same way standard
+ * Dummy Player does) or Volkare's own fields ([VolkareSetupFields] - see `CONTEXT.md`'s "Volkare"
+ * entry: Volkare replaces the whole picker step, there's no Knight backing selection underneath
+ * it). Either way, Start or Restore Game lands on the matching AI screen. Hosts
+ * [DummyPlayerSetupViewModel], [VolkareSetupViewModel], and [ProxyPlayerSetupViewModel] side by
+ * side (only the one matching [DummyPlayerMode] drives the visible fields/Start at a time) so
+ * switching between modes mid-setup doesn't lose any of their state, and so Restore Game can
+ * compare all 3 repositories' recency regardless of which mode is currently selected.
  */
 @Composable
 private fun DummyPlayerSetupScreen(
     repository: DummyPlayerSessionRepository,
     volkareRepository: VolkareSessionRepository,
+    proxyPlayerRepository: ProxyPlayerSessionRepository,
     onStart: () -> Unit,
     onRestore: () -> Unit,
     onStartVolkare: () -> Unit,
     onRestoreVolkare: () -> Unit,
+    onStartProxyPlayer: () -> Unit,
+    onRestoreProxyPlayer: () -> Unit,
 ) {
     val viewModel: DummyPlayerSetupViewModel = viewModel(factory = DummyPlayerSetupViewModel.factory(repository))
     val volkareViewModel: VolkareSetupViewModel = viewModel(factory = VolkareSetupViewModel.factory(volkareRepository))
+    val proxyPlayerViewModel: ProxyPlayerSetupViewModel = viewModel(factory = ProxyPlayerSetupViewModel.factory(proxyPlayerRepository))
     val scope = rememberCoroutineScope()
-    // rememberSaveable, not plain remember: this drives which of the two ViewModels above is
+    // rememberSaveable, not plain remember: this drives which of the 3 ViewModels above is
     // "active", so it needs to survive navigating away to the AI screen and back (plain remember
     // state is lost when Navigation Compose disposes this composable while another route is shown).
-    var volkareSelected by rememberSaveable { mutableStateOf(false) }
+    var mode by rememberSaveable { mutableStateOf(DummyPlayerMode.STANDARD) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -165,17 +192,24 @@ private fun DummyPlayerSetupScreen(
     ) {
         Text("Dummy Player")
 
-        KnightPicker(
-            knight = viewModel.knight,
-            wasRandom = viewModel.wasRandom,
-            volkareSelected = volkareSelected,
-            onKnightSelected = { viewModel.pickKnight(it); volkareSelected = false },
-            onRandomSelected = { viewModel.pickRandom(); volkareSelected = false },
-            onVolkareSelected = { volkareSelected = true },
-        )
+        // 3-way segmented mode selector - replaces the old "Volkare hidden in the Knight
+        // dropdown" hack now that Proxy Player also needs a Knight sub-picker of its own.
+        DummyPlayerModeSelector(mode = mode, onModeSelected = { mode = it })
 
-        if (volkareSelected) {
-            VolkareSetupFields(
+        when (mode) {
+            DummyPlayerMode.STANDARD -> KnightOnlyPicker(
+                knight = viewModel.knight,
+                wasRandom = viewModel.wasRandom,
+                onKnightSelected = viewModel::pickKnight,
+                onRandomSelected = viewModel::pickRandom,
+            )
+            DummyPlayerMode.PROXY_PLAYER -> KnightOnlyPicker(
+                knight = proxyPlayerViewModel.knight,
+                wasRandom = proxyPlayerViewModel.wasRandom,
+                onKnightSelected = proxyPlayerViewModel::pickKnight,
+                onRandomSelected = proxyPlayerViewModel::pickRandom,
+            )
+            DummyPlayerMode.VOLKARE -> VolkareSetupFields(
                 scenario = volkareViewModel.scenario,
                 raceLevel = volkareViewModel.raceLevel,
                 woundCount = volkareViewModel.woundCount,
@@ -189,15 +223,13 @@ private fun DummyPlayerSetupScreen(
         Button(
             onClick = {
                 // Building the session and autosaving it is a suspend call (Room I/O), so it
-                // needs a coroutine scope; onStart()/onStartVolkare() only run after that save
-                // completes.
+                // needs a coroutine scope; onStart()/onStartVolkare()/onStartProxyPlayer() only
+                // run after that save completes.
                 scope.launch {
-                    if (volkareSelected) {
-                        volkareViewModel.start()
-                        onStartVolkare()
-                    } else {
-                        viewModel.start()
-                        onStart()
+                    when (mode) {
+                        DummyPlayerMode.STANDARD -> { viewModel.start(); onStart() }
+                        DummyPlayerMode.VOLKARE -> { volkareViewModel.start(); onStartVolkare() }
+                        DummyPlayerMode.PROXY_PLAYER -> { proxyPlayerViewModel.start(); onStartProxyPlayer() }
                     }
                 }
             },
@@ -208,18 +240,36 @@ private fun DummyPlayerSetupScreen(
 
         OutlinedButton(
             onClick = {
-                // Restore Game always resumes whichever of the two saved sessions is most recent,
+                // Restore Game always resumes whichever of the 3 saved sessions is most recent,
                 // regardless of what's currently selected above - see this function's doc comment.
                 scope.launch {
-                    val volkareIsNewer = (volkareRepository.updatedAt() ?: -1) > (repository.updatedAt() ?: -1)
-                    if (volkareIsNewer) onRestoreVolkare() else onRestore()
+                    val timestamps = listOf(
+                        DummyPlayerMode.STANDARD to (repository.updatedAt() ?: -1),
+                        DummyPlayerMode.VOLKARE to (volkareRepository.updatedAt() ?: -1),
+                        DummyPlayerMode.PROXY_PLAYER to (proxyPlayerRepository.updatedAt() ?: -1),
+                    )
+                    when (timestamps.maxByOrNull { it.second }?.first) {
+                        DummyPlayerMode.VOLKARE -> onRestoreVolkare()
+                        DummyPlayerMode.PROXY_PLAYER -> onRestoreProxyPlayer()
+                        else -> onRestore()
+                    }
                 }
             },
-            enabled = viewModel.hasSavedSession || volkareViewModel.hasSavedSession,
+            enabled = viewModel.hasSavedSession || volkareViewModel.hasSavedSession || proxyPlayerViewModel.hasSavedSession,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Restore Game")
         }
+    }
+}
+
+/** The 3-way Standard/Volkare/Proxy Player mode selector at the top of the setup screen - see `CONTEXT.md`'s "Dummy Player tab" entry. */
+@Composable
+private fun DummyPlayerModeSelector(mode: DummyPlayerMode, onModeSelected: (DummyPlayerMode) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(selected = mode == DummyPlayerMode.STANDARD, onClick = { onModeSelected(DummyPlayerMode.STANDARD) }, label = { Text("Standard") })
+        FilterChip(selected = mode == DummyPlayerMode.VOLKARE, onClick = { onModeSelected(DummyPlayerMode.VOLKARE) }, label = { Text("Volkare") })
+        FilterChip(selected = mode == DummyPlayerMode.PROXY_PLAYER, onClick = { onModeSelected(DummyPlayerMode.PROXY_PLAYER) }, label = { Text("Proxy Player") })
     }
 }
 
@@ -233,28 +283,20 @@ private fun DummyPlayerSetupScreen(
  * "Random" reuses that same generic glyph with a "?" overlaid (see [RandomShieldIcon]) to mark
  * it as the wildcard choice, distinct from the plain per-Knight entries.
  *
- * "Volkare" is a further entry, after every Knight - see `CONTEXT.md`'s "Volkare" entry: picking
- * it replaces the whole rest of the setup screen with Volkare mode's own fields, so it's excluded
- * from "Random" on purpose (Volkare is a deliberate choice, never a random substitute for a
- * Knight). [volkareSelected] drives the field's displayed value/icon once picked; unlike "Random"
- * it carries no other state of its own here (see [VolkareSetupViewModel] for the fields it reveals).
+ * Used by both Standard and Proxy Player mode ([DummyPlayerMode]) - Volkare mode picks no Knight
+ * at all (see `CONTEXT.md`'s "Volkare" entry), and mode selection itself now lives one level up
+ * in [DummyPlayerModeSelector] rather than as a hidden entry in this dropdown.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun KnightPicker(
+private fun KnightOnlyPicker(
     knight: Knight,
     wasRandom: Boolean,
-    volkareSelected: Boolean,
     onKnightSelected: (Knight) -> Unit,
     onRandomSelected: () -> Unit,
-    onVolkareSelected: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val displayText = when {
-        volkareSelected -> "Volkare"
-        wasRandom -> "${knight.displayName} (Random)"
-        else -> knight.displayName
-    }
+    val displayText = if (wasRandom) "${knight.displayName} (Random)" else knight.displayName
 
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
         OutlinedTextField(
@@ -262,7 +304,7 @@ private fun KnightPicker(
             onValueChange = {},
             readOnly = true,
             label = { Text("Knight") },
-            leadingIcon = { if (volkareSelected) VolkareShieldIcon() else KnightShieldIcon(knight = knight) },
+            leadingIcon = { KnightShieldIcon(knight = knight) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
@@ -290,14 +332,6 @@ private fun KnightPicker(
                     },
                 )
             }
-            DropdownMenuItem(
-                text = { Text("Volkare") },
-                leadingIcon = { VolkareShieldIcon() },
-                onClick = {
-                    onVolkareSelected()
-                    expanded = false
-                },
-            )
         }
     }
 }
@@ -880,10 +914,14 @@ private fun EndRoundDialog(
  * line, and a non-wrapping Row would squeeze the last chip into a near-zero-width column instead.
  * [chipIcon] lets each offer show the glyph for what its color actually denotes (a card added to
  * the deck vs. a crystal granted), rather than a fixed icon regardless of meaning.
+ *
+ * `internal`, not `private`: `ProxyPlayerScreen.kt`'s `ProxyPlayerEndRoundDialog` reuses this
+ * directly rather than duplicating it, since its color-picker chips are visually identical to the
+ * standard Dummy Player's End Round dialog.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun ColorPickerRow(
+internal fun ColorPickerRow(
     label: String,
     selected: CardColor,
     onSelect: (CardColor) -> Unit,

@@ -22,6 +22,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.guyteichman.mageknightbuddy.R
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
+import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.ui.dummyplayer.DummyPlayerTab
@@ -53,6 +54,7 @@ fun MageKnightBuddyApp(
     repository: ScoringSessionRepository,
     dummyPlayerRepository: DummyPlayerSessionRepository,
     volkareRepository: VolkareSessionRepository,
+    proxyPlayerRepository: ProxyPlayerSessionRepository,
     fieldHelp: Map<String, FieldHelp>,
 ) {
     // rememberNavController creates the NavController once and keeps the same instance
@@ -115,7 +117,12 @@ fun MageKnightBuddyApp(
                 )
             }
             composable(Tab.DummyPlayer.route) {
-                DummyPlayerTab(repository = dummyPlayerRepository, volkareRepository = volkareRepository, fieldHelp = fieldHelp)
+                DummyPlayerTab(
+                    repository = dummyPlayerRepository,
+                    volkareRepository = volkareRepository,
+                    proxyPlayerRepository = proxyPlayerRepository,
+                    fieldHelp = fieldHelp,
+                )
             }
         }
     }
