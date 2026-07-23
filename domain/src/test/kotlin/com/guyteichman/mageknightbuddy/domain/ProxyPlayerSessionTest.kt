@@ -21,6 +21,18 @@ class ProxyPlayerSessionTest {
     }
 
     @Test
+    fun `remainingByColor counts UniqueAction and BasicAction cards under their own color`() {
+        // Tovak's 16-card deck: 4 Blue (3 generic + 1 UniqueAction) and 4 Red (3 generic + 1
+        // UniqueAction), 4 Green, 4 White generic - remainingByColor doesn't distinguish card kind.
+        val session = ProxyPlayerSession.start(Knight.TOVAK)
+
+        assertEquals(
+            mapOf(CardColor.RED to 4, CardColor.GREEN to 4, CardColor.BLUE to 4, CardColor.WHITE to 4),
+            session.remainingByColor,
+        )
+    }
+
+    @Test
     fun `start gives Goldyx the same 2 Green, 1 Blue starting crystals as a standard Dummy Player`() {
         val session = ProxyPlayerSession.start(Knight.GOLDYX)
 
