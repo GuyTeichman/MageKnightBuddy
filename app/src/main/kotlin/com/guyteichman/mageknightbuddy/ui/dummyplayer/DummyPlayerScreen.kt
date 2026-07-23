@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -47,6 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,6 +76,7 @@ import com.guyteichman.mageknightbuddy.R
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
+import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
@@ -415,7 +418,7 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 // Most-recent-first, per issue #35's layout spec - the domain log itself is
                 // append-only/chronological, so this screen is what reverses it for display.
                 items(session.log.asReversed()) { event ->
-                    LogRow(event = event)
+                    LogRow(entry = event.describe())
                 }
             }
         }
@@ -425,8 +428,8 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
         EndRoundDialog(
             fieldHelp = fieldHelp,
             onDismiss = { showEndRoundDialog = false },
-            onConfirm = { advancedActionColor, spellColor ->
-                scope.launch { viewModel.endRound(advancedActionColor, spellColor) }
+            onConfirm = { advancedActionOfferColor, spellColor ->
+                scope.launch { viewModel.endRound(advancedActionOfferColor, spellColor) }
                 showEndRoundDialog = false
             },
         )
@@ -498,7 +501,7 @@ private fun TableauCard(session: DummyPlayerSession) {
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
                 verticalArrangement = Arrangement.spacedBy(5.dp),
             ) {
-                session.deckOrder.sortedBy { it.ordinal }.forEach { color -> MiniCard(color = color) }
+                session.deckOrder.sortedBy { it.sortKey() }.forEach { identity -> MiniCard(colors = identity.colors()) }
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -559,26 +562,71 @@ private fun StatGridCard(session: DummyPlayerSession) {
     }
 }
 
-/** A single small rounded-rectangle standing in for one card in the deck pile. */
+/**
+ * A single small rounded-rectangle standing in for one card in the deck pile. Renders one
+ * full-width swatch for [colors] with 1 entry, or 2 half-width swatches side by side for a
+ * Dual-Color card's 2 colors ([CardIdentity.colors]) - a minimal, functional placeholder rather
+ * than a final design; see ADR-0005's Consequences for why the dual-color visual treatment isn't
+ * decided yet.
+ *
+ * `internal`, not `private`, and taking `colors: List<CardColor>` rather than a `CardIdentity`
+ * directly: `ProxyPlayerScreen.kt`'s deck tableau reuses this for `List<ProxyPlayerCard>`, whose
+ * colors come from [ProxyPlayerCard.colors] instead, but the swatch-rendering itself is identical.
+ */
 @Composable
-private fun MiniCard(color: CardColor) {
-    Box(
+internal fun MiniCard(colors: List<CardColor>) {
+    // Row, not a single Box: colors is a 1- or 2-element list, so this naturally draws one
+    // full-width swatch or two half-width swatches side by side, without a separate branch for
+    // each case.
+    Row(
         modifier = Modifier
             .size(width = 20.dp, height = 28.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(color.swatch)
-            .then(if (color == CardColor.WHITE) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp)) else Modifier),
-    )
+            .clip(RoundedCornerShape(4.dp)),
+    ) {
+        colors.forEach { color ->
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(color.swatch)
+                    .then(
+                        if (color == CardColor.WHITE) {
+                            Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
+                        } else {
+                            Modifier
+                        },
+                    ),
+            )
+        }
+    }
 }
+
+/** The color(s) [identity] renders/matches as - one color for [CardIdentity.SingleColor], two for [CardIdentity.DualColor]. */
+internal fun CardIdentity.colors(): List<CardColor> = when (this) {
+    is CardIdentity.SingleColor -> listOf(color)
+    is CardIdentity.DualColor -> listOf(colorA, colorB)
+}
+
+/** Sort key for laying out a deck of [CardIdentity]s in a stable, color-grouped order (see [CardColor]'s declaration order). */
+private fun CardIdentity.sortKey(): Int = colors().minOf { it.ordinal }
+
+/** Display text for [identity] - a single color's label, or both colors' labels joined with "/" for a dual-color card. */
+internal val CardIdentity.displayLabel: String
+    get() = colors().joinToString("/") { it.label }
 
 // CardColorDot, CrystalIcon, DiamondShape, and the CardColor.swatch/label mappings moved to
 // ui/components/CardColorIcons.kt - the Score Calculator's Solo Conquest Challenge pages need the
 // same color icons for its Knight-specific color checkboxes, so this is no longer single-use.
 
-/** One row of the event log: an icon standing in for the event kind, then its title/meta/description. */
+/**
+ * One row of the event log: an icon standing in for the event kind, then its title/meta/description.
+ *
+ * `internal`, and taking a pre-built [LogEntryText] rather than a `DummyPlayerEvent` directly:
+ * `ProxyPlayerScreen.kt`'s log reuses this same rendering for `ProxyPlayerEvent`'s own `describe()`.
+ */
 @Composable
-private fun LogRow(event: DummyPlayerEvent) {
-    val (icon, title, meta, description) = event.describe()
+internal fun LogRow(entry: LogEntryText) {
+    val (icon, title, meta, description) = entry
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(
             modifier = Modifier
@@ -615,7 +663,7 @@ private fun LogRow(event: DummyPlayerEvent) {
 }
 
 /** The four pieces of text/icon a [LogRow] needs - title/meta/description phrased from `docs/rules/dummy-player.md`'s terms. */
-private data class LogEntryText(val icon: String, val title: String, val meta: String, val description: List<DescriptionSpan>)
+internal data class LogEntryText(val icon: String, val title: String, val meta: String, val description: List<DescriptionSpan>)
 
 /**
  * One chunk of a [LogEntryText.description]: plain words, an inline [CardColorDot] for a card of
@@ -623,21 +671,34 @@ private data class LogEntryText(val icon: String, val title: String, val meta: S
  * always draws the right glyph for what's actually being described (e.g. a Spell offer discard's
  * color denotes the crystal it grants, not a card, so it renders as [CrystalDot]).
  */
-private sealed interface DescriptionSpan {
+internal sealed interface DescriptionSpan {
     data class Words(val text: String) : DescriptionSpan
     data class ColorDot(val color: CardColor) : DescriptionSpan
     data class CrystalDot(val color: CardColor) : DescriptionSpan
 }
 
-private fun colorDotInlineContentId(color: CardColor) = "color_dot_${color.name}"
-private fun crystalDotInlineContentId(color: CardColor) = "crystal_dot_${color.name}"
+/**
+ * Appends one [DescriptionSpan.ColorDot] per color in [colors] to this list - one dot for a
+ * single-color card, two (separated by "/") for a dual-color one.
+ * `MutableList<DescriptionSpan>` here is the receiver `buildList { ... }` gives its lambda, so this
+ * extension is only usable inside a `buildList` block like the ones in [DummyPlayerEvent.describe].
+ */
+internal fun MutableList<DescriptionSpan>.addCardDots(colors: List<CardColor>) {
+    colors.forEachIndexed { index, color ->
+        if (index > 0) add(DescriptionSpan.Words("/"))
+        add(DescriptionSpan.ColorDot(color))
+    }
+}
+
+internal fun colorDotInlineContentId(color: CardColor) = "color_dot_${color.name}"
+internal fun crystalDotInlineContentId(color: CardColor) = "crystal_dot_${color.name}"
 
 /**
  * The inline-content maps [LogRow]'s [Text] needs to render [DescriptionSpan.ColorDot]/
  * [DescriptionSpan.CrystalDot] - one entry per [CardColor] each, built once since there are only 4
  * of each and their appearance never changes.
  */
-private val colorDotInlineContent: Map<String, InlineTextContent> = CardColor.entries.associate { color ->
+internal val colorDotInlineContent: Map<String, InlineTextContent> = CardColor.entries.associate { color ->
     colorDotInlineContentId(color) to InlineTextContent(
         placeholder = Placeholder(width = 12.sp, height = 12.sp, placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter),
     ) {
@@ -645,7 +706,7 @@ private val colorDotInlineContent: Map<String, InlineTextContent> = CardColor.en
     }
 }
 
-private val crystalDotInlineContent: Map<String, InlineTextContent> = CardColor.entries.associate { color ->
+internal val crystalDotInlineContent: Map<String, InlineTextContent> = CardColor.entries.associate { color ->
     crystalDotInlineContentId(color) to InlineTextContent(
         placeholder = Placeholder(width = 12.sp, height = 12.sp, placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter),
     ) {
@@ -662,24 +723,27 @@ private fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
     )
     is DummyPlayerEvent.TurnPlayed -> {
         val allRevealed = initialReveal + additionalReveal
+        // The 3rd initial-reveal card decides the chain (see DummyPlayerSession.playTurn) - may be
+        // a CardIdentity.DualColor card, in which case both its colors' crystals contributed.
+        val lastCard = initialReveal.last()
         val description = buildList {
             add(DescriptionSpan.Words("Revealed "))
-            allRevealed.forEachIndexed { index, color ->
+            allRevealed.forEachIndexed { index, card ->
                 if (index > 0) add(DescriptionSpan.Words(" "))
-                add(DescriptionSpan.ColorDot(color))
+                addCardDots(card.colors())
             }
             add(DescriptionSpan.Words(" — "))
             if (additionalReveal.isEmpty()) {
                 add(DescriptionSpan.Words("no crystal match, turn ended."))
             } else {
-                // The dot here stands for the matching crystal held in Inventory, not a card, so
-                // it's a CrystalDot even though initialReveal.last() is also a revealed card's color.
-                add(DescriptionSpan.CrystalDot(initialReveal.last()))
-                add(DescriptionSpan.Words(" ${initialReveal.last().label} crystal matched, +${additionalReveal.size} revealed: "))
-                additionalReveal.forEachIndexed { index, color ->
+                // The dot(s) here stand for the matching crystal(s) held in Inventory, not a card,
+                // so they're CrystalDots even though lastCard is also a revealed card.
+                lastCard.colors().forEach { color -> add(DescriptionSpan.CrystalDot(color)) }
+                add(DescriptionSpan.Words(" ${lastCard.displayLabel} crystal matched, +${additionalReveal.size} revealed: "))
+                additionalReveal.forEachIndexed { index, card ->
                     if (index > 0) add(DescriptionSpan.Words(", "))
-                    add(DescriptionSpan.ColorDot(color))
-                    add(DescriptionSpan.Words(" ${color.label}"))
+                    addCardDots(card.colors())
+                    add(DescriptionSpan.Words(" ${card.displayLabel}"))
                 }
                 add(DescriptionSpan.Words("."))
             }
@@ -699,34 +763,36 @@ private fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
         // Describes only the round-prep offer swap, which happens every Round regardless of why
         // it ended (per docs/rules/dummy-player.md) - accurate whether or not the deck actually
         // ran out first, so it never claims "the deck ran out" itself.
-        description = listOf(
-            DescriptionSpan.Words("Advanced Action offer discard ("),
-            DescriptionSpan.ColorDot(advancedActionOfferColor),
-            DescriptionSpan.Words(" ${advancedActionOfferColor.label}) added to the deck. Spell offer discard ("),
+        description = buildList {
+            add(DescriptionSpan.Words("Advanced Action offer discard ("))
+            addCardDots(advancedActionOfferColor.colors())
+            add(DescriptionSpan.Words(" ${advancedActionOfferColor.displayLabel}) added to the deck. Spell offer discard ("))
             // CrystalDot, not ColorDot - this discard grants a crystal, not a card, so the color
-            // it denotes is the crystal added to Inventory.
-            DescriptionSpan.CrystalDot(spellOfferColor),
-            DescriptionSpan.Words(" ${spellOfferColor.label}) granted +1 crystal."),
-        ),
+            // it denotes is the crystal added to Inventory. Spells are never dual-color.
+            add(DescriptionSpan.CrystalDot(spellOfferColor))
+            add(DescriptionSpan.Words(" ${spellOfferColor.label}) granted +1 crystal."))
+        },
     )
 }
 
 /**
- * Prompts for the two round-prep offer-discard colors before calling [DummyPlayerAiViewModel.endRound].
- * Tapping Cancel (or dismissing the dialog any other way) just closes it - [onConfirm] is the only
- * path that calls [DummyPlayerAiViewModel.endRound], so nothing has mutated yet for Cancel to undo.
- * The title row carries a [HelpButton] (issue #88) so the round-prep rule itself is a rulebook-cited
- * in-app dialog instead of the raw `docs/rules/dummy-player.md` filename this used to print - that
- * file ships with the repo, not the installed app, so referencing it directly was a dead end for a
+ * Prompts for the round-prep offer-discards before calling [DummyPlayerAiViewModel.endRound]: the
+ * Advanced Action offer's card (one of 4 colors or one of the 4 known Dual-Color cards, see
+ * [IdentityPickerRow]) and the Spell offer's color. Tapping Cancel (or dismissing the dialog any
+ * other way) just closes it - [onConfirm] is the only path that calls
+ * [DummyPlayerAiViewModel.endRound], so nothing has mutated yet for Cancel to undo. The title row
+ * carries a [HelpButton] (issue #88) so the round-prep rule itself is a rulebook-cited in-app
+ * dialog instead of the raw `docs/rules/dummy-player.md` filename this used to print - that file
+ * ships with the repo, not the installed app, so referencing it directly was a dead end for a
  * real player mid-game.
  */
 @Composable
 private fun EndRoundDialog(
     fieldHelp: Map<String, FieldHelp>,
     onDismiss: () -> Unit,
-    onConfirm: (advancedActionColor: CardColor, spellColor: CardColor) -> Unit,
+    onConfirm: (advancedActionOfferColor: CardIdentity, spellColor: CardColor) -> Unit,
 ) {
-    var advancedActionColor by remember { mutableStateOf(CardColor.entries.first()) }
+    var advancedActionIdentity by remember { mutableStateOf<CardIdentity>(CardIdentity.SingleColor(CardColor.entries.first())) }
     var spellColor by remember { mutableStateOf(CardColor.entries.first()) }
 
     AlertDialog(
@@ -748,14 +814,10 @@ private fun EndRoundDialog(
                     "Pick the color removed from each offer during round-prep.",
                     style = MaterialTheme.typography.bodySmall,
                 )
-                ColorPickerRow(
+                IdentityPickerRow(
                     label = "Advanced Action offer",
-                    selected = advancedActionColor,
-                    onSelect = { advancedActionColor = it },
-                    // A card of this color is what's added to the deck - CardColorDot fits. Both
-                    // chipIcons here pass the same `size` (12.dp) so the square and the diamond
-                    // read as the same size in the chip, not just the same nominal Dp value.
-                    chipIcon = { color -> CardColorDot(color = color, size = 12.dp) },
+                    selected = advancedActionIdentity,
+                    onSelect = { advancedActionIdentity = it },
                 )
                 ColorPickerRow(
                     label = "Spell offer",
@@ -767,7 +829,7 @@ private fun EndRoundDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(advancedActionColor, spellColor) }) { Text("Confirm") }
+            TextButton(onClick = { onConfirm(advancedActionIdentity, spellColor) }) { Text("Confirm") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
@@ -776,15 +838,19 @@ private fun EndRoundDialog(
 }
 
 /**
- * One labeled row of the 4 [CardColor] choices, rendered as selectable chips.
- * FlowRow, not a plain Row - a dialog's width is too narrow to fit all 4 labeled chips on one
- * line, and a non-wrapping Row would squeeze the last chip into a near-zero-width column instead.
- * [chipIcon] lets each offer show the glyph for what its color actually denotes (a card added to
- * the deck vs. a crystal granted), rather than a fixed icon regardless of meaning.
+ * One labeled row of [CardColor] choices, rendered as selectable chips - all 4 colors. FlowRow,
+ * not a plain Row - a dialog's width is too narrow to fit all 4 labeled chips on one line, and a
+ * non-wrapping Row would squeeze the last chip into a near-zero-width column instead. [chipIcon]
+ * lets each offer show the glyph for what its color actually denotes (a card added to the deck vs.
+ * a crystal granted), rather than a fixed icon regardless of meaning.
+ *
+ * `internal`, not `private`: `ProxyPlayerScreen.kt`'s `ProxyPlayerEndRoundDialog` reuses this
+ * directly rather than duplicating it, since its Spell-offer picker is visually identical to the
+ * standard Dummy Player's End Round dialog.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun ColorPickerRow(
+internal fun ColorPickerRow(
     label: String,
     selected: CardColor,
     onSelect: (CardColor) -> Unit,
@@ -804,4 +870,44 @@ private fun ColorPickerRow(
         }
     }
 }
+
+/**
+ * One labeled row of [CardIdentity] choices, rendered as selectable chips - the 4 single colors
+ * plus the 4 known Dual-Color Advanced Action cards ([CardIdentity.DUAL_COLOR_CARDS]), since
+ * that's the complete, closed set an Advanced Action offer card can ever be - see
+ * `docs/rules/proxy-player.md`'s dual-color table. Enumerating the 4 real cards directly (instead
+ * of a "Dual-color card" checkbox plus a free second-color picker) means there's no way to select
+ * a color pair that doesn't correspond to an actual printed card.
+ *
+ * `internal`, not `private`: `ProxyPlayerScreen.kt`'s `ProxyPlayerEndRoundDialog` reuses this
+ * directly, for the same reason it reuses [ColorPickerRow].
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+internal fun IdentityPickerRow(label: String, selected: CardIdentity, onSelect: (CardIdentity) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ADVANCED_ACTION_OFFER_OPTIONS.forEach { identity ->
+                FilterChip(
+                    selected = identity == selected,
+                    onClick = { onSelect(identity) },
+                    label = { Text(identity.displayLabel) },
+                    // A card of this/these color(s) is what's added to the deck - CardColorDot
+                    // fits, one dot per color the card counts as (1 for a single-color chip, 2 for
+                    // a dual-color one).
+                    leadingIcon = {
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            identity.colors().forEach { color -> CardColorDot(color = color, size = 12.dp) }
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** The 8 choices [IdentityPickerRow] offers: every single color, plus the 4 known dual-color cards. */
+private val ADVANCED_ACTION_OFFER_OPTIONS: List<CardIdentity> =
+    CardColor.entries.map { CardIdentity.SingleColor(it) } + CardIdentity.DUAL_COLOR_CARDS
 

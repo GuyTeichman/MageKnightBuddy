@@ -72,13 +72,17 @@ class DummyPlayerSessionTest {
         // Coral's starting crystals are White, White, Red (no Green) - see docs/rules/dummy-player.md's example.
         val session = DummyPlayerSession.start(
             Knight.CORAL,
-            deckOrder = listOf(CardColor.WHITE, CardColor.RED, CardColor.GREEN, CardColor.BLUE, CardColor.WHITE),
+            deckOrder = listOf(CardColor.WHITE, CardColor.RED, CardColor.GREEN, CardColor.BLUE, CardColor.WHITE)
+                .map { CardIdentity.SingleColor(it) },
         )
 
         val next = session.playTurn()
 
-        assertEquals(listOf(CardColor.WHITE, CardColor.RED, CardColor.GREEN), next.discardPile)
-        assertEquals(listOf(CardColor.BLUE, CardColor.WHITE), next.deckOrder)
+        assertEquals(
+            listOf(CardColor.WHITE, CardColor.RED, CardColor.GREEN).map { CardIdentity.SingleColor(it) },
+            next.discardPile,
+        )
+        assertEquals(listOf(CardColor.BLUE, CardColor.WHITE).map { CardIdentity.SingleColor(it) }, next.deckOrder)
     }
 
     @Test
@@ -89,44 +93,76 @@ class DummyPlayerSessionTest {
             deckOrder = listOf(
                 CardColor.WHITE, CardColor.RED, CardColor.WHITE,
                 CardColor.GREEN, CardColor.WHITE, CardColor.RED,
+            ).map { CardIdentity.SingleColor(it) },
+        )
+
+        val next = session.playTurn()
+
+        assertEquals(
+            listOf(CardColor.WHITE, CardColor.RED, CardColor.WHITE, CardColor.GREEN, CardColor.WHITE)
+                .map { CardIdentity.SingleColor(it) },
+            next.discardPile,
+        )
+        assertEquals(listOf(CardIdentity.SingleColor(CardColor.RED)), next.deckOrder)
+    }
+
+    @Test
+    fun `playTurn's crystal-chain match counts the higher of a Dual-Color card's two colors' crystals`() {
+        // Coral holds 2 White, 1 Red crystals, 0 Green/Blue. A Green+Blue dual-color 3rd card
+        // matches neither color directly, but Power of Crystals-style cards would; here we use a
+        // dual-color card matching Coral's owned colors (White+Red) to assert the chain triggers
+        // for the HIGHER of the two matched colors' crystal counts, not their sum
+        // (max(2 White, 1 Red) = 2 additional reveals, not 2+1=3).
+        val session = DummyPlayerSession.start(
+            Knight.CORAL,
+            deckOrder = listOf(
+                CardIdentity.SingleColor(CardColor.GREEN),
+                CardIdentity.SingleColor(CardColor.BLUE),
+                CardIdentity.DualColor(CardColor.WHITE, CardColor.RED),
+                CardIdentity.SingleColor(CardColor.GREEN),
+                CardIdentity.SingleColor(CardColor.BLUE),
+                CardIdentity.SingleColor(CardColor.GREEN),
             ),
         )
 
         val next = session.playTurn()
 
         assertEquals(
-            listOf(CardColor.WHITE, CardColor.RED, CardColor.WHITE, CardColor.GREEN, CardColor.WHITE),
+            listOf(
+                CardIdentity.SingleColor(CardColor.GREEN),
+                CardIdentity.SingleColor(CardColor.BLUE),
+                CardIdentity.DualColor(CardColor.WHITE, CardColor.RED),
+                CardIdentity.SingleColor(CardColor.GREEN),
+                CardIdentity.SingleColor(CardColor.BLUE),
+            ),
             next.discardPile,
         )
-        assertEquals(listOf(CardColor.RED), next.deckOrder)
+        assertEquals(listOf(CardIdentity.SingleColor(CardColor.GREEN)), next.deckOrder)
     }
 
     @Test
     fun `playTurn on a near-empty deck flips only what's available, same logic as a full flip`() {
-        // Only 2 cards left - the "initial 3" flip is capped at what's there, no special-casing.
         val session = DummyPlayerSession.start(
             Knight.CORAL,
-            deckOrder = listOf(CardColor.BLUE, CardColor.WHITE),
+            deckOrder = listOf(CardColor.BLUE, CardColor.WHITE).map { CardIdentity.SingleColor(it) },
         )
 
         val next = session.playTurn()
 
-        assertEquals(listOf(CardColor.BLUE, CardColor.WHITE), next.discardPile)
+        assertEquals(listOf(CardColor.BLUE, CardColor.WHITE).map { CardIdentity.SingleColor(it) }, next.discardPile)
         assertEquals(emptyList(), next.deckOrder)
     }
 
     @Test
     fun `playTurn on a near-empty deck still chains if there's nothing left to chain into`() {
-        // Last card flipped is White (2 matching crystals) but the deck is already empty afterward -
-        // additional reveals are bounded by what's left, so no chain happens.
         val session = DummyPlayerSession.start(
             Knight.CORAL,
-            deckOrder = listOf(CardColor.GREEN, CardColor.WHITE),
+            deckOrder = listOf(CardColor.GREEN, CardColor.WHITE).map { CardIdentity.SingleColor(it) },
         )
 
         val next = session.playTurn()
 
-        assertEquals(listOf(CardColor.GREEN, CardColor.WHITE), next.discardPile)
+        assertEquals(listOf(CardColor.GREEN, CardColor.WHITE).map { CardIdentity.SingleColor(it) }, next.discardPile)
         assertEquals(emptyList(), next.deckOrder)
     }
 
@@ -156,11 +192,11 @@ class DummyPlayerSessionTest {
     fun `endRound appends the Advanced Action offer color to the deck, reshuffled`() {
         val session = DummyPlayerSession.start(
             Knight.CORAL,
-            deckOrder = listOf(CardColor.RED, CardColor.GREEN),
+            deckOrder = listOf(CardColor.RED, CardColor.GREEN).map { CardIdentity.SingleColor(it) },
         )
 
         val next = session.endRound(
-            advancedActionOfferColor = CardColor.WHITE,
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
             spellOfferColor = CardColor.BLUE,
         )
 
@@ -171,12 +207,25 @@ class DummyPlayerSessionTest {
     }
 
     @Test
-    fun `endRound grants +1 crystal of the Spell offer color, uncapped`() {
-        // Coral starts with 2 White crystals - gaining another should reach 3, not cap.
+    fun `endRound can append a Dual-Color Advanced Action card, counted toward both colors' remainingByColor`() {
         val session = DummyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
 
         val next = session.endRound(
-            advancedActionOfferColor = CardColor.BLUE,
+            advancedActionOfferColor = CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE),
+            spellOfferColor = CardColor.WHITE,
+        )
+
+        assertEquals(1, next.remainingByColor.getValue(CardColor.GREEN))
+        assertEquals(1, next.remainingByColor.getValue(CardColor.BLUE))
+        assertEquals(listOf(CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE)), next.deckOrder)
+    }
+
+    @Test
+    fun `endRound grants +1 crystal of the Spell offer color, uncapped`() {
+        val session = DummyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.BLUE),
             spellOfferColor = CardColor.WHITE,
         )
 
@@ -188,24 +237,31 @@ class DummyPlayerSessionTest {
         val session = DummyPlayerSession.start(Knight.CORAL, deckOrder = emptyList()).playTurn()
 
         val next = session.endRound(
-            advancedActionOfferColor = CardColor.WHITE,
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
             spellOfferColor = CardColor.BLUE,
         )
 
         assertEquals(2, next.round)
         assertEquals(false, next.roundEnded)
         assertEquals(
-            DummyPlayerEvent.RoundEnded(round = 1, advancedActionOfferColor = CardColor.WHITE, spellOfferColor = CardColor.BLUE),
+            DummyPlayerEvent.RoundEnded(
+                round = 1,
+                advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+                spellOfferColor = CardColor.BLUE,
+            ),
             next.log.last(),
         )
     }
 
     @Test
     fun `endRound is always callable, even mid-round with cards still in the deck`() {
-        val session = DummyPlayerSession.start(Knight.CORAL, deckOrder = listOf(CardColor.RED))
+        val session = DummyPlayerSession.start(
+            Knight.CORAL,
+            deckOrder = listOf(CardIdentity.SingleColor(CardColor.RED)),
+        )
 
         val next = session.endRound(
-            advancedActionOfferColor = CardColor.WHITE,
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
             spellOfferColor = CardColor.BLUE,
         )
 
@@ -216,9 +272,9 @@ class DummyPlayerSessionTest {
     fun `restore reconstructs a session with the exact same state it was given`() {
         val original = DummyPlayerSession.start(
             Knight.CORAL,
-            deckOrder = listOf(CardColor.RED, CardColor.GREEN),
+            deckOrder = listOf(CardColor.RED, CardColor.GREEN).map { CardIdentity.SingleColor(it) },
         ).playTurn().endRound(
-            advancedActionOfferColor = CardColor.WHITE,
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
             spellOfferColor = CardColor.BLUE,
         )
 

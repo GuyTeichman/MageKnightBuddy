@@ -2,6 +2,7 @@ package com.guyteichman.mageknightbuddy.ui.dummyplayer
 
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
+import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
@@ -49,7 +50,9 @@ class DummyPlayerAiViewModelTest {
     fun `restores the session that was saved by the setup screen`() = runTest {
         val dao = FakeDummyPlayerSessionDao()
         val repository = DummyPlayerSessionRepository(dao)
-        repository.save(DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardColor.RED)))
+        repository.save(
+            DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardIdentity.SingleColor(CardColor.RED))),
+        )
 
         val viewModel = DummyPlayerAiViewModel(repository)
         advanceUntilIdle()
@@ -61,7 +64,12 @@ class DummyPlayerAiViewModelTest {
     fun `playTurn advances the in-memory session and autosaves it`() = runTest {
         val dao = FakeDummyPlayerSessionDao()
         val repository = DummyPlayerSessionRepository(dao)
-        repository.save(DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardColor.RED, CardColor.GREEN, CardColor.BLUE)))
+        repository.save(
+            DummyPlayerSession.start(
+                Knight.GOLDYX,
+                deckOrder = listOf(CardColor.RED, CardColor.GREEN, CardColor.BLUE).map { CardIdentity.SingleColor(it) },
+            ),
+        )
         val viewModel = DummyPlayerAiViewModel(repository)
         advanceUntilIdle()
 
@@ -83,7 +91,8 @@ class DummyPlayerAiViewModelTest {
         repository.save(
             DummyPlayerSession.start(
                 Knight.GOLDYX,
-                deckOrder = listOf(CardColor.RED, CardColor.GREEN, CardColor.WHITE, CardColor.BLUE, CardColor.RED),
+                deckOrder = listOf(CardColor.RED, CardColor.GREEN, CardColor.WHITE, CardColor.BLUE, CardColor.RED)
+                    .map { CardIdentity.SingleColor(it) },
             ),
         )
         val viewModel = DummyPlayerAiViewModel(repository)
@@ -102,7 +111,7 @@ class DummyPlayerAiViewModelTest {
         gate.complete(Unit)
         advanceUntilIdle()
 
-        assertEquals(listOf(CardColor.BLUE, CardColor.RED), viewModel.session?.deckOrder)
+        assertEquals(listOf(CardColor.BLUE, CardColor.RED).map { CardIdentity.SingleColor(it) }, viewModel.session?.deckOrder)
         assertEquals(viewModel.session, repository.restore())
     }
 
@@ -110,17 +119,44 @@ class DummyPlayerAiViewModelTest {
     fun `endRound resets roundEnded and autosaves, even when called before playTurn`() = runTest {
         val dao = FakeDummyPlayerSessionDao()
         val repository = DummyPlayerSessionRepository(dao)
-        repository.save(DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardColor.RED)))
+        repository.save(
+            DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardIdentity.SingleColor(CardColor.RED))),
+        )
         val viewModel = DummyPlayerAiViewModel(repository)
         advanceUntilIdle()
 
-        viewModel.endRound(advancedActionOfferColor = CardColor.WHITE, spellOfferColor = CardColor.BLUE)
+        viewModel.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+            spellOfferColor = CardColor.BLUE,
+        )
 
         assertEquals(2, viewModel.session?.round)
         assertEquals(
-            DummyPlayerEvent.RoundEnded(round = 1, advancedActionOfferColor = CardColor.WHITE, spellOfferColor = CardColor.BLUE),
+            DummyPlayerEvent.RoundEnded(
+                round = 1,
+                advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+                spellOfferColor = CardColor.BLUE,
+            ),
             viewModel.session?.log?.last(),
         )
         assertEquals(viewModel.session, repository.restore())
+    }
+
+    @Test
+    fun `endRound accepts a Dual-Color Advanced Action offer card`() = runTest {
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        repository.save(DummyPlayerSession.start(Knight.CORAL, deckOrder = emptyList()))
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.endRound(
+            advancedActionOfferColor = CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE),
+            spellOfferColor = CardColor.WHITE,
+        )
+
+        assertEquals(
+            CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE),
+            viewModel.session?.deckOrder?.single(),
+        )
     }
 }
