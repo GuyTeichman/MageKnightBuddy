@@ -85,14 +85,22 @@ data class DummyPlayerSession private constructor(
      * Applies the round-prep offer interactions from docs/rules/dummy-player.md ("End of Round")
      * and advances to the next round. Callers pass in the identity/color of the two cards that
      * round-prep just removed (the lowest card from each offer): the Advanced Action offer's card
-     * is added to the Dummy Player's deck (then the deck is reshuffled) instead of being discarded
-     * as usual - it may be a [CardIdentity.DualColor] card - and the Spell offer's card grants the
-     * Dummy Player one crystal of its color (uncapped, unlike real players' 3-crystal-per-color
-     * limit; Spells are never dual-color).
+     * is added to the Dummy Player's deck instead of being discarded as usual - it may be a
+     * [CardIdentity.DualColor] card - and the Spell offer's card grants the Dummy Player one
+     * crystal of its color (uncapped, unlike real players' 3-crystal-per-color limit; Spells are
+     * never dual-color). The deck is then reshuffled, and this reshuffle folds the *entire discard
+     * pile* back in too - not just the undrawn deck plus the new card - so [discardPile] is empty
+     * immediately afterward. This mirrors the general "Preparing a New Round" step every real
+     * player also does (rulebook p.4: deck + discard pile + hand, combined and reshuffled); see
+     * CONTEXT.md's "Reshuffle" entry for the full cross-reference. Omitting the discard pile here
+     * was a real historical bug (issue #148) that shrank the deck to almost nothing after Round 1.
      */
     fun endRound(advancedActionOfferColor: CardIdentity, spellOfferColor: CardColor): DummyPlayerSession = copy(
-        // Card that would normally be discarded instead joins the deck, which is then reshuffled.
-        deckOrder = (deckOrder + advancedActionOfferColor).shuffled(),
+        // Reshuffle = undrawn deck + the ENTIRE discard pile + the newly-added offer card, all
+        // combined into one pile. discardPile resets to empty since every card it held just moved
+        // into deckOrder.
+        deckOrder = (deckOrder + discardPile + advancedActionOfferColor).shuffled(),
+        discardPile = emptyList(),
         // `map + Pair` builds a new Map with that one key's value replaced (or added) - the rest of
         // the entries are carried over unchanged, consistent with this class's immutable style.
         crystals = crystals + (spellOfferColor to crystals.getValue(spellOfferColor) + 1),
