@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
 // behind the scenes. `exportSchema = false` skips writing that schema to a JSON file on disk,
 // since this project isn't tracking schema history for migrations yet.
 @Database(
-    entities = [ScoringSessionEntity::class, DummyPlayerSessionEntity::class, VolkareSessionEntity::class],
+    entities = [ScoringSessionEntity::class, DummyPlayerSessionEntity::class, VolkareSessionEntity::class, ProxyPlayerSessionEntity::class],
     // Bumped 2 -> 3: ScoringSessionEntity's ~22 wide columns collapsed into a single inputJson
     // column (see ScoringInputDto). Bumped 3 -> 4: ScoringInputDto.ForTheCouncil's own shape
     // changed (reputationModifier/shieldOnXSpace/reputation -> one reputationTrackPosition).
@@ -35,8 +35,11 @@ import androidx.room.RoomDatabase
     // (see createDatabase()) is fine pre-release. Bumped 6 -> 7: DummyPlayerSessionEntity's
     // deckOrderJson/discardPileJson/logJson shape changed (CardColor -> CardIdentity, to support
     // dual-color Advanced Action cards) - destructive migration, no real user data (see
-    // docs/adr/0005-shared-advanced-action-card-type-for-dual-color-cards.md).
-    version = 7,
+    // docs/adr/0005-shared-advanced-action-card-type-for-dual-color-cards.md). Bumped 7 -> 8: added
+    // the new ProxyPlayerSessionEntity table (proxy_player_sessions) - see
+    // docs/rules/proxy-player.md. No hand-written migration - fallbackToDestructiveMigration
+    // (see createDatabase()) is fine pre-release, same as every prior bump.
+    version = 8,
     exportSchema = false,
 )
 abstract class MageKnightBuddyDatabase : RoomDatabase() {
@@ -45,4 +48,5 @@ abstract class MageKnightBuddyDatabase : RoomDatabase() {
     abstract fun scoringSessionDao(): ScoringSessionDao
     abstract fun dummyPlayerSessionDao(): DummyPlayerSessionDao
     abstract fun volkareSessionDao(): VolkareSessionDao
+    abstract fun proxyPlayerSessionDao(): ProxyPlayerSessionDao
 }
