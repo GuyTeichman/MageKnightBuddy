@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
+import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import kotlinx.coroutines.launch
 
@@ -59,12 +60,14 @@ class DummyPlayerAiViewModel(private val repository: DummyPlayerSessionRepositor
 
     /**
      * Applies the round-prep offer interactions (see docs/rules/dummy-player.md) and autosaves.
-     * [advancedActionOfferColor] and [spellOfferColor] are the colors of the cards removed from
-     * those offers this round-prep - the End Round dialog is what asks the player to supply them.
-     * Callable at any time, even mid-round: [DummyPlayerSession.endRound] doesn't require
-     * [DummyPlayerSession.roundEnded] to be true first.
+     * [advancedActionOfferColor] is the card removed from the Advanced Action offer this
+     * round-prep - single- or dual-color, see [CardIdentity] - and [spellOfferColor] is the color
+     * of the card removed from the Spell offer (Spells are never dual-color). The End Round dialog
+     * is what asks the player to supply them. Callable at any time, even mid-round:
+     * [DummyPlayerSession.endRound] doesn't require [DummyPlayerSession.roundEnded] to be true
+     * first.
      */
-    suspend fun endRound(advancedActionOfferColor: CardColor, spellOfferColor: CardColor) {
+    suspend fun endRound(advancedActionOfferColor: CardIdentity, spellOfferColor: CardColor) {
         if (isBusy) return
         isBusy = true
         try {
