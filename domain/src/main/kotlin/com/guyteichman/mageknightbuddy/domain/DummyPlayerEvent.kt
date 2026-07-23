@@ -19,12 +19,12 @@ sealed interface DummyPlayerEvent {
      * Recorded after [DummyPlayerSession.playTurn] resolves a turn: the flip-3-cards-then-chain-
      * on-crystal-match procedure from docs/rules/dummy-player.md ("Turn procedure"). [initialReveal]
      * is the mandatory first 3 cards flipped; [additionalReveal] is any extra cards flipped because
-     * the 3rd card's color matched a crystal the Dummy Player holds (empty if there was no match).
+     * the 3rd card's color(s) matched a crystal the Dummy Player holds (empty if there was no match).
      */
     data class TurnPlayed(
         val round: Int,
-        val initialReveal: List<CardColor>,
-        val additionalReveal: List<CardColor>,
+        val initialReveal: List<CardIdentity>,
+        val additionalReveal: List<CardIdentity>,
     ) : DummyPlayerEvent
 
     /**
@@ -36,12 +36,13 @@ sealed interface DummyPlayerEvent {
     /**
      * Recorded after [DummyPlayerSession.endRound] resolves the round-prep offer interactions that
      * feed the Dummy Player's deck and crystals - docs/rules/dummy-player.md ("End of Round").
-     * [advancedActionOfferColor] is the color of the Advanced Action card added to its deck;
-     * [spellOfferColor] is the color of the crystal added to its Inventory.
+     * [advancedActionOfferColor] is the card added to its deck (single- or dual-color, see
+     * [CardIdentity]); [spellOfferColor] is the color of the crystal added to its Inventory (Spells
+     * are never dual-color).
      */
     data class RoundEnded(
         val round: Int,
-        val advancedActionOfferColor: CardColor,
+        val advancedActionOfferColor: CardIdentity,
         val spellOfferColor: CardColor,
     ) : DummyPlayerEvent
 }

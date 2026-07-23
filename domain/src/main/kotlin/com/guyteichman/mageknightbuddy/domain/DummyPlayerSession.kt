@@ -24,8 +24,8 @@ import kotlin.random.Random
 data class DummyPlayerSession private constructor(
     val knight: Knight,
     val wasRandom: Boolean,
-    val deckOrder: List<CardColor>,
-    val discardPile: List<CardColor>,
+    val deckOrder: List<CardIdentity>,
+    val discardPile: List<CardIdentity>,
     val crystals: Map<CardColor, Int>,
     val round: Int,
     val roundEnded: Boolean,
@@ -34,14 +34,15 @@ data class DummyPlayerSession private constructor(
     /**
      * How many cards of each [CardColor] remain in the deck - e.g. to show the player how close the
      * Dummy Player is to running out (the rulebook notes its deck can empty faster than a real
-     * player's).
+     * player's). A [CardIdentity.DualColor] card counts toward both of its colors here, via
+     * [CardIdentity.matches].
      *
      * `associateWith` is a Kotlin stdlib function that turns a list of keys - here,
      * `CardColor.entries`, i.e. every enum value - into a `Map` by computing a value for each key
      * with the given lambda.
      */
     val remainingByColor: Map<CardColor, Int>
-        get() = CardColor.entries.associateWith { color -> deckOrder.count { it == color } }
+        get() = CardColor.entries.associateWith { color -> deckOrder.count { it.matches(color) } }
 
     /**
      * Plays one Dummy Player turn: the flip-3-cards-then-chain-on-crystal-match procedure from
@@ -64,10 +65,10 @@ data class DummyPlayerSession private constructor(
 
         val initialReveal = deckOrder.take(3) // Mandatory first 3 cards, flipped unconditionally.
         val afterInitial = deckOrder.drop(3)
-        val lastColor = initialReveal.last() // Chaining is decided by the 3rd (last) card's color only.
-        // getValue (vs. get) throws if the key is missing; safe here because crystals always has
-        // every CardColor as a key (see startingCrystals below).
-        val matchingCrystals = crystals.getValue(lastColor)
+        val lastCard = initialReveal.last() // Chaining is decided by the 3rd (last) card's color(s) only.
+        // matchingCrystalCount sums crystals for every color the card matches - one color for a
+        // CardIdentity.SingleColor card, both colors for a CardIdentity.DualColor card.
+        val matchingCrystals = lastCard.matchingCrystalCount(crystals)
         // Cap the extra flips at what's actually left, in case the deck runs out mid-flip.
         val additionalCount = minOf(matchingCrystals, afterInitial.size)
         val additionalReveal = afterInitial.take(additionalCount)
@@ -82,13 +83,14 @@ data class DummyPlayerSession private constructor(
 
     /**
      * Applies the round-prep offer interactions from docs/rules/dummy-player.md ("End of Round")
-     * and advances to the next round. Callers pass in the colors of the two cards that round-prep
-     * just removed (the lowest card from each offer): the Advanced Action offer's card is added to
-     * the Dummy Player's deck (then the deck is reshuffled) instead of being discarded as usual, and
-     * the Spell offer's card grants the Dummy Player one crystal of its color (uncapped, unlike real
-     * players' 3-crystal-per-color limit).
+     * and advances to the next round. Callers pass in the identity/color of the two cards that
+     * round-prep just removed (the lowest card from each offer): the Advanced Action offer's card
+     * is added to the Dummy Player's deck (then the deck is reshuffled) instead of being discarded
+     * as usual - it may be a [CardIdentity.DualColor] card - and the Spell offer's card grants the
+     * Dummy Player one crystal of its color (uncapped, unlike real players' 3-crystal-per-color
+     * limit; Spells are never dual-color).
      */
-    fun endRound(advancedActionOfferColor: CardColor, spellOfferColor: CardColor): DummyPlayerSession = copy(
+    fun endRound(advancedActionOfferColor: CardIdentity, spellOfferColor: CardColor): DummyPlayerSession = copy(
         // Card that would normally be discarded instead joins the deck, which is then reshuffled.
         deckOrder = (deckOrder + advancedActionOfferColor).shuffled(),
         // `map + Pair` builds a new Map with that one key's value replaced (or added) - the rest of
@@ -137,9 +139,12 @@ data class DummyPlayerSession private constructor(
         fun start(
             knight: Knight,
             wasRandom: Boolean = false,
-            // flatMap here expands each color into 4 copies of itself, then flattens all the
-            // per-color lists into one combined list of 16 cards before shuffling.
-            deckOrder: List<CardColor> = CardColor.entries.flatMap { color -> List(4) { color } }.shuffled(),
+            // flatMap here expands each color into 4 copies of itself (wrapped as a single-color
+            // CardIdentity), then flattens all the per-color lists into one combined list of 16
+            // cards before shuffling.
+            deckOrder: List<CardIdentity> = CardColor.entries
+                .flatMap { color -> List(4) { CardIdentity.SingleColor(color) } }
+                .shuffled(),
         ): DummyPlayerSession = DummyPlayerSession(
             knight = knight,
             wasRandom = wasRandom,
@@ -169,8 +174,8 @@ data class DummyPlayerSession private constructor(
         fun restore(
             knight: Knight,
             wasRandom: Boolean,
-            deckOrder: List<CardColor>,
-            discardPile: List<CardColor>,
+            deckOrder: List<CardIdentity>,
+            discardPile: List<CardIdentity>,
             crystals: Map<CardColor, Int>,
             round: Int,
             roundEnded: Boolean,
