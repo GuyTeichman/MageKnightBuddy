@@ -71,6 +71,44 @@ data class ProxyPlayerSession private constructor(
     }
 
     /**
+     * Discards the current [objectiveCard] and clears [objectiveShields] - docs/rules/proxy-player.md's
+     * "Resolution": both Explored and Completed have the identical state effect, so [resolution]
+     * only affects the logged event's narration, not what actually changes. A no-op if there's no
+     * current objective (defensive - the UI should only offer this action when one exists).
+     */
+    fun resolveObjective(resolution: ProxyPlayerObjectiveResolution): ProxyPlayerSession {
+        val card = objectiveCard ?: return this
+        return copy(
+            objectiveCard = null,
+            objectiveShields = 0,
+            discardPile = discardPile + card,
+            log = log + ProxyPlayerEvent.ObjectiveResolved(round, card, resolution),
+        )
+    }
+
+    /**
+     * Applies the round-prep offer interactions - identical mechanism to
+     * [DummyPlayerSession.endRound] (docs/rules/dummy-player.md's "End of Round", reused verbatim
+     * by docs/rules/proxy-player.md's "When preparing a new Round"), plus one Proxy Player-only
+     * step first: if there's a lingering [objectiveCard] (still being pursued when the Round
+     * ended), it's discarded along with its Shields before the standard offer interactions run.
+     */
+    fun endRound(advancedActionOfferColor: CardIdentity, spellOfferColor: CardColor): ProxyPlayerSession {
+        val discardedObjective = objectiveCard
+        val discardAfterObjective = if (discardedObjective != null) discardPile + discardedObjective else discardPile
+        return copy(
+            objectiveCard = null,
+            objectiveShields = 0,
+            deckOrder = (deckOrder + ProxyPlayerCard.AdvancedAction(advancedActionOfferColor)).shuffled(),
+            discardPile = discardAfterObjective,
+            crystals = crystals + (spellOfferColor to crystals.getValue(spellOfferColor) + 1),
+            round = round + 1,
+            roundEnded = false,
+            log = log + ProxyPlayerEvent.RoundEnded(round, advancedActionOfferColor, spellOfferColor, discardedObjective),
+        )
+    }
+
+    /**
      * The Proxy Player's total movement points this turn (docs/rules/proxy-player.md's "Movement
      * points"): [objectiveCard]'s own [ProxyPlayerCard.movementBonus] plus [objectiveShields],
      * plus +1 if [hasMatchingManaDie] is true - the player reports this each turn, since whether a

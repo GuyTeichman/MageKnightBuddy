@@ -220,4 +220,116 @@ class ProxyPlayerSessionTest {
             next.log.last(),
         )
     }
+
+    @Test
+    fun `resolveObjective discards the objective card and clears its Shields, regardless of resolution`() {
+        val session = ProxyPlayerSession.restore(
+            knight = Knight.CORAL,
+            wasRandom = false,
+            deckOrder = emptyList(),
+            discardPile = emptyList(),
+            crystals = startingCrystals(Knight.CORAL),
+            round = 1,
+            roundEnded = false,
+            objectiveCard = ProxyPlayerCard.BasicAction(CardColor.GREEN),
+            objectiveShields = 2,
+            log = emptyList(),
+        )
+
+        val explored = session.resolveObjective(ProxyPlayerObjectiveResolution.EXPLORED)
+        val completed = session.resolveObjective(ProxyPlayerObjectiveResolution.COMPLETED)
+
+        for (next in listOf(explored, completed)) {
+            assertEquals(null, next.objectiveCard)
+            assertEquals(0, next.objectiveShields)
+            assertEquals(listOf(ProxyPlayerCard.BasicAction(CardColor.GREEN)), next.discardPile)
+        }
+        assertEquals(
+            ProxyPlayerEvent.ObjectiveResolved(1, ProxyPlayerCard.BasicAction(CardColor.GREEN), ProxyPlayerObjectiveResolution.EXPLORED),
+            explored.log.last(),
+        )
+        assertEquals(
+            ProxyPlayerEvent.ObjectiveResolved(1, ProxyPlayerCard.BasicAction(CardColor.GREEN), ProxyPlayerObjectiveResolution.COMPLETED),
+            completed.log.last(),
+        )
+    }
+
+    @Test
+    fun `resolveObjective is a no-op if there's no current objective card`() {
+        val session = ProxyPlayerSession.start(Knight.CORAL)
+
+        val next = session.resolveObjective(ProxyPlayerObjectiveResolution.EXPLORED)
+
+        assertEquals(session, next)
+    }
+
+    @Test
+    fun `endRound appends the Advanced Action offer card to the deck and grants a Spell-color crystal`() {
+        val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE),
+            spellOfferColor = CardColor.WHITE,
+        )
+
+        assertEquals(listOf(ProxyPlayerCard.AdvancedAction(CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE))), next.deckOrder)
+        assertEquals(startingCrystals(Knight.CORAL).getValue(CardColor.WHITE) + 1, next.crystals.getValue(CardColor.WHITE))
+    }
+
+    @Test
+    fun `endRound discards a lingering objective card and its Shields first`() {
+        val session = ProxyPlayerSession.restore(
+            knight = Knight.CORAL,
+            wasRandom = false,
+            deckOrder = emptyList(),
+            discardPile = emptyList(),
+            crystals = startingCrystals(Knight.CORAL),
+            round = 1,
+            roundEnded = false,
+            objectiveCard = ProxyPlayerCard.BasicAction(CardColor.RED),
+            objectiveShields = 3,
+            log = emptyList(),
+        )
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+            spellOfferColor = CardColor.BLUE,
+        )
+
+        assertEquals(null, next.objectiveCard)
+        assertEquals(0, next.objectiveShields)
+        assertEquals(listOf(ProxyPlayerCard.BasicAction(CardColor.RED)), next.discardPile)
+        assertEquals(
+            ProxyPlayerEvent.RoundEnded(1, CardIdentity.SingleColor(CardColor.WHITE), CardColor.BLUE, ProxyPlayerCard.BasicAction(CardColor.RED)),
+            next.log.last(),
+        )
+    }
+
+    @Test
+    fun `endRound with no lingering objective logs a null discardedObjective`() {
+        val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+            spellOfferColor = CardColor.BLUE,
+        )
+
+        assertEquals(
+            ProxyPlayerEvent.RoundEnded(1, CardIdentity.SingleColor(CardColor.WHITE), CardColor.BLUE, null),
+            next.log.last(),
+        )
+    }
+
+    @Test
+    fun `endRound increments the round and resets roundEnded`() {
+        val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList()).playTurn()
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+            spellOfferColor = CardColor.BLUE,
+        )
+
+        assertEquals(2, next.round)
+        assertEquals(false, next.roundEnded)
+    }
 }
