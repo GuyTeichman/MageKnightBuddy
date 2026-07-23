@@ -24,6 +24,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,13 +49,13 @@ import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerCard
+import com.guyteichman.mageknightbuddy.domain.objectiveLabel
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerObjectiveResolution
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
 import com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon
-import com.guyteichman.mageknightbuddy.ui.components.LabeledCheckbox
 import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.help.HelpButton
@@ -90,6 +91,22 @@ private fun ProxyPlayerCard.isNonBasic(): Boolean = when (this) {
     is ProxyPlayerCard.AdvancedAction -> true
 }
 
+/** The Proxy Player objective label for [this] card - see [CardColor.objectiveLabel]/[CardIdentity.objectiveLabel]. */
+private fun ProxyPlayerCard.objectiveLabel(): String = when (this) {
+    is ProxyPlayerCard.BasicAction -> color.objectiveLabel
+    is ProxyPlayerCard.UniqueAction -> color.objectiveLabel
+    is ProxyPlayerCard.AdvancedAction -> identity.objectiveLabel
+}
+
+/**
+ * Whether the player has confirmed a matching-color (or Gold, by day) mana die is currently in
+ * the Source this turn - a 3rd state ([UNANSWERED]) instead of a plain [Boolean] so the UI can
+ * tell "not yet checked this turn" apart from "checked and it's No", which a reset-to-false
+ * checkbox couldn't distinguish (a player could easily mistake a silently-reset unchecked box for
+ * their own already-recorded "No").
+ */
+private enum class ManaDieAnswer { UNANSWERED, YES, NO }
+
 /**
  * Proxy Player mode's AI (turn/round) screen: shows the Proxy Player's deck/crystal state (mirrors
  * `DummyPlayerScreen.kt`'s `TableauCard`), the current Objective Card (or a prompt to play a turn,
@@ -101,7 +118,7 @@ private fun ProxyPlayerCard.isNonBasic(): Boolean = when (this) {
  * Not `private`: called from `DummyPlayerScreen.kt`'s `DummyPlayerTab`, the same cross-file
  * relationship `VolkareScreen.kt`'s `VolkareAiScreen` has with it.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map<String, FieldHelp>, onBack: () -> Unit) {
     val viewModel: ProxyPlayerAiViewModel = viewModel(factory = ProxyPlayerAiViewModel.factory(repository))
@@ -111,9 +128,9 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
     // currently sits in the Source - see docs/rules/proxy-player.md's "Movement points": that die
     // is immediately rerolled once used, so this fact never carries over to the next turn. A
     // plain per-composition remember (not saved across process death) is fine for the same
-    // reason - it's explicitly reset to false in Play Turn's onClick below rather than left to
-    // persist, so nothing here needs to survive beyond a single turn.
-    var hasMatchingManaDie by remember { mutableStateOf(false) }
+    // reason - it's explicitly reset to UNANSWERED in Play Turn's onClick below rather than left
+    // to persist, so nothing here needs to survive beyond a single turn.
+    var manaDieAnswer by remember { mutableStateOf(ManaDieAnswer.UNANSWERED) }
     var showEndRoundDialog by remember { mutableStateOf(false) }
     var showSummary by remember { mutableStateOf(false) }
 
@@ -150,13 +167,13 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                         onClick = {
                             scope.launch {
                                 viewModel.playTurn()
-                                // hasMatchingManaDie is "is a matching die in the Source *this*
-                                // turn" - docs/rules/proxy-player.md has that die immediately
-                                // rerolled once used, so last turn's report says nothing about the
-                                // turn that just started. Reset it here rather than leaving it
-                                // checked, which would silently keep granting the +1 bonus in the
-                                // displayed movement points every subsequent turn.
-                                hasMatchingManaDie = false
+                                // manaDieAnswer is "is a matching die in the Source *this* turn" -
+                                // docs/rules/proxy-player.md has that die immediately rerolled once
+                                // used, so last turn's report says nothing about the turn that just
+                                // started. Reset it here rather than leaving it answered, which
+                                // would silently keep applying last turn's answer to the displayed
+                                // movement points every subsequent turn.
+                                manaDieAnswer = ManaDieAnswer.UNANSWERED
                             }
                         },
                         enabled = !session.roundEnded && !viewModel.isBusy,
@@ -205,19 +222,82 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                         Text("No current objective - tap Play Turn to draw one.")
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Objective: ${objectiveCard.displayText()}")
-                                HelpButton(keys = listOf("Proxy Player Objective"), fieldHelp = fieldHelp)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                // Enlarged (~3x the deck tray's 20x28.dp) as the section's visual
+                                // anchor - same split-swatch/star-badge rendering as the deck
+                                // tracker's MiniCards, just bigger, rather than a second way of
+                                // drawing card color on this screen.
+                                MiniCard(colors = objectiveCard.colors(), isNonBasic = objectiveCard.isNonBasic(), width = 60.dp, height = 84.dp)
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(objectiveCard.displayText(), style = MaterialTheme.typography.titleMedium)
+                                        HelpButton(keys = listOf("Proxy Player Objective"), fieldHelp = fieldHelp)
+                                    }
+                                    // What this color's movement target actually means in-game -
+                                    // see CardColor.objectiveLabel's doc comment for why Blue's own
+                                    // wording states its distance condition rather than a specific
+                                    // action the app can't actually determine.
+                                    Text(objectiveCard.objectiveLabel(), style = MaterialTheme.typography.bodyMedium)
+                                }
                             }
-                            Text("Shields: ${session.objectiveShields}")
 
-                            LabeledCheckbox(
-                                checked = hasMatchingManaDie,
-                                onCheckedChange = { hasMatchingManaDie = it },
-                                label = "Matching mana die in the Source",
+                            Text(
+                                "Shields",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Movement points: ${session.movementPoints(hasMatchingManaDie)}")
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                // Bare repeated icons, no numeral - same pattern as the crystal
+                                // rows, using the Knight's own shield-token art (matches ProxyPlayerHeroRow).
+                                repeat(session.objectiveShields) { KnightShieldIcon(knight = session.knight, size = 16.dp) }
+                            }
+
+                            // Names the actual color(s) to check for, dropping the vague "matching"
+                            // - and the "or a Gold die" clause only appears on day Rounds, since
+                            // Gold can't grant the bonus at night (docs/rules/proxy-player.md's
+                            // "Movement points"). A dual-color objective's colors are joined with
+                            // "or" - either counts (this app's 3rd dual-color ruling, alongside
+                            // crystal-chain and targeting - see docs/rules/proxy-player.md).
+                            val dieColors = objectiveCard.colors().joinToString(" or ") { it.label }
+                            val dieQuestion = if (session.isDay) {
+                                "$dieColors die (or a Gold die) in the Source?"
+                            } else {
+                                "$dieColors die in the Source?"
+                            }
+                            Text(dieQuestion, style = MaterialTheme.typography.bodyMedium)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                // Exactly one tap from UNANSWERED to either answer - neither chip
+                                // starts selected, unlike a 2-state toggle that would need to cycle.
+                                FilterChip(
+                                    selected = manaDieAnswer == ManaDieAnswer.YES,
+                                    onClick = { manaDieAnswer = ManaDieAnswer.YES },
+                                    label = { Text("Yes") },
+                                )
+                                FilterChip(
+                                    selected = manaDieAnswer == ManaDieAnswer.NO,
+                                    onClick = { manaDieAnswer = ManaDieAnswer.NO },
+                                    label = { Text("No") },
+                                )
+                            }
+
+                            // headlineLarge - one tier above the deck tracker's headlineMedium
+                            // card count - ranks this as the 2nd most important number on the
+                            // screen, after the objective itself. Unanswered shows the equation
+                            // ("3(+1)?") rather than a bare number, so the player can see both the
+                            // guaranteed base value and the still-uncertain potential bonus.
+                            val basePoints = session.movementPoints(hasMatchingManaDie = false)
+                            val pointsText = when (manaDieAnswer) {
+                                ManaDieAnswer.UNANSWERED -> "$basePoints(+1)?"
+                                ManaDieAnswer.YES -> session.movementPoints(hasMatchingManaDie = true).toString()
+                                ManaDieAnswer.NO -> basePoints.toString()
+                            }
+                            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(pointsText, style = MaterialTheme.typography.headlineLarge)
+                                Text(
+                                    "movement points",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                                 HelpButton(keys = listOf("Proxy Player Movement"), fieldHelp = fieldHelp)
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
