@@ -78,9 +78,11 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
     val scope = rememberCoroutineScope()
     val session = viewModel.session
     // The player's per-turn report of whether a matching-color (or gold, by day) mana die
-    // currently sits in the Source - see docs/rules/proxy-player.md's "Movement points". A plain
-    // per-composition remember (not saved across process death) is fine here: it's a fresh report
-    // made anew each turn, not state that needs to survive beyond this screen being on-screen.
+    // currently sits in the Source - see docs/rules/proxy-player.md's "Movement points": that die
+    // is immediately rerolled once used, so this fact never carries over to the next turn. A
+    // plain per-composition remember (not saved across process death) is fine for the same
+    // reason - it's explicitly reset to false in Play Turn's onClick below rather than left to
+    // persist, so nothing here needs to survive beyond a single turn.
     var hasMatchingManaDie by remember { mutableStateOf(false) }
     var showEndRoundDialog by remember { mutableStateOf(false) }
 
@@ -135,7 +137,18 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                 }
 
                 Button(
-                    onClick = { scope.launch { viewModel.playTurn() } },
+                    onClick = {
+                        scope.launch {
+                            viewModel.playTurn()
+                            // hasMatchingManaDie is "is a matching die in the Source *this*
+                            // turn" - docs/rules/proxy-player.md has that die immediately
+                            // rerolled once used, so last turn's report says nothing about the
+                            // turn that just started. Reset it here rather than leaving it
+                            // checked, which would silently keep granting the +1 bonus in the
+                            // displayed movement points every subsequent turn.
+                            hasMatchingManaDie = false
+                        }
+                    },
                     enabled = !viewModel.isBusy && !session.roundEnded,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
