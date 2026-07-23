@@ -610,18 +610,25 @@ private fun DeckPanel(showSummary: Boolean, onToggleSummary: () -> Unit, content
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TableauBody(session: DummyPlayerSession) {
-    // Deck count and Crystals side by side - issue feedback was that Crystals sat alone at the
-    // panel's bottom while the top of the panel had unused space beside the card count; pairing
-    // them here matches ProxyPlayerScreen.kt's ProxyPlayerTableauBody and the Proxy Player
-    // Objective section's Shields/Movement pairing.
+    // Cards and Crystals side by side, in matching label-above-content shape (a "Cards" title
+    // mirroring "Crystals", each above their own value row) - issue feedback was that Crystals had
+    // a title above its icons but the card count didn't, reading as asymmetric. Matches
+    // ProxyPlayerScreen.kt's ProxyPlayerTableauBody.
     Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                "cards left in deck",
-                style = MaterialTheme.typography.bodyMedium,
+                "Cards",
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
+                Text(
+                    "left in deck",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
