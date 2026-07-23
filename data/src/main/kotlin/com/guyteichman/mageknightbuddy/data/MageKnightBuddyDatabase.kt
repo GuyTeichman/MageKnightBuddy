@@ -35,7 +35,9 @@ import androidx.room.RoomDatabase
     // (see createDatabase()) is fine pre-release. Bumped 6 -> 7: DummyPlayerSessionEntity's
     // deckOrderJson/discardPileJson/logJson shape changed (CardColor -> CardIdentity, to support
     // dual-color Advanced Action cards) - destructive migration, no real user data (see
-    // docs/adr/0005-shared-advanced-action-card-type-for-dual-color-cards.md).
+    // docs/adr/0005-shared-advanced-action-card-type-for-dual-color-cards.md) - plus added a
+    // startsAtNight column to VolkareSessionEntity, for the setup screen's new "Starts at night?"
+    // checkbox.
     version = 7,
     exportSchema = false,
 )

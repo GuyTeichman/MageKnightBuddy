@@ -60,6 +60,16 @@ class VolkareSessionMapperTest {
     }
 
     @Test
+    fun `toEntity then toDomain round-trips startsAtNight`() {
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR, woundCount = 0, deckOrder = emptyList(), startsAtNight = true)
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+        assertEquals(true, roundTripped.startsAtNight)
+    }
+
+    @Test
     fun `toEntity stamps the given updatedAt onto the entity`() {
         val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR)
 

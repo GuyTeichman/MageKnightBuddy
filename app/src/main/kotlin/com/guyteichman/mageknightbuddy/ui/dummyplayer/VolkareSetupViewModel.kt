@@ -84,9 +84,13 @@ class VolkareSetupViewModel(
      * Builds a new Volkare session for the chosen [scenario]/[raceLevel]/[woundCount] and
      * autosaves it, overwriting any previously saved Volkare session - same "starting a new
      * session silently overwrites the old one" convention as [DummyPlayerSetupViewModel.start].
+     * [startsAtNight] comes from the shared setup screen's "Starts at night?" checkbox (default
+     * false - most scenarios start at day).
      */
-    suspend fun start() {
-        repository.save(VolkareSession.start(scenario = scenario, raceLevel = raceLevel, woundCount = woundCount))
+    suspend fun start(startsAtNight: Boolean = false) {
+        repository.save(
+            VolkareSession.start(scenario = scenario, raceLevel = raceLevel, woundCount = woundCount, startsAtNight = startsAtNight),
+        )
         hasSavedSession = true
     }
 
