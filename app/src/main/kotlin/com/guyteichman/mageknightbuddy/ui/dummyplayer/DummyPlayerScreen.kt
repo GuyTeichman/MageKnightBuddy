@@ -85,6 +85,7 @@ import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
 import com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon
+import com.guyteichman.mageknightbuddy.ui.components.LabeledCheckbox
 import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.components.swatch
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
@@ -188,6 +189,10 @@ private fun DummyPlayerSetupScreen(
     // "active", so it needs to survive navigating away to the AI screen and back (plain remember
     // state is lost when Navigation Compose disposes this composable while another route is shown).
     var mode by rememberSaveable { mutableStateOf(DummyPlayerMode.STANDARD) }
+    // Feeds whichever of the 3 ViewModels' start() ends up called below - shared across all
+    // modes (not one per ViewModel) since it's the same physical fact ("did the table start this
+    // game at night") regardless of which mode is chosen.
+    var startsAtNight by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -240,6 +245,15 @@ private fun DummyPlayerSetupScreen(
             StandardOrProxyPlayerSelector(mode = mode, onModeSelected = { mode = it })
         }
 
+        // Shown regardless of which mode is selected above - most Mage Knight scenarios start at
+        // day (Round 1), so this defaults unchecked. Day/night for any later Round is then just
+        // derived from the Round number (see isDayRound), not tracked turn-by-turn.
+        LabeledCheckbox(
+            checked = startsAtNight,
+            onCheckedChange = { startsAtNight = it },
+            label = "Starts at night?",
+        )
+
         Button(
             onClick = {
                 // Building the session and autosaving it is a suspend call (Room I/O), so it
@@ -247,9 +261,9 @@ private fun DummyPlayerSetupScreen(
                 // run after that save completes.
                 scope.launch {
                     when (mode) {
-                        DummyPlayerMode.STANDARD -> { viewModel.start(); onStart() }
-                        DummyPlayerMode.VOLKARE -> { volkareViewModel.start(); onStartVolkare() }
-                        DummyPlayerMode.PROXY_PLAYER -> { proxyPlayerViewModel.start(); onStartProxyPlayer() }
+                        DummyPlayerMode.STANDARD -> { viewModel.start(startsAtNight); onStart() }
+                        DummyPlayerMode.VOLKARE -> { volkareViewModel.start(startsAtNight); onStartVolkare() }
+                        DummyPlayerMode.PROXY_PLAYER -> { proxyPlayerViewModel.start(startsAtNight); onStartProxyPlayer() }
                     }
                 }
             },
