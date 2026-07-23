@@ -37,7 +37,7 @@ In either case, check the color of the **last** card flipped (the new top of the
 
 - If the Proxy Player has **no** crystals of that color, their turn's flip is done.
 - If they have crystals of that color, flip one additional card per matching crystal (color of these extra cards doesn't matter and doesn't chain further).
-- **Dual-color Advanced Action cards** (see below) count as matching if the Proxy Player has crystals of *either* of the card's two colors — this app-specific ruling isn't stated in the rulebook (dual-color cards are from a separate product); flip one extra card per matching crystal across both colors combined.
+- **Dual-color Advanced Action cards** (see below) count as matching if the Proxy Player has crystals of *either* of the card's two colors — this app-specific ruling isn't stated in the rulebook (dual-color cards are from a separate product); flip one extra card per matching crystal of whichever of the two colors the Proxy Player holds *more* of (the higher count, not both added together — it's still one physical card being flipped, not two).
 
 If their Hero figure ends the turn on the portal space, remove it from the map.
 
@@ -130,7 +130,7 @@ From a separate dual-color-cards product (not the base Apocalypse Dragon expansi
 They only ever enter a deck via the round-end Advanced Action offer step (see above), for either the standard Dummy Player or the Proxy Player. Effects:
 
 - **Movement targeting** (see "Objective" above): counts as both colors — closest site valid for either objective color.
-- **Crystal-chain deck flip** (see "The Proxy Player's turn" above): matches if the Proxy Player holds crystals of *either* color — an app-specific ruling, not stated in the rulebook.
+- **Crystal-chain deck flip** (see "The Proxy Player's turn" above): matches if the Proxy Player holds crystals of *either* color, extending the chain by the *higher* of the two colors' crystal counts (not their sum) — an app-specific ruling, not stated in the rulebook.
 - **Movement-point bonus**: no different from any other Advanced Action — always +2 regardless of color(s).
 
 ## Using a Proxy Player in a scenario
