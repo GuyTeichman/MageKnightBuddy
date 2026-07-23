@@ -430,7 +430,7 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 actions = {
                     if (session != null) {
                         TextButton(onClick = { showSummary = !showSummary }) {
-                            Text(if (showSummary) "Hide Summary" else "Summary")
+                            Text(if (showSummary) "Full View" else "Summary")
                         }
                         RoundChip(round = session.round)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -477,10 +477,9 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item { HeroRow(session = session) }
-                item { TableauCard(session = session) }
-                if (showSummary) {
-                    item { StatGridCard(session = session) }
-                }
+                // Mutually exclusive, not additive: the collapsed Summary view replaces the full
+                // deck tableau rather than sitting alongside it.
+                item { if (showSummary) StatGridCard(session = session) else TableauCard(session = session) }
                 item {
                     Text("Log", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -604,7 +603,7 @@ private fun TableauCard(session: DummyPlayerSession) {
     }
 }
 
-/** The alternate, denser per-color tile grid (Variant A of the prototype), shown when "Summary" is toggled on. */
+/** The alternate, denser per-color tile grid (Variant A of the prototype), replacing [TableauCard] when "Summary" is toggled on. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StatGridCard(session: DummyPlayerSession) {

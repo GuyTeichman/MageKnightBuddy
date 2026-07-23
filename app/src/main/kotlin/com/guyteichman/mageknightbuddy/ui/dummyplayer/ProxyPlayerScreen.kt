@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -107,6 +108,7 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
     // persist, so nothing here needs to survive beyond a single turn.
     var hasMatchingManaDie by remember { mutableStateOf(false) }
     var showEndRoundDialog by remember { mutableStateOf(false) }
+    var showSummary by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -119,6 +121,9 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                 },
                 actions = {
                     if (session != null) {
+                        TextButton(onClick = { showSummary = !showSummary }) {
+                            Text(if (showSummary) "Full View" else "Summary")
+                        }
                         RoundChip(round = session.round)
                         Spacer(modifier = Modifier.width(8.dp))
                     }
@@ -185,7 +190,9 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item { ProxyPlayerHeroRow(session = session) }
-                item { ProxyPlayerTableauCard(session = session) }
+                // Mutually exclusive, not additive: matches DummyPlayerScreen.kt's
+                // DummyPlayerAiScreen's Summary/Full View toggle.
+                item { if (showSummary) ProxyPlayerStatGridCard(session = session) else ProxyPlayerTableauCard(session = session) }
                 item {
                     if (objectiveCard == null) {
                         Text("No current objective - tap Play Turn to draw one.")
@@ -318,6 +325,41 @@ private fun ProxyPlayerTableauCard(session: ProxyPlayerSession) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 CardColor.entries.forEach { color ->
                     repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The alternate, denser per-color tile grid, replacing [ProxyPlayerTableauCard] when "Summary" is
+ * toggled on - a Proxy Player-mode copy of `DummyPlayerScreen.kt`'s file-private `StatGridCard`
+ * (same duplication rationale as [ProxyPlayerEndRoundDialog]'s doc comment). Stays pure aggregate
+ * counts, no non-basic (star badge) breakdown - that detail is only shown in the full expanded
+ * view, where individual cards are drawn.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ProxyPlayerStatGridCard(session: ProxyPlayerSession) {
+    Card {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                CardColor.entries.forEach { color ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.widthIn(max = 56.dp),
+                    ) {
+                        CardColorDot(color = color)
+                        Text(session.remainingByColor.getValue(color).toString(), style = MaterialTheme.typography.titleMedium)
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            modifier = Modifier.widthIn(max = 56.dp),
+                        ) {
+                            repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
+                        }
+                    }
                 }
             }
         }
