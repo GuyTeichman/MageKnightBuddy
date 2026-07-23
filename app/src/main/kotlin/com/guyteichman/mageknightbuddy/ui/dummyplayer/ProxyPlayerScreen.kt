@@ -291,8 +291,8 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                                 ManaDieAnswer.YES -> session.movementPoints(hasMatchingManaDie = true).toString()
                                 ManaDieAnswer.NO -> basePoints.toString()
                             }
-                            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(pointsText, style = MaterialTheme.typography.headlineLarge)
+                            Text(pointsText, style = MaterialTheme.typography.headlineLarge)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     "movement points",
                                     style = MaterialTheme.typography.bodyMedium,
