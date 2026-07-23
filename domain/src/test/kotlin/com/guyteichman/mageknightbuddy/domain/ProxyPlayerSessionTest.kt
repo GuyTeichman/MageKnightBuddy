@@ -92,4 +92,132 @@ class ProxyPlayerSessionTest {
 
         assertEquals(original, restored)
     }
+
+    @Test
+    fun `playTurn on an empty deck announces End of Round instead of flipping`() {
+        val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+
+        val next = session.playTurn()
+
+        assertEquals(true, next.roundEnded)
+        assertEquals(ProxyPlayerEvent.EndOfRoundAnnounced(round = 1), next.log.last())
+    }
+
+    @Test
+    fun `playTurn is a no-op once roundEnded is already true`() {
+        val ended = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList()).playTurn()
+
+        val next = ended.playTurn()
+
+        assertEquals(ended, next)
+    }
+
+    @Test
+    fun `playTurn with no objective card draws the first flipped card as the new objective`() {
+        // Coral has no Green crystals, so the flip stops at the mandatory 3 (last card Green, no match).
+        val session = ProxyPlayerSession.start(
+            Knight.CORAL,
+            deckOrder = listOf(
+                ProxyPlayerCard.UniqueAction(CardColor.WHITE),
+                ProxyPlayerCard.BasicAction(CardColor.RED),
+                ProxyPlayerCard.BasicAction(CardColor.GREEN),
+                ProxyPlayerCard.BasicAction(CardColor.BLUE),
+            ),
+        )
+
+        val next = session.playTurn()
+
+        assertEquals(ProxyPlayerCard.UniqueAction(CardColor.WHITE), next.objectiveCard)
+        assertEquals(0, next.objectiveShields)
+        assertEquals(
+            listOf(ProxyPlayerCard.BasicAction(CardColor.RED), ProxyPlayerCard.BasicAction(CardColor.GREEN)),
+            next.discardPile,
+        )
+        assertEquals(listOf(ProxyPlayerCard.BasicAction(CardColor.BLUE)), next.deckOrder)
+        assertEquals(
+            ProxyPlayerEvent.NewObjectiveDrawn(
+                round = 1,
+                objectiveCard = ProxyPlayerCard.UniqueAction(CardColor.WHITE),
+                discarded = listOf(ProxyPlayerCard.BasicAction(CardColor.RED), ProxyPlayerCard.BasicAction(CardColor.GREEN)),
+            ),
+            next.log.last(),
+        )
+    }
+
+    @Test
+    fun `playTurn with no objective card chains extra flips off the 3rd card's matching crystals`() {
+        // Coral holds 2 White crystals - a White 3rd card should chain 2 additional reveals.
+        val session = ProxyPlayerSession.start(
+            Knight.CORAL,
+            deckOrder = listOf(
+                ProxyPlayerCard.BasicAction(CardColor.RED),
+                ProxyPlayerCard.BasicAction(CardColor.GREEN),
+                ProxyPlayerCard.BasicAction(CardColor.WHITE),
+                ProxyPlayerCard.BasicAction(CardColor.BLUE),
+                ProxyPlayerCard.BasicAction(CardColor.GREEN),
+            ),
+        )
+
+        val next = session.playTurn()
+
+        assertEquals(ProxyPlayerCard.BasicAction(CardColor.RED), next.objectiveCard)
+        assertEquals(
+            listOf(
+                ProxyPlayerCard.BasicAction(CardColor.GREEN),
+                ProxyPlayerCard.BasicAction(CardColor.WHITE),
+                ProxyPlayerCard.BasicAction(CardColor.BLUE),
+                ProxyPlayerCard.BasicAction(CardColor.GREEN),
+            ),
+            next.discardPile,
+        )
+        assertEquals(emptyList(), next.deckOrder)
+    }
+
+    @Test
+    fun `playTurn with an existing objective card adds a Shield token and flips 3 cards to discard`() {
+        val session = ProxyPlayerSession.restore(
+            knight = Knight.CORAL,
+            wasRandom = false,
+            deckOrder = listOf(
+                ProxyPlayerCard.BasicAction(CardColor.RED),
+                ProxyPlayerCard.BasicAction(CardColor.GREEN),
+                ProxyPlayerCard.BasicAction(CardColor.BLUE),
+                ProxyPlayerCard.BasicAction(CardColor.GREEN),
+            ),
+            discardPile = emptyList(),
+            crystals = startingCrystals(Knight.CORAL),
+            round = 1,
+            roundEnded = false,
+            objectiveCard = ProxyPlayerCard.UniqueAction(CardColor.WHITE),
+            objectiveShields = 1,
+            log = emptyList(),
+        )
+
+        val next = session.playTurn()
+
+        assertEquals(ProxyPlayerCard.UniqueAction(CardColor.WHITE), next.objectiveCard)
+        assertEquals(2, next.objectiveShields)
+        assertEquals(
+            listOf(
+                ProxyPlayerCard.BasicAction(CardColor.RED),
+                ProxyPlayerCard.BasicAction(CardColor.GREEN),
+                ProxyPlayerCard.BasicAction(CardColor.BLUE),
+            ),
+            next.discardPile,
+        )
+        assertEquals(listOf(ProxyPlayerCard.BasicAction(CardColor.GREEN)), next.deckOrder)
+        assertEquals(
+            ProxyPlayerEvent.TurnContinued(
+                round = 1,
+                objectiveCard = ProxyPlayerCard.UniqueAction(CardColor.WHITE),
+                shieldsNow = 2,
+                revealed = listOf(
+                    ProxyPlayerCard.BasicAction(CardColor.RED),
+                    ProxyPlayerCard.BasicAction(CardColor.GREEN),
+                    ProxyPlayerCard.BasicAction(CardColor.BLUE),
+                ),
+            ),
+            next.log.last(),
+        )
+    }
 }

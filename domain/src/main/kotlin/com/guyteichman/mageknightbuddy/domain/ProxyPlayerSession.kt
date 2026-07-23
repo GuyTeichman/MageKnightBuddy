@@ -27,6 +27,50 @@ data class ProxyPlayerSession private constructor(
     val log: List<ProxyPlayerEvent>,
 ) {
     /**
+     * Plays one Proxy Player turn (docs/rules/proxy-player.md's "The Proxy Player's turn"). If
+     * the deck is empty, announces End of Round instead (mirrors
+     * [DummyPlayerSession.playTurn]'s empty-deck guard). Otherwise branches on whether there's a
+     * current [objectiveCard]:
+     * - **Has one**: adds a Shield token to it, then flips 3 cards (plus any crystal-chain
+     *   extension - see [flipMandatoryAndChain]) onto the discard pile.
+     * - **Doesn't have one**: flips the same mandatory-3-plus-chain batch, but the *first* card
+     *   becomes the new [objectiveCard] instead of being discarded - the rest go to the discard
+     *   pile. If the deck had only 1 card left, that single card becomes the objective and
+     *   nothing is discarded (see docs/rules/proxy-player.md's note on this case).
+     *
+     * Once [roundEnded] is true, further calls are a no-op (mirrors [DummyPlayerSession.playTurn]).
+     */
+    fun playTurn(): ProxyPlayerSession {
+        if (roundEnded) return this
+
+        if (deckOrder.isEmpty()) {
+            return copy(roundEnded = true, log = log + ProxyPlayerEvent.EndOfRoundAnnounced(round))
+        }
+
+        val (revealed, remainingDeck) = flipMandatoryAndChain(deckOrder, mandatoryCount = 3, crystals)
+
+        return if (objectiveCard != null) {
+            val shieldsNow = objectiveShields + 1
+            copy(
+                deckOrder = remainingDeck,
+                discardPile = discardPile + revealed,
+                objectiveShields = shieldsNow,
+                log = log + ProxyPlayerEvent.TurnContinued(round, objectiveCard, shieldsNow, revealed),
+            )
+        } else {
+            val newObjective = revealed.first()
+            val discarded = revealed.drop(1)
+            copy(
+                deckOrder = remainingDeck,
+                discardPile = discardPile + discarded,
+                objectiveCard = newObjective,
+                objectiveShields = 0,
+                log = log + ProxyPlayerEvent.NewObjectiveDrawn(round, newObjective, discarded),
+            )
+        }
+    }
+
+    /**
      * The Proxy Player's total movement points this turn (docs/rules/proxy-player.md's "Movement
      * points"): [objectiveCard]'s own [ProxyPlayerCard.movementBonus] plus [objectiveShields],
      * plus +1 if [hasMatchingManaDie] is true - the player reports this each turn, since whether a
@@ -131,4 +175,27 @@ data class ProxyPlayerSession private constructor(
             log = log,
         )
     }
+}
+
+/**
+ * Flips up to [mandatoryCount] cards off the front of [deck], then - if there's a last flipped
+ * card and it matches any crystals in [crystals] (see [ProxyPlayerCard.matchingCrystalCount]) -
+ * flips one additional card per matching crystal, capped by what's left in the deck. Returns the
+ * full list of revealed cards (in flip order) and the remaining deck. Shared by both branches of
+ * [ProxyPlayerSession.playTurn], since the flip-and-chain mechanics are identical regardless of
+ * which flipped card ends up becoming the new objective vs. going straight to discard.
+ */
+private fun flipMandatoryAndChain(
+    deck: List<ProxyPlayerCard>,
+    mandatoryCount: Int,
+    crystals: Map<CardColor, Int>,
+): Pair<List<ProxyPlayerCard>, List<ProxyPlayerCard>> {
+    val mandatory = deck.take(mandatoryCount)
+    val afterMandatory = deck.drop(mandatoryCount)
+    val lastCard = mandatory.lastOrNull() ?: return mandatory to afterMandatory
+    val matching = lastCard.matchingCrystalCount(crystals)
+    val additionalCount = minOf(matching, afterMandatory.size)
+    val additional = afterMandatory.take(additionalCount)
+    val remaining = afterMandatory.drop(additionalCount)
+    return (mandatory + additional) to remaining
 }
