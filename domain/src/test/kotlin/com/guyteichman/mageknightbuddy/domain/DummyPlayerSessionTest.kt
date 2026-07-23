@@ -107,11 +107,12 @@ class DummyPlayerSessionTest {
     }
 
     @Test
-    fun `playTurn's crystal-chain match counts crystals of either of a Dual-Color card's two colors`() {
+    fun `playTurn's crystal-chain match counts the higher of a Dual-Color card's two colors' crystals`() {
         // Coral holds 2 White, 1 Red crystals, 0 Green/Blue. A Green+Blue dual-color 3rd card
         // matches neither color directly, but Power of Crystals-style cards would; here we use a
         // dual-color card matching Coral's owned colors (White+Red) to assert the chain triggers
-        // for the SUM of both matched colors' crystals (2 White + 1 Red = 3 additional reveals).
+        // for the HIGHER of the two matched colors' crystal counts, not their sum
+        // (max(2 White, 1 Red) = 2 additional reveals, not 2+1=3).
         val session = DummyPlayerSession.start(
             Knight.CORAL,
             deckOrder = listOf(
@@ -133,11 +134,10 @@ class DummyPlayerSessionTest {
                 CardIdentity.DualColor(CardColor.WHITE, CardColor.RED),
                 CardIdentity.SingleColor(CardColor.GREEN),
                 CardIdentity.SingleColor(CardColor.BLUE),
-                CardIdentity.SingleColor(CardColor.GREEN),
             ),
             next.discardPile,
         )
-        assertEquals(emptyList(), next.deckOrder)
+        assertEquals(listOf(CardIdentity.SingleColor(CardColor.GREEN)), next.deckOrder)
     }
 
     @Test

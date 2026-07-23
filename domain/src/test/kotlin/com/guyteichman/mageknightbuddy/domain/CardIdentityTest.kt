@@ -43,10 +43,23 @@ class CardIdentityTest {
     }
 
     @Test
-    fun `matchingCrystalCount for DualColor sums both colors' crystal counts`() {
+    fun `matchingCrystalCount for DualColor is the higher of its two colors' crystal counts`() {
         val card = CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE)
         val crystals = mapOf(CardColor.RED to 0, CardColor.GREEN to 2, CardColor.BLUE to 1, CardColor.WHITE to 0)
 
-        assertEquals(3, card.matchingCrystalCount(crystals))
+        assertEquals(2, card.matchingCrystalCount(crystals))
+    }
+
+    @Test
+    fun `DUAL_COLOR_CARDS contains exactly the 4 real dual-color cards`() {
+        assertEquals(
+            listOf(
+                CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE),
+                CardIdentity.DualColor(CardColor.BLUE, CardColor.WHITE),
+                CardIdentity.DualColor(CardColor.RED, CardColor.WHITE),
+                CardIdentity.DualColor(CardColor.RED, CardColor.GREEN),
+            ),
+            CardIdentity.DUAL_COLOR_CARDS,
+        )
     }
 }
