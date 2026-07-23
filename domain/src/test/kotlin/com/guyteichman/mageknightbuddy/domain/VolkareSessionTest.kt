@@ -195,7 +195,7 @@ class VolkareSessionTest {
     }
 
     @Test
-    fun `playTurn in Volkares Quest sets lost the moment the last non-Wound card is drawn, even with Wounds still undrawn`() {
+    fun `playTurn in Volkares Quest sets lost the moment the last green,blue,white card is drawn, even with Wounds still undrawn`() {
         val session = VolkareSession.start(
             Scenario.VolkaresQuest,
             RaceLevel.FAIR,
@@ -219,7 +219,7 @@ class VolkareSessionTest {
     }
 
     @Test
-    fun `playTurn in Volkares Quest does not set lost while another non-Wound card still remains`() {
+    fun `playTurn in Volkares Quest does not set lost while another green,blue,white card still remains`() {
         val session = VolkareSession.start(
             Scenario.VolkaresQuest,
             RaceLevel.FAIR,
@@ -249,6 +249,89 @@ class VolkareSessionTest {
 
         assertEquals(false, next.lost)
         assertEquals(emptyList(), next.deckOrder)
+    }
+
+    @Test
+    fun `playTurn in Volkares Quest does not set lost on a red Basic Action, even with nothing but Wounds behind it`() {
+        // Red never moves Volkare in Quest (docs/rules/volkares-quest.md's "Course of the Game":
+        // "there is no later phase where red cards start moving him - this rule holds for the
+        // entire scenario"), so it never counts as his "last move toward the portal".
+        val session = VolkareSession.start(
+            Scenario.VolkaresQuest,
+            RaceLevel.FAIR,
+            woundCount = 1,
+            deckOrder = listOf(VolkareCard.BasicAction(CardColor.RED), VolkareCard.Wound),
+        )
+
+        val next = session.playTurn()
+
+        assertEquals(false, next.lost)
+        assertEquals(
+            VolkareEvent.CardRevealed(round = 1, card = VolkareCard.BasicAction(CardColor.RED), cityRevealed = false),
+            next.log.last(),
+        )
+    }
+
+    @Test
+    fun `playTurn in Volkares Quest does not set lost on a red Competitive Spell either`() {
+        val session = VolkareSession.start(
+            Scenario.VolkaresQuest,
+            RaceLevel.FAIR,
+            woundCount = 0,
+            deckOrder = listOf(VolkareCard.CompetitiveSpell(CardColor.RED)),
+        )
+
+        val next = session.playTurn()
+
+        assertEquals(false, next.lost)
+    }
+
+    @Test
+    fun `playTurn in Volkares Quest ignores a trailing red card - the green,blue,white card before it still triggers the loss`() {
+        val session = VolkareSession.start(
+            Scenario.VolkaresQuest,
+            RaceLevel.FAIR,
+            woundCount = 0,
+            deckOrder = listOf(VolkareCard.BasicAction(CardColor.GREEN), VolkareCard.BasicAction(CardColor.RED)),
+        )
+
+        val next = session.playTurn()
+
+        assertEquals(true, next.lost)
+        assertEquals(VolkareEvent.QuestLost(round = 1), next.log.last())
+        // The trailing red card is never drawn - the game already ended on the card before it.
+        assertEquals(listOf(VolkareCard.BasicAction(CardColor.RED)), next.deckOrder)
+    }
+
+    @Test
+    fun `playTurn in Volkares Quest does not lose on a red card when a green,blue,white card still follows it`() {
+        val session = VolkareSession.start(
+            Scenario.VolkaresQuest,
+            RaceLevel.FAIR,
+            woundCount = 0,
+            deckOrder = listOf(VolkareCard.BasicAction(CardColor.RED), VolkareCard.BasicAction(CardColor.BLUE)),
+        )
+
+        val next = session.playTurn()
+
+        assertEquals(false, next.lost)
+        assertEquals(listOf(VolkareCard.BasicAction(CardColor.BLUE)), next.deckOrder)
+    }
+
+    @Test
+    fun `playTurn in Volkares Quest with only red cards and Wounds left falls back to the empty-deck loss once truly exhausted`() {
+        val afterRed = VolkareSession.start(
+            Scenario.VolkaresQuest,
+            RaceLevel.FAIR,
+            woundCount = 0,
+            deckOrder = listOf(VolkareCard.BasicAction(CardColor.RED)),
+        ).playTurn()
+        assertEquals(false, afterRed.lost) // The lone red card alone never loses it...
+
+        val afterEmpty = afterRed.playTurn()
+
+        assertEquals(true, afterEmpty.lost) // ...but the truly-empty deck fallback still catches it.
+        assertEquals(VolkareEvent.QuestLost(round = 1), afterEmpty.log.last())
     }
 
     @Test

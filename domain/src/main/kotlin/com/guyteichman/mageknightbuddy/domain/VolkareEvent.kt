@@ -35,10 +35,12 @@ sealed interface VolkareEvent {
 
     /**
      * Recorded in Volkare's Quest only, the instant [VolkareSession.playTurn] reveals the *last*
-     * non-Wound card left in the deck (immediately after the matching [CardRevealed] entry for
-     * that same card) - see [VolkareSession.playTurn]'s doc comment for why that reveal, not an
-     * empty deck, is the real losing moment. Unlike Volkare's Return's [Frenzy], this means the
-     * scenario is lost (see [VolkareSession.lost] and docs/rules/volkares-quest.md's "Scenario end").
+     * card left in the deck that could still move him toward the portal - a green/blue/white
+     * [VolkareCard.BasicAction]/[VolkareCard.CompetitiveSpell] (immediately after the matching
+     * [CardRevealed] entry for that same card) - see [VolkareSession.playTurn]'s doc comment for
+     * why that reveal, not an empty deck, is the real losing moment. Unlike Volkare's Return's
+     * [Frenzy], this means the scenario is lost (see [VolkareSession.lost] and
+     * docs/rules/volkares-quest.md's "Scenario end").
      */
     data class QuestLost(val round: Int) : VolkareEvent
 }

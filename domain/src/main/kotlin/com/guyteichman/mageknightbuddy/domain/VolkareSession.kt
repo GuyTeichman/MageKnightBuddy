@@ -37,11 +37,16 @@ data class VolkareSession private constructor(
      * Volkare's Return, this guard only ever actually blocks Volkare's Quest.
      *
      * In Volkare's Quest, though, the real losing moment is earlier than an empty deck: revealing
-     * the *last* non-Wound card is already Volkare's final move into the portal (Wounds don't move
-     * him at all, so under correct play he should already be at the portal by the time non-Wound
-     * cards run out - see `CONTEXT.md`'s "Frenzy" entry). So [lost] is set the instant that card is
-     * revealed, whether or not Wounds still trail it in the deck - those trailing Wounds are simply
-     * never drawn, since [playTurn] no-ops once [lost] is true.
+     * the *last card that could still move him toward the portal* is already his final move into
+     * it. That's every green/blue/white [VolkareCard.BasicAction]/[VolkareCard.CompetitiveSpell] -
+     * Wounds never move him, and red cards never move him in Quest either (he only ever attacks on
+     * red - see docs/rules/volkares-quest.md's "Course of the Game", "this rule holds for the
+     * entire scenario"), so neither counts toward "should already be at the portal by now" (see
+     * `CONTEXT.md`'s "Frenzy" entry). [lost] is set the instant that last green/blue/white card is
+     * revealed, whether or not Wounds or red cards still trail it in the deck - those are simply
+     * never drawn, since [playTurn] no-ops once [lost] is true. A red card can still be revealed
+     * and narrated normally (he attacks) without ending the scenario, as long as a green/blue/white
+     * card remains somewhere after it.
      *
      * [manaRoll] is the mana die result to use *if* the revealed card turns out to be a
      * [VolkareCard.Wound] (only Wound reveals ever roll the die - see `CONTEXT.md`'s "Wound"
@@ -70,8 +75,8 @@ data class VolkareSession private constructor(
         )
 
         val isFinalMoveInQuest = scenario == Scenario.VolkaresQuest &&
-            card !is VolkareCard.Wound &&
-            remainingDeck.none { it !is VolkareCard.Wound }
+            card.movesTowardPortalInQuest &&
+            remainingDeck.none { it.movesTowardPortalInQuest }
 
         return if (isFinalMoveInQuest) {
             copy(deckOrder = remainingDeck, discardPile = discardPile + card, lost = true, log = log + cardRevealed + VolkareEvent.QuestLost(round))
@@ -161,3 +166,18 @@ data class VolkareSession private constructor(
         )
     }
 }
+
+/**
+ * Whether revealing this card, in Volkare's Quest, ever moves him toward the portal - only
+ * green/blue/white [VolkareCard.BasicAction]/[VolkareCard.CompetitiveSpell] cards do (see
+ * docs/rules/volkares-quest.md's "Course of the Game": red cards only ever trigger an attack in
+ * Quest, "this rule holds for the entire scenario", and Wounds never move him at all). Used by
+ * [VolkareSession.playTurn] to find the *last* card that could still move him toward the portal -
+ * see that function's doc comment.
+ */
+private val VolkareCard.movesTowardPortalInQuest: Boolean
+    get() = when (this) {
+        is VolkareCard.BasicAction -> color != CardColor.RED
+        is VolkareCard.CompetitiveSpell -> color != CardColor.RED
+        VolkareCard.Wound -> false
+    }

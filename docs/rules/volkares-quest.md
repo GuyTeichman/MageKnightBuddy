@@ -64,7 +64,7 @@ Same as Volkare's Return — see `volkares-return.md`'s "Tactic selection".
 
 ### Frenzy (deck exhausted)
 
-Not defined by the rulebook — Volkare's Quest is designed so his deck is always long enough to reach the portal under correct play ("Volkare should always have enough cards to win in this scenario. If he fails to reach the portal and perform his final move, you probably made a mistake"). This app treats an exhausted deck as Volkare having already reached the portal and made his final move — an automatic loss (see Scenario end) — rather than inventing an undefined Frenzy-style continuation.
+Not defined by the rulebook — Volkare's Quest is designed so his deck is always long enough to reach the portal under correct play ("Volkare should always have enough cards to win in this scenario. If he fails to reach the portal and perform his final move, you probably made a mistake"). This app treats revealing the *last card that could still move him toward the portal* — a green/blue/white Basic Action or Competitive Spell, since Wounds never move him and red cards only ever trigger an attack here (never a move, see "Volkare's turn" above) — as Volkare having already reached the portal and made his final move: an automatic loss (see Scenario end), rather than inventing an undefined Frenzy-style continuation. Any Wounds or red cards still trailing that card in the deck are simply never drawn.
 
 ### End of the Round
 

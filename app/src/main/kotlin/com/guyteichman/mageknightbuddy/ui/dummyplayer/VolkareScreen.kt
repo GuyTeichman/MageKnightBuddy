@@ -377,10 +377,13 @@ private fun VolkareLogRow(event: VolkareEvent, scenario: Scenario) {
 }
 
 /** The four pieces of text/icon a [VolkareLogRow] needs - a Volkare-mode copy of `DummyPlayerScreen.kt`'s `LogEntryText`. */
-private data class VolkareLogEntryText(val icon: String, val title: String, val meta: String, val description: List<VolkareDescriptionSpan>)
+// internal, not private: VolkareEventDescribeTest exercises describe() directly, since it's
+// pure, deterministic, rulebook-derived logic worth covering on its own (same module, so
+// internal is visible from app/src/test without exposing any of this outside the app module).
+internal data class VolkareLogEntryText(val icon: String, val title: String, val meta: String, val description: List<VolkareDescriptionSpan>)
 
 /** One chunk of a [VolkareLogEntryText.description] - words, a [CardColor] dot, or a [ManaColor] dot (a Wound reveal's mana roll - see `VolkareSession.playTurn`). */
-private sealed interface VolkareDescriptionSpan {
+internal sealed interface VolkareDescriptionSpan {
     data class Words(val text: String) : VolkareDescriptionSpan
     data class ColorDot(val color: CardColor) : VolkareDescriptionSpan
     data class ManaDot(val color: ManaColor) : VolkareDescriptionSpan
@@ -412,7 +415,7 @@ private val volkareManaDotInlineContent: Map<String, InlineTextContent> = ManaCo
  * Volkare's actual board position, so every "if adjacent"/"if this brings him into the city" clause
  * below is a reminder for the player to check by hand, not a computed condition.
  */
-private fun VolkareEvent.describe(scenario: Scenario): VolkareLogEntryText = when (this) {
+internal fun VolkareEvent.describe(scenario: Scenario): VolkareLogEntryText = when (this) {
     is VolkareEvent.RoundStarted -> VolkareLogEntryText(
         icon = "◆",
         title = "Round started",
@@ -442,7 +445,7 @@ private fun VolkareEvent.describe(scenario: Scenario): VolkareLogEntryText = whe
         meta = "Round $round",
         description = listOf(
             VolkareDescriptionSpan.Words(
-                "That was his last non-Wound card - his final move takes him into the portal. You lost this scenario.",
+                "That was the last card that could still move him toward the portal - his final move takes him into it. You lost this scenario.",
             ),
         ),
     )
