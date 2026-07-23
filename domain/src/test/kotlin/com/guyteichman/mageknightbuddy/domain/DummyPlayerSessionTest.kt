@@ -269,6 +269,56 @@ class DummyPlayerSessionTest {
     }
 
     @Test
+    fun `endRound folds a discard pile built via playTurn back into the reshuffled deck, and empties it`() {
+        // Regression test for issue #148: build the discard pile the real way, via playTurn() calls,
+        // instead of a convenient start(deckOrder = ...) shortcut - that shortcut is exactly what let
+        // the original bug (discard pile silently dropped at reshuffle) slip through undetected.
+        // Coral's starting crystals are White x2, Red x1, Green/Blue x0 (see docs/rules/dummy-player.md).
+        val session = DummyPlayerSession.start(
+            Knight.CORAL,
+            deckOrder = listOf(
+                CardColor.RED, CardColor.GREEN, CardColor.BLUE,
+                CardColor.WHITE, CardColor.RED, CardColor.GREEN,
+            ).map { CardIdentity.SingleColor(it) },
+        )
+            // Turn 1: flips Red, Green, Blue. 3rd card is Blue - Coral has 0 Blue crystals, no chain.
+            // discardPile becomes [Red, Green, Blue]; deckOrder becomes [White, Red, Green].
+            .playTurn()
+            // Turn 2: flips White, Red, Green. 3rd card is Green - Coral has 0 Green crystals, no chain.
+            // discardPile becomes [Red, Green, Blue, White, Red, Green]; deckOrder becomes empty.
+            .playTurn()
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.BLUE),
+            spellOfferColor = CardColor.WHITE,
+        )
+
+        // The discard pile must be empty right after reshuffling - its cards move into deckOrder.
+        assertEquals(emptyList(), next.discardPile)
+        // The reshuffled deck's color counts must include the discard pile's 6 cards (Red x2, Green x2,
+        // Blue x1, White x1) plus the newly-added Advanced Action offer card (Blue), not just the offer
+        // card alone - that's the exact count the original bug (deckOrder + offer only) would get wrong.
+        assertEquals(
+            mapOf(CardColor.RED to 2, CardColor.GREEN to 2, CardColor.BLUE to 2, CardColor.WHITE to 1),
+            next.remainingByColor,
+        )
+        assertEquals(7, next.deckOrder.size)
+        // The rest of the fields endRound()'s doc comment says it changes, asserted alongside discardPile
+        // rather than trusting a differently-scoped test to cover them.
+        assertEquals(3, next.crystals.getValue(CardColor.WHITE)) // Coral's starting 2 White + 1 from the Spell offer.
+        assertEquals(2, next.round)
+        assertEquals(false, next.roundEnded)
+        assertEquals(
+            DummyPlayerEvent.RoundEnded(
+                round = 1,
+                advancedActionOfferColor = CardIdentity.SingleColor(CardColor.BLUE),
+                spellOfferColor = CardColor.WHITE,
+            ),
+            next.log.last(),
+        )
+    }
+
+    @Test
     fun `restore reconstructs a session with the exact same state it was given`() {
         val original = DummyPlayerSession.start(
             Knight.CORAL,
