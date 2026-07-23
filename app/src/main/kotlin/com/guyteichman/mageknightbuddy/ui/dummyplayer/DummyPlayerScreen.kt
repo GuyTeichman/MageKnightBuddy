@@ -27,6 +27,7 @@ import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -646,28 +647,44 @@ private fun StatGridCard(session: DummyPlayerSession) {
  * colors come from [ProxyPlayerCard.colors] instead, but the swatch-rendering itself is identical.
  */
 @Composable
-internal fun MiniCard(colors: List<CardColor>) {
-    // Row, not a single Box: colors is a 1- or 2-element list, so this naturally draws one
-    // full-width swatch or two half-width swatches side by side, without a separate branch for
-    // each case.
-    Row(
-        modifier = Modifier
-            .size(width = 20.dp, height = 28.dp)
-            .clip(RoundedCornerShape(4.dp)),
-    ) {
-        colors.forEach { color ->
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(color.swatch)
-                    .then(
-                        if (color == CardColor.WHITE) {
-                            Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
-                        } else {
-                            Modifier
-                        },
-                    ),
+internal fun MiniCard(colors: List<CardColor>, isNonBasic: Boolean = false, width: Dp = 20.dp, height: Dp = 28.dp) {
+    // The outer Box lets the star badge (isNonBasic) overlay the swatch's corner without affecting
+    // its own layout - the inner Row is what actually draws the swatch(es) and sizes/clips to fill it.
+    Box(modifier = Modifier.size(width = width, height = height)) {
+        // Row, not a single Box: colors is a 1- or 2-element list, so this naturally draws one
+        // full-width swatch or two half-width swatches side by side, without a separate branch for
+        // each case.
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(4.dp)),
+        ) {
+            colors.forEach { color ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(color.swatch)
+                        .then(
+                            if (color == CardColor.WHITE) {
+                                Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
+                            } else {
+                                Modifier
+                            },
+                        ),
+                )
+            }
+        }
+        if (isNonBasic) {
+            // Advanced Action / Unique cards get a small star badge in the corner - Basic Action
+            // cards get nothing. Sized relative to height (not a fixed Dp) so it stays
+            // proportional whether this MiniCard is drawn at deck-tray size or enlarged (see the
+            // Objective section's use of this same composable).
+            Icon(
+                Icons.Filled.Star,
+                contentDescription = "Advanced Action or Unique card",
+                tint = Color.White,
+                modifier = Modifier.align(Alignment.TopEnd).padding(1.dp).size(height / 3),
             )
         }
     }
