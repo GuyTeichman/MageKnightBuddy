@@ -24,6 +24,11 @@ class VolkareSessionMapperTest {
 
         val roundTripped = session.toEntity().toDomain()
 
+        // Independently-derived expected values (see issue #150), not just self-equality against
+        // `session`: playTurn() reveals the sole Wound card, moving it from deckOrder to
+        // discardPile and logging a CardRevealed with that mana roll attached.
+        assertEquals(emptyList(), roundTripped.deckOrder)
+        assertEquals(listOf(VolkareCard.Wound), roundTripped.discardPile)
         assertEquals(session, roundTripped)
         assertEquals(ManaColor.BLACK, (roundTripped.log.last() as VolkareEvent.CardRevealed).manaRoll)
     }
@@ -42,6 +47,44 @@ class VolkareSessionMapperTest {
 
         val roundTripped = session.toEntity().toDomain()
 
+        // Independently-derived expected values (see issue #150), hand-traced through each chained
+        // call rather than copied from `session`:
+        // - playTurn() #1 reveals BasicAction(Red) (cityRevealed still false at that moment) ->
+        //   deckOrder=[CompetitiveSpell(Blue)], discardPile=[BasicAction(Red)].
+        // - toggleCityRevealed() flips cityRevealed true; doesn't touch deck/discard/log.
+        // - playTurn() #2 reveals CompetitiveSpell(Blue), now with cityRevealed=true baked into the
+        //   logged event -> deckOrder=[], discardPile=[BasicAction(Red), CompetitiveSpell(Blue)].
+        // - playTurn() #3 finds an empty deck; Volkare's Return logs Frenzy instead of reshuffling -
+        //   deck/discard untouched.
+        // - endRound() increments round and logs RoundEnded.
+        assertEquals(emptyList(), roundTripped.deckOrder)
+        assertEquals(
+            listOf(VolkareCard.BasicAction(CardColor.RED), VolkareCard.CompetitiveSpell(CardColor.BLUE)),
+            roundTripped.discardPile,
+        )
+        assertEquals(2, roundTripped.round)
+        assertEquals(true, roundTripped.cityRevealed)
+        assertEquals(false, roundTripped.lost)
+        assertEquals(
+            listOf(
+                VolkareEvent.RoundStarted(round = 1),
+                VolkareEvent.CardRevealed(
+                    round = 1,
+                    card = VolkareCard.BasicAction(CardColor.RED),
+                    cityRevealed = false,
+                    manaRoll = null,
+                ),
+                VolkareEvent.CardRevealed(
+                    round = 1,
+                    card = VolkareCard.CompetitiveSpell(CardColor.BLUE),
+                    cityRevealed = true,
+                    manaRoll = null,
+                ),
+                VolkareEvent.Frenzy(round = 1),
+                VolkareEvent.RoundEnded(round = 1),
+            ),
+            roundTripped.log,
+        )
         assertEquals(session, roundTripped)
     }
 
