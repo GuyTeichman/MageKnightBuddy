@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +20,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -145,9 +148,6 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                 },
                 actions = {
                     if (session != null) {
-                        TextButton(onClick = { showSummary = !showSummary }) {
-                            Text(if (showSummary) "Full View" else "Summary")
-                        }
                         RoundChip(round = session.round)
                         Spacer(modifier = Modifier.width(8.dp))
                     }
@@ -214,20 +214,49 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item { ProxyPlayerHeroRow(session = session) }
-                // Mutually exclusive, not additive: matches DummyPlayerScreen.kt's
-                // DummyPlayerAiScreen's Summary/Full View toggle.
-                item { if (showSummary) ProxyPlayerStatGridCard(session = session) else ProxyPlayerTableauCard(session = session) }
+                // The toggle button lives inside ProxyPlayerDeckPanel's own header instead of the
+                // top app bar, so it reads as attached to the panel it controls - matches
+                // DummyPlayerScreen.kt's DeckPanel. The body still swaps mutually exclusively.
+                item {
+                    ProxyPlayerDeckPanel(showSummary = showSummary, onToggleSummary = { showSummary = !showSummary }) {
+                        if (showSummary) ProxyPlayerStatGridBody(session = session) else ProxyPlayerTableauBody(session = session)
+                    }
+                }
                 item {
                     if (objectiveCard == null) {
                         Text("No current objective - tap Play Turn to draw one.")
                     } else {
+                        // Computed up front (not inline where each was previously read) since the
+                        // Movement Points block now renders above the mana-die question that used
+                        // to precede it - see the Shields/Movement row below.
+                        //
+                        // Names the actual color(s) to check for, dropping the vague "matching" -
+                        // and the "or a Gold die" clause only appears on day Rounds, since Gold
+                        // can't grant the bonus at night (docs/rules/proxy-player.md's "Movement
+                        // points"). A dual-color objective's colors are joined with "or" - either
+                        // counts (this app's 3rd dual-color ruling, alongside crystal-chain and
+                        // targeting - see docs/rules/proxy-player.md).
+                        val dieColors = objectiveCard.colors().joinToString(" or ") { it.label }
+                        val dieQuestion = if (session.isDay) "$dieColors die (or Gold)?" else "$dieColors die?"
+                        // headlineLarge - one tier above the deck tracker's headlineMedium card
+                        // count - ranks this as the 2nd most important number on the screen, after
+                        // the objective itself. Unanswered shows the equation ("3(+1)?") rather
+                        // than a bare number, so the player can see both the guaranteed base value
+                        // and the still-uncertain potential bonus.
+                        val basePoints = session.movementPoints(hasMatchingManaDie = false)
+                        val pointsText = when (manaDieAnswer) {
+                            ManaDieAnswer.UNANSWERED -> "$basePoints(+1)?"
+                            ManaDieAnswer.YES -> session.movementPoints(hasMatchingManaDie = true).toString()
+                            ManaDieAnswer.NO -> basePoints.toString()
+                        }
+
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                // Enlarged (~3x the deck tray's 20x28.dp) as the section's visual
+                                // Enlarged (~2x the deck tray's 20x28.dp) as the section's visual
                                 // anchor - same split-swatch/star-badge rendering as the deck
                                 // tracker's MiniCards, just bigger, rather than a second way of
                                 // drawing card color on this screen.
-                                MiniCard(colors = objectiveCard.colors(), isNonBasic = objectiveCard.isNonBasic(), width = 60.dp, height = 84.dp)
+                                MiniCard(colors = objectiveCard.colors(), isNonBasic = objectiveCard.isNonBasic(), width = 40.dp, height = 56.dp)
                                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(objectiveCard.displayText(), style = MaterialTheme.typography.titleMedium)
@@ -241,31 +270,42 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                                 }
                             }
 
-                            Text(
-                                "Shields",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                // Bare repeated icons, no numeral - same pattern as the crystal
-                                // rows, using the Knight's own shield-token art (matches ProxyPlayerHeroRow).
-                                repeat(session.objectiveShields) { KnightShieldIcon(knight = session.knight, size = 16.dp) }
+                            // Shields and Movement Points side by side - both are compact,
+                            // single-purpose stats (an icon row and a number), so pairing them
+                            // frees a full row instead of stacking every element in this section
+                            // vertically.
+                            Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        "Shields",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        // Bare repeated icons, no numeral - same pattern as the
+                                        // crystal rows, using the Knight's own shield-token art
+                                        // (matches ProxyPlayerHeroRow).
+                                        repeat(session.objectiveShields) { KnightShieldIcon(knight = session.knight, size = 16.dp) }
+                                    }
+                                }
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(pointsText, style = MaterialTheme.typography.headlineLarge)
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            "movement points",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        HelpButton(keys = listOf("Proxy Player Movement"), fieldHelp = fieldHelp)
+                                    }
+                                }
                             }
 
-                            // Names the actual color(s) to check for, dropping the vague "matching"
-                            // - and the "or a Gold die" clause only appears on day Rounds, since
-                            // Gold can't grant the bonus at night (docs/rules/proxy-player.md's
-                            // "Movement points"). A dual-color objective's colors are joined with
-                            // "or" - either counts (this app's 3rd dual-color ruling, alongside
-                            // crystal-chain and targeting - see docs/rules/proxy-player.md).
-                            val dieColors = objectiveCard.colors().joinToString(" or ") { it.label }
-                            val dieQuestion = if (session.isDay) {
-                                "$dieColors die (or a Gold die) in the Source?"
-                            } else {
-                                "$dieColors die in the Source?"
-                            }
-                            Text(dieQuestion, style = MaterialTheme.typography.bodyMedium)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Question and Yes/No chips condensed onto one row (previously the
+                            // question was its own line above the chips) now that Shields/Movement
+                            // moved up into their own row above.
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(dieQuestion, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                                 // Exactly one tap from UNANSWERED to either answer - neither chip
                                 // starts selected, unlike a 2-state toggle that would need to cycle.
                                 FilterChip(
@@ -280,26 +320,6 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                                 )
                             }
 
-                            // headlineLarge - one tier above the deck tracker's headlineMedium
-                            // card count - ranks this as the 2nd most important number on the
-                            // screen, after the objective itself. Unanswered shows the equation
-                            // ("3(+1)?") rather than a bare number, so the player can see both the
-                            // guaranteed base value and the still-uncertain potential bonus.
-                            val basePoints = session.movementPoints(hasMatchingManaDie = false)
-                            val pointsText = when (manaDieAnswer) {
-                                ManaDieAnswer.UNANSWERED -> "$basePoints(+1)?"
-                                ManaDieAnswer.YES -> session.movementPoints(hasMatchingManaDie = true).toString()
-                                ManaDieAnswer.NO -> basePoints.toString()
-                            }
-                            Text(pointsText, style = MaterialTheme.typography.headlineLarge)
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(
-                                    "movement points",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                HelpButton(keys = listOf("Proxy Player Movement"), fieldHelp = fieldHelp)
-                            }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(
                                     onClick = { scope.launch { viewModel.resolveObjective(ProxyPlayerObjectiveResolution.EXPLORED) } },
@@ -367,86 +387,113 @@ private fun ProxyPlayerHeroRow(session: ProxyPlayerSession) {
 }
 
 /**
- * The card-tableau: how many cards are left in the deck, a pile of their colors ([MiniCard] per
- * card, via [ProxyPlayerCard.colors]), a per-color count breakdown ([ProxyPlayerSession.remainingByColor]),
- * and the crystal Inventory - a Proxy Player-mode copy of `DummyPlayerScreen.kt`'s file-private
- * `TableauCard` (same duplication rationale as [ProxyPlayerEndRoundDialog]'s doc comment).
+ * The deck panel's shared shell: a title, the Summary/Full View toggle button (styled and placed
+ * so it reads as part of this panel rather than a stray top-bar label), and [content] (either
+ * [ProxyPlayerTableauBody] or [ProxyPlayerStatGridBody]) below - a Proxy Player-mode copy of
+ * `DummyPlayerScreen.kt`'s file-private `DeckPanel` (same duplication rationale as
+ * [ProxyPlayerEndRoundDialog]'s doc comment).
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProxyPlayerTableauCard(session: ProxyPlayerSession) {
+private fun ProxyPlayerDeckPanel(showSummary: Boolean, onToggleSummary: () -> Unit, content: @Composable () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
-                Text(
-                    "cards left in deck",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            FlowRow(
-                modifier = Modifier.heightIn(min = 61.dp),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                session.deckOrder.sortedBy { it.sortKey() }.forEach { card -> MiniCard(colors = card.colors(), isNonBasic = card.isNonBasic()) }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                CardColor.entries.forEach { color ->
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        CardColorDot(color = color)
-                        Text(
-                            session.remainingByColor.getValue(color).toString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                Text("Deck", style = MaterialTheme.typography.titleMedium)
+                OutlinedButton(onClick = onToggleSummary, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
+                    Icon(
+                        if (showSummary) Icons.Filled.UnfoldMore else Icons.Filled.UnfoldLess,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(if (showSummary) "Full View" else "Summary")
                 }
             }
-            Text(
-                "Crystals",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                CardColor.entries.forEach { color ->
-                    repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
-                }
-            }
+            content()
         }
     }
 }
 
 /**
- * The alternate, denser per-color tile grid, replacing [ProxyPlayerTableauCard] when "Summary" is
- * toggled on - a Proxy Player-mode copy of `DummyPlayerScreen.kt`'s file-private `StatGridCard`
- * (same duplication rationale as [ProxyPlayerEndRoundDialog]'s doc comment). Stays pure aggregate
- * counts, no non-basic (star badge) breakdown - that detail is only shown in the full expanded
- * view, where individual cards are drawn.
+ * The card-tableau body: how many cards are left in the deck, a pile of their colors ([MiniCard]
+ * per card, via [ProxyPlayerCard.colors]), a per-color count breakdown
+ * ([ProxyPlayerSession.remainingByColor]), and the crystal Inventory - a Proxy Player-mode copy of
+ * `DummyPlayerScreen.kt`'s file-private `TableauBody` (same duplication rationale as
+ * [ProxyPlayerEndRoundDialog]'s doc comment). Rendered inside [ProxyPlayerDeckPanel]'s Column - no
+ * Card or padding of its own.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProxyPlayerStatGridCard(session: ProxyPlayerSession) {
-    Card {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                CardColor.entries.forEach { color ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.widthIn(max = 56.dp),
-                    ) {
-                        CardColorDot(color = color)
-                        Text(session.remainingByColor.getValue(color).toString(), style = MaterialTheme.typography.titleMedium)
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                            modifier = Modifier.widthIn(max = 56.dp),
-                        ) {
-                            repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
-                        }
-                    }
+private fun ProxyPlayerTableauBody(session: ProxyPlayerSession) {
+    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
+        Text(
+            "cards left in deck",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    FlowRow(
+        modifier = Modifier.heightIn(min = 61.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        session.deckOrder.sortedBy { it.sortKey() }.forEach { card -> MiniCard(colors = card.colors(), isNonBasic = card.isNonBasic()) }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        CardColor.entries.forEach { color ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                CardColorDot(color = color)
+                Text(
+                    session.remainingByColor.getValue(color).toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+    Text(
+        "Crystals",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        CardColor.entries.forEach { color ->
+            repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
+        }
+    }
+}
+
+/**
+ * The alternate, denser per-color tile grid, replacing [ProxyPlayerTableauBody] when "Summary" is
+ * toggled on - a Proxy Player-mode copy of `DummyPlayerScreen.kt`'s file-private `StatGridBody`
+ * (same duplication rationale as [ProxyPlayerEndRoundDialog]'s doc comment). Stays pure aggregate
+ * counts, no non-basic (star badge) breakdown - that detail is only shown in the full expanded
+ * view, where individual cards are drawn. Rendered inside [ProxyPlayerDeckPanel]'s Column - no Card
+ * or padding of its own.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ProxyPlayerStatGridBody(session: ProxyPlayerSession) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        CardColor.entries.forEach { color ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.widthIn(max = 56.dp),
+            ) {
+                CardColorDot(color = color)
+                Text(session.remainingByColor.getValue(color).toString(), style = MaterialTheme.typography.titleMedium)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.widthIn(max = 56.dp),
+                ) {
+                    repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
                 }
             }
         }

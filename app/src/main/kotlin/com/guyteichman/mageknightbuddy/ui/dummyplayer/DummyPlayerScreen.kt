@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
@@ -28,6 +29,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -443,9 +446,6 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 },
                 actions = {
                     if (session != null) {
-                        TextButton(onClick = { showSummary = !showSummary }) {
-                            Text(if (showSummary) "Full View" else "Summary")
-                        }
                         RoundChip(round = session.round)
                         Spacer(modifier = Modifier.width(8.dp))
                     }
@@ -491,9 +491,14 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item { HeroRow(session = session) }
-                // Mutually exclusive, not additive: the collapsed Summary view replaces the full
-                // deck tableau rather than sitting alongside it.
-                item { if (showSummary) StatGridCard(session = session) else TableauCard(session = session) }
+                // The toggle button now lives inside DeckPanel's own header instead of the top
+                // app bar, so it reads as attached to the panel it controls; the panel's body
+                // still swaps mutually exclusively rather than showing both at once.
+                item {
+                    DeckPanel(showSummary = showSummary, onToggleSummary = { showSummary = !showSummary }) {
+                        if (showSummary) StatGridBody(session = session) else TableauBody(session = session)
+                    }
+                }
                 item {
                     Text("Log", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -556,92 +561,125 @@ private fun HeroRow(session: DummyPlayerSession) {
 }
 
 /**
- * The card-tableau: how many cards are left in the deck, a pile of their colors grouped by
- * [CardColor] (not the actual shuffled deck order - a real player wouldn't know that order ahead
- * of time either, so this only conveys the same per-color counts the tally row below states
- * numerically), a per-color count breakdown, and the crystal Inventory. Mirrors Variant D of the
- * `prototype/dummy-player-ai-screen` mock, the winning layout from issue #28.
+ * The deck panel's shared shell: a title, the Summary/Full View toggle button (styled and placed
+ * so it reads as part of this panel rather than a stray top-bar label - issue feedback was that
+ * the old top-app-bar TextButton looked detached from the thing it controlled), and [content]
+ * (either [TableauBody] or [StatGridBody]) below. `internal`, not `private`: `ProxyPlayerScreen.kt`
+ * has its own copy ([ProxyPlayerDeckPanel]) rather than sharing this one, matching this file's
+ * existing duplication rationale for [MiniCard]/[TableauCard]-shaped composables.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TableauCard(session: DummyPlayerSession) {
+private fun DeckPanel(showSummary: Boolean, onToggleSummary: () -> Unit, content: @Composable () -> Unit) {
     // fillMaxWidth on the Card itself - without it, a Card sizes to wrap its widest child, which
     // used to be the full-width mini-card row when the deck was full. As the deck (and that row)
     // shrinks, nothing else here forces full width, so the whole card would visibly narrow too.
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
-                Text(
-                    "cards left in deck",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            // heightIn(min) reserves 2 rows' worth of space always, so the card shrinks/grows
-            // by at most a few dp as the pile empties instead of visibly collapsing row-by-row
-            // (a 16-card starting deck wraps to 2 rows on a typical phone width).
-            FlowRow(
-                modifier = Modifier.heightIn(min = 61.dp),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                session.deckOrder.sortedBy { it.sortKey() }.forEach { identity -> MiniCard(colors = identity.colors()) }
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                CardColor.entries.forEach { color ->
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        CardColorDot(color = color)
-                        Text(
-                            session.remainingByColor.getValue(color).toString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                Text("Deck", style = MaterialTheme.typography.titleMedium)
+                // OutlinedButton (bordered, filled-adjacent) instead of the old TextButton, which
+                // read as plain text rather than a tappable control.
+                OutlinedButton(onClick = onToggleSummary, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
+                    Icon(
+                        if (showSummary) Icons.Filled.UnfoldMore else Icons.Filled.UnfoldLess,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(if (showSummary) "Full View" else "Summary")
                 }
             }
-
-            Text(
-                "Crystals",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                CardColor.entries.forEach { color ->
-                    repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
-                }
-            }
+            content()
         }
     }
 }
 
-/** The alternate, denser per-color tile grid (Variant A of the prototype), replacing [TableauCard] when "Summary" is toggled on. */
+/**
+ * The card-tableau body: how many cards are left in the deck, a pile of their colors grouped by
+ * [CardColor] (not the actual shuffled deck order - a real player wouldn't know that order ahead
+ * of time either, so this only conveys the same per-color counts the tally row below states
+ * numerically), a per-color count breakdown, and the crystal Inventory. Mirrors Variant D of the
+ * `prototype/dummy-player-ai-screen` mock, the winning layout from issue #28. Rendered inside
+ * [DeckPanel]'s Column, so its children lay out as siblings of that Column's header row - no Card
+ * or padding of its own.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun StatGridCard(session: DummyPlayerSession) {
-    Card {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                CardColor.entries.forEach { color ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.widthIn(max = 56.dp),
-                    ) {
-                        CardColorDot(color = color)
-                        Text(session.remainingByColor.getValue(color).toString(), style = MaterialTheme.typography.titleMedium)
-                        // Crystal icons instead of a "N crystal(s)" caption - matches how
-                        // TableauCard shows crystals, so the count is read the same way in both views.
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                            modifier = Modifier.widthIn(max = 56.dp),
-                        ) {
-                            repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
-                        }
-                    }
+private fun TableauBody(session: DummyPlayerSession) {
+    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
+        Text(
+            "cards left in deck",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+
+    // heightIn(min) reserves 2 rows' worth of space always, so the panel shrinks/grows by at most
+    // a few dp as the pile empties instead of visibly collapsing row-by-row (a 16-card starting
+    // deck wraps to 2 rows on a typical phone width).
+    FlowRow(
+        modifier = Modifier.heightIn(min = 61.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        session.deckOrder.sortedBy { it.sortKey() }.forEach { identity -> MiniCard(colors = identity.colors()) }
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        CardColor.entries.forEach { color ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                CardColorDot(color = color)
+                Text(
+                    session.remainingByColor.getValue(color).toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+
+    Text(
+        "Crystals",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        CardColor.entries.forEach { color ->
+            repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
+        }
+    }
+}
+
+/**
+ * The alternate, denser per-color tile grid (Variant A of the prototype) body, replacing
+ * [TableauBody] when "Summary" is toggled on. Rendered inside [DeckPanel]'s Column - no Card or
+ * padding of its own.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StatGridBody(session: DummyPlayerSession) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        CardColor.entries.forEach { color ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.widthIn(max = 56.dp),
+            ) {
+                CardColorDot(color = color)
+                Text(session.remainingByColor.getValue(color).toString(), style = MaterialTheme.typography.titleMedium)
+                // Crystal icons instead of a "N crystal(s)" caption - matches how TableauBody
+                // shows crystals, so the count is read the same way in both views.
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.widthIn(max = 56.dp),
+                ) {
+                    repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
                 }
             }
         }
@@ -689,16 +727,26 @@ internal fun MiniCard(colors: List<CardColor>, isNonBasic: Boolean = false, widt
             }
         }
         if (isNonBasic) {
-            // Advanced Action / Unique cards get a small star badge in the corner - Basic Action
-            // cards get nothing. Sized relative to height (not a fixed Dp) so it stays
-            // proportional whether this MiniCard is drawn at deck-tray size or enlarged (see the
-            // Objective section's use of this same composable).
-            Icon(
-                Icons.Filled.Star,
-                contentDescription = "Advanced Action or Unique card",
-                tint = Color.White,
-                modifier = Modifier.align(Alignment.TopEnd).padding(1.dp).size(height / 3),
-            )
+            // Advanced Action / Unique cards get a star badge - Basic Action cards get nothing. A
+            // dark circular scrim sits behind the star so it stays visible even on a White card's
+            // swatch, where a bare white star would nearly disappear; centering (rather than a
+            // corner) keeps it clear of the White swatch's own border too. Sized relative to
+            // height (not a fixed Dp) so it stays proportional whether this MiniCard is drawn at
+            // deck-tray size or enlarged (see the Objective section's use of this same composable).
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(height / 2.2f)
+                    .background(Color.Black.copy(alpha = 0.55f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Filled.Star,
+                    contentDescription = "Advanced Action or Unique card",
+                    tint = Color.White,
+                    modifier = Modifier.size(height / 3.2f),
+                )
+            }
         }
     }
 }
