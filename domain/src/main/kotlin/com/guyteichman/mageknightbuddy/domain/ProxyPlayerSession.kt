@@ -27,6 +27,14 @@ data class ProxyPlayerSession private constructor(
     val log: List<ProxyPlayerEvent>,
 ) {
     /**
+     * How many of [deckOrder]'s remaining cards match each [CardColor] - mirrors
+     * [DummyPlayerSession.remainingByColor] exactly, for the same per-color tally the UI's deck
+     * tableau needs. `associateWith` builds a `Map` keyed by every `CardColor.entries` value.
+     */
+    val remainingByColor: Map<CardColor, Int>
+        get() = CardColor.entries.associateWith { color -> deckOrder.count { it.matches(color) } }
+
+    /**
      * Plays one Proxy Player turn (docs/rules/proxy-player.md's "The Proxy Player's turn"). If
      * the deck is empty, announces End of Round instead (mirrors
      * [DummyPlayerSession.playTurn]'s empty-deck guard). Otherwise branches on whether there's a

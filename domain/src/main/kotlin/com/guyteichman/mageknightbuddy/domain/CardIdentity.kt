@@ -32,14 +32,33 @@ sealed interface CardIdentity {
 
         override fun matches(color: CardColor): Boolean = color == colorA || color == colorB
     }
+
+    companion object {
+        /**
+         * The complete, closed set of 4 Dual-Color Advanced Action cards that exist for this game
+         * (docs/rules/proxy-player.md's table) - a separate small-run product, not part of the
+         * base Apocalypse Dragon expansion, so no more of these will ever be printed. Lets the End
+         * Round dialog offer them as 4 directly-selectable options instead of a generic
+         * "pick 2 colors" control, since there's no need to support combinations that don't exist.
+         */
+        val DUAL_COLOR_CARDS: List<DualColor> = listOf(
+            DualColor(CardColor.GREEN, CardColor.BLUE), // Power of Crystals
+            DualColor(CardColor.BLUE, CardColor.WHITE), // Chilling Stare
+            DualColor(CardColor.RED, CardColor.WHITE), // Explosive Bolt
+            DualColor(CardColor.RED, CardColor.GREEN), // Rush of Adrenaline
+        )
+    }
 }
 
 /**
- * Sum of [crystals] held for every color this card matches - a [CardIdentity.DualColor] card
- * sums both of its colors' crystal counts, per this app's dual-color deck-flip ruling (not
- * stated in the rulebook - see `docs/rules/proxy-player.md`'s "The Proxy Player's turn").
+ * [crystals] held for the color this card matches best - for a [CardIdentity.DualColor] card,
+ * the *higher* of its two colors' crystal counts (not their sum - correcting an earlier, unstated
+ * app-specific guess; see `docs/rules/proxy-player.md`'s "The Proxy Player's turn"). A dual-color
+ * card still only represents one physical card being flipped, so it shouldn't count as if the
+ * Proxy Player held crystals of both colors at once - it counts as whichever single color would
+ * chain the most reveals.
  */
 fun CardIdentity.matchingCrystalCount(crystals: Map<CardColor, Int>): Int = when (this) {
     is CardIdentity.SingleColor -> crystals.getValue(color)
-    is CardIdentity.DualColor -> crystals.getValue(colorA) + crystals.getValue(colorB)
+    is CardIdentity.DualColor -> maxOf(crystals.getValue(colorA), crystals.getValue(colorB))
 }

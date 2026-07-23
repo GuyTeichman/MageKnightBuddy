@@ -43,8 +43,9 @@ class ProxyPlayerCardTest {
 
         assertEquals(2, ProxyPlayerCard.BasicAction(CardColor.RED).matchingCrystalCount(crystals))
         assertEquals(0, ProxyPlayerCard.UniqueAction(CardColor.WHITE).matchingCrystalCount(crystals))
+        // Green=1, Blue=1 - the higher of the two (not their sum, which would be 2) is 1.
         assertEquals(
-            2,
+            1,
             ProxyPlayerCard.AdvancedAction(CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE)).matchingCrystalCount(crystals),
         )
     }
