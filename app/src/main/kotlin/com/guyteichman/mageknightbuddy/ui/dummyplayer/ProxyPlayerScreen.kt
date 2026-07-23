@@ -83,6 +83,13 @@ private fun ProxyPlayerCard.colors(): List<CardColor> = when (this) {
 /** Sort key for laying out a deck of [ProxyPlayerCard]s in a stable, color-grouped order (see [CardColor]'s declaration order). */
 private fun ProxyPlayerCard.sortKey(): Int = colors().minOf { it.ordinal }
 
+/** Whether [this] card is Advanced Action/Unique (gets [MiniCard]'s star badge) rather than a plain Basic Action. */
+private fun ProxyPlayerCard.isNonBasic(): Boolean = when (this) {
+    is ProxyPlayerCard.BasicAction -> false
+    is ProxyPlayerCard.UniqueAction -> true
+    is ProxyPlayerCard.AdvancedAction -> true
+}
+
 /**
  * Proxy Player mode's AI (turn/round) screen: shows the Proxy Player's deck/crystal state (mirrors
  * `DummyPlayerScreen.kt`'s `TableauCard`), the current Objective Card (or a prompt to play a turn,
@@ -303,7 +310,7 @@ private fun ProxyPlayerTableauCard(session: ProxyPlayerSession) {
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
                 verticalArrangement = Arrangement.spacedBy(5.dp),
             ) {
-                session.deckOrder.sortedBy { it.sortKey() }.forEach { card -> MiniCard(colors = card.colors()) }
+                session.deckOrder.sortedBy { it.sortKey() }.forEach { card -> MiniCard(colors = card.colors(), isNonBasic = card.isNonBasic()) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 CardColor.entries.forEach { color ->
