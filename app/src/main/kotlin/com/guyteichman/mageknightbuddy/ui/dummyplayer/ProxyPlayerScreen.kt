@@ -124,7 +124,11 @@ private enum class ManaDieAnswer { UNANSWERED, YES, NO }
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map<String, FieldHelp>, onBack: () -> Unit) {
+fun ProxyPlayerAiScreen(
+    repository: ProxyPlayerSessionRepository,
+    fieldHelp: Map<String, FieldHelp>,
+    onBack: () -> Unit
+) {
     val viewModel: ProxyPlayerAiViewModel = viewModel(factory = ProxyPlayerAiViewModel.factory(repository))
     val scope = rememberCoroutineScope()
     val session = viewModel.session
@@ -252,13 +256,24 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                         }
 
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
                                 // 36x50.4.dp (36 x the deck tray's 20x28.dp height/width ratio) as
                                 // the section's visual anchor - same split-swatch/star-badge
                                 // rendering as the deck tracker's MiniCards, just bigger, rather
                                 // than a second way of drawing card color on this screen.
-                                MiniCard(colors = objectiveCard.colors(), isNonBasic = objectiveCard.isNonBasic(), width = 36.dp, height = 36.dp * 1.4f)
-                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                MiniCard(
+colors = objectiveCard.colors(),
+isNonBasic = objectiveCard.isNonBasic(),
+width = 36.dp,
+height = 36.dp * 1.4f
+)
+                                Column(
+modifier = Modifier.weight(1f),
+verticalArrangement = Arrangement.spacedBy(2.dp)
+) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(objectiveCard.displayText(), style = MaterialTheme.typography.titleMedium)
                                         HelpButton(keys = listOf("Proxy Player Objective"), fieldHelp = fieldHelp)
@@ -312,7 +327,10 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
                                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     // Subtitle above the number (not below) - the label/value order
                                     // now matches Shields' label-above-icons layout.
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
                                         Text(
                                             "movement points",
                                             style = MaterialTheme.typography.bodyMedium,
@@ -404,7 +422,10 @@ private fun ProxyPlayerDeckPanel(showSummary: Boolean, onToggleSummary: () -> Un
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text("Deck", style = MaterialTheme.typography.titleMedium)
-                OutlinedButton(onClick = onToggleSummary, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
+                OutlinedButton(
+                    onClick = onToggleSummary,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
                     Icon(
                         if (showSummary) Icons.Filled.UnfoldMore else Icons.Filled.UnfoldLess,
                         contentDescription = null,
@@ -531,6 +552,7 @@ private fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
         meta = "Round $round",
         description = listOf(DescriptionSpan.Words("The Proxy Player's deck is shuffled and ready.")),
     )
+
     is ProxyPlayerEvent.NewObjectiveDrawn -> LogEntryText(
         icon = "▶",
         title = "Objective drawn",
@@ -550,6 +572,7 @@ private fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
             }
         },
     )
+
     is ProxyPlayerEvent.TurnContinued -> LogEntryText(
         icon = "▶",
         title = "Turn continued",
@@ -569,12 +592,14 @@ private fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
             }
         },
     )
+
     is ProxyPlayerEvent.EndOfRoundAnnounced -> LogEntryText(
         icon = "⚑",
         title = "End of Round announced",
         meta = "Round $round",
         description = listOf(DescriptionSpan.Words("The deck ran out - other players get one more turn each, then the Round ends.")),
     )
+
     is ProxyPlayerEvent.ObjectiveResolved -> LogEntryText(
         icon = "⚑",
         title = "Objective resolved",
@@ -583,11 +608,14 @@ private fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
             addCardDots(objectiveCard.colors())
             add(
                 DescriptionSpan.Words(
-                    " ${objectiveCard.displayText()} - ${resolution.name.lowercase().replaceFirstChar { it.uppercase() }}.",
+                    " ${objectiveCard.displayText()} - ${
+                        resolution.name.lowercase().replaceFirstChar { it.uppercase() }
+                    }.",
                 ),
             )
         },
     )
+
     is ProxyPlayerEvent.RoundEnded -> LogEntryText(
         icon = "⚑",
         title = "Round ended",
