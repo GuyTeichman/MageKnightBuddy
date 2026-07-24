@@ -6,7 +6,7 @@ package com.guyteichman.mageknightbuddy.domain
  * set of cases" shape (see [DummyPlayerEvent]'s doc comment for why `sealed` matters here).
  */
 sealed interface ProxyPlayerEvent {
-    /** Recorded when a new Round begins - see [ProxyPlayerSession.start] and `endRound()`. */
+    /** Recorded when a new Round begins - only [ProxyPlayerSession.start] logs this; `endRound()` logs [RoundEnded] instead, never a fresh `RoundStarted`. */
     data class RoundStarted(val round: Int) : ProxyPlayerEvent
 
     /**
@@ -31,11 +31,10 @@ sealed interface ProxyPlayerEvent {
 
     /**
      * Recorded after [ProxyPlayerSession.resolveObjective] discards the current Objective Card
-     * and its Shields - docs/rules/proxy-player.md's "Resolution". [resolution] distinguishes
-     * Explored from Completed for the log's narration only; both have the identical state effect
-     * (see [ProxyPlayerObjectiveResolution]'s doc comment).
+     * and its Shields - docs/rules/proxy-player.md's "Resolution". Explored and Completed have
+     * the identical state effect, so this doesn't distinguish which one happened.
      */
-    data class ObjectiveResolved(val round: Int, val objectiveCard: ProxyPlayerCard, val resolution: ProxyPlayerObjectiveResolution) : ProxyPlayerEvent
+    data class ObjectiveResolved(val round: Int, val objectiveCard: ProxyPlayerCard) : ProxyPlayerEvent
 
     /**
      * Recorded after [ProxyPlayerSession.endRound] resolves the round-prep offer interactions,

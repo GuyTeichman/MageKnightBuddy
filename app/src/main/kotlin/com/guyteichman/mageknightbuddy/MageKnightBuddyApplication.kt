@@ -2,6 +2,7 @@ package com.guyteichman.mageknightbuddy
 
 import android.app.Application
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
+import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.data.createDatabase
@@ -21,5 +22,6 @@ class MageKnightBuddyApplication : Application() {
     val scoringSessionRepository by lazy { ScoringSessionRepository(database.scoringSessionDao()) }
     val dummyPlayerSessionRepository by lazy { DummyPlayerSessionRepository(database.dummyPlayerSessionDao()) }
     val volkareSessionRepository by lazy { VolkareSessionRepository(database.volkareSessionDao()) }
+    val proxyPlayerSessionRepository by lazy { ProxyPlayerSessionRepository(database.proxyPlayerSessionDao()) }
     val fieldHelp: Map<String, FieldHelp> by lazy { loadFieldHelp(this) }
 }

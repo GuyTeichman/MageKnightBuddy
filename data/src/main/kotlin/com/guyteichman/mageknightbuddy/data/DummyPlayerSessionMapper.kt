@@ -100,6 +100,7 @@ fun DummyPlayerSession.toEntity(updatedAt: Long = System.currentTimeMillis()): D
     // is serialized to a single JSON string for the logJson column.
     logJson = Json.encodeToString(log.map { it.toDto() }),
     updatedAt = updatedAt,
+    startsAtNight = startsAtNight,
 )
 
 /**
@@ -124,4 +125,5 @@ fun DummyPlayerSessionEntity.toDomain(): DummyPlayerSession = DummyPlayerSession
     // (kotlinx.serialization uses the @SerialName discriminators from DummyPlayerEventDto to pick
     // the right subtype for each list entry), then each DTO is converted to its domain event.
     log = Json.decodeFromString<List<DummyPlayerEventDto>>(logJson).map { it.toDomain() },
+    startsAtNight = startsAtNight,
 )

@@ -50,11 +50,3 @@ fun ProxyPlayerCard.matchingCrystalCount(crystals: Map<CardColor, Int>): Int = w
     is ProxyPlayerCard.UniqueAction -> crystals.getValue(color)
     is ProxyPlayerCard.AdvancedAction -> identity.matchingCrystalCount(crystals)
 }
-
-/**
- * How a Proxy Player's turn ended when they had a current Objective Card - the 3 top-level
- * outcomes from docs/rules/proxy-player.md's "Resolution". "Nothing" (still traveling) isn't a
- * case here - it's simply not calling [ProxyPlayerSession.resolveObjective] this turn, since the
- * Objective Card and its Shields already persist automatically via [ProxyPlayerSession.playTurn].
- */
-enum class ProxyPlayerObjectiveResolution { EXPLORED, COMPLETED }

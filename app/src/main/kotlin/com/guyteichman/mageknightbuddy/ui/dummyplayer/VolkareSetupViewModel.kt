@@ -21,9 +21,9 @@ import kotlinx.coroutines.launch
 
 /**
  * Backs Volkare mode's setup fields (Scenario, Race Level, Wound count) - the Volkare counterpart
- * to [DummyPlayerSetupViewModel]. The setup screen hosts both this and [DummyPlayerSetupViewModel]
- * side by side, switching which one drives Start/Restore based on whether "Volkare" is currently
- * selected in the shared Knight/Volkare picker (see `DummyPlayerScreen.kt`'s `KnightPicker`).
+ * to [DummyPlayerSetupViewModel]. The setup screen hosts this alongside [DummyPlayerSetupViewModel]
+ * and [ProxyPlayerSetupViewModel] side by side, switching which one drives Start/Restore based on
+ * which mode is currently selected in `DummyPlayerScreen.kt`'s `DummyPlayerModeSelector`.
  */
 @OptIn(SavedStateHandleSaveableApi::class)
 class VolkareSetupViewModel(
@@ -84,9 +84,13 @@ class VolkareSetupViewModel(
      * Builds a new Volkare session for the chosen [scenario]/[raceLevel]/[woundCount] and
      * autosaves it, overwriting any previously saved Volkare session - same "starting a new
      * session silently overwrites the old one" convention as [DummyPlayerSetupViewModel.start].
+     * [startsAtNight] comes from the shared setup screen's "Starts at night?" checkbox (default
+     * false - most scenarios start at day).
      */
-    suspend fun start() {
-        repository.save(VolkareSession.start(scenario = scenario, raceLevel = raceLevel, woundCount = woundCount))
+    suspend fun start(startsAtNight: Boolean = false) {
+        repository.save(
+            VolkareSession.start(scenario = scenario, raceLevel = raceLevel, woundCount = woundCount, startsAtNight = startsAtNight),
+        )
         hasSavedSession = true
     }
 

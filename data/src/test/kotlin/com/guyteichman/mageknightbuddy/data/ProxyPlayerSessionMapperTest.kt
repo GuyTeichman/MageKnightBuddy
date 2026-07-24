@@ -4,7 +4,6 @@ import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerCard
-import com.guyteichman.mageknightbuddy.domain.ProxyPlayerObjectiveResolution
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -76,11 +75,21 @@ class ProxyPlayerSessionMapperTest {
             deckOrder = listOf(ProxyPlayerCard.BasicAction(CardColor.GREEN)),
         )
             .playTurn() // NewObjectiveDrawn (or EndOfRoundAnnounced if deck too short - 1 card here yields NewObjectiveDrawn)
-            .resolveObjective(ProxyPlayerObjectiveResolution.COMPLETED) // ObjectiveResolved
+            .resolveObjective() // ObjectiveResolved
             .endRound(CardIdentity.SingleColor(CardColor.RED), CardColor.BLUE) // RoundEnded
 
         val restored = session.toEntity(updatedAt = 0L).toDomain()
 
         assertEquals(session, restored)
+    }
+
+    @Test
+    fun `toEntity then toDomain round-trips startsAtNight`() {
+        val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList(), startsAtNight = true)
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+        assertEquals(true, roundTripped.startsAtNight)
     }
 }

@@ -37,9 +37,16 @@ import androidx.room.RoomDatabase
     // dual-color Advanced Action cards) - destructive migration, no real user data (see
     // docs/adr/0005-shared-advanced-action-card-type-for-dual-color-cards.md). Bumped 7 -> 8: added
     // the new ProxyPlayerSessionEntity table (proxy_player_sessions) - see
-    // docs/rules/proxy-player.md. No hand-written migration - fallbackToDestructiveMigration
-    // (see createDatabase()) is fine pre-release, same as every prior bump.
-    version = 8,
+    // docs/rules/proxy-player.md - plus a startsAtNight column on VolkareSessionEntity, for the
+    // setup screen's new "Starts at night?" checkbox. No hand-written migration -
+    // fallbackToDestructiveMigration (see createDatabase()) is fine pre-release, same as every
+    // prior bump. Bumped 8 -> 9: added the same startsAtNight column to DummyPlayerSessionEntity
+    // and ProxyPlayerSessionEntity, for parity across all 3 Dummy Player tab modes. Bumped 9 -> 10:
+    // ProxyPlayerEventDto.ObjectiveResolved dropped its resolution field (the Proxy Player screen's
+    // Explored/Completed buttons were merged into one, since the two outcomes have identical
+    // tracked-state effect - see docs/rules/proxy-player.md's "Resolution") - same "JSON content
+    // shape changed, column didn't" reasoning as the 3 -> 4 and 4 -> 5 bumps above.
+    version = 10,
     exportSchema = false,
 )
 abstract class MageKnightBuddyDatabase : RoomDatabase() {

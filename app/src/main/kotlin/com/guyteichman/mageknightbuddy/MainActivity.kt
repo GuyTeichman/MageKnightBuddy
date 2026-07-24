@@ -24,6 +24,7 @@ class MainActivity : ComponentActivity() {
                     repository = app.scoringSessionRepository,
                     dummyPlayerRepository = app.dummyPlayerSessionRepository,
                     volkareRepository = app.volkareSessionRepository,
+                    proxyPlayerRepository = app.proxyPlayerSessionRepository,
                     fieldHelp = app.fieldHelp,
                 )
             }

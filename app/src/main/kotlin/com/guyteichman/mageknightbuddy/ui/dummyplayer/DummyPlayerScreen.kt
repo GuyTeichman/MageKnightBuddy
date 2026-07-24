@@ -21,12 +21,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -74,6 +78,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.guyteichman.mageknightbuddy.R
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
+import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.CardIdentity
@@ -83,6 +88,7 @@ import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
 import com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon
+import com.guyteichman.mageknightbuddy.ui.components.LabeledCheckbox
 import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.components.swatch
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
@@ -92,6 +98,14 @@ import kotlinx.coroutines.launch
 private const val DUMMY_PLAYER_SETUP_ROUTE = "dummy_player_setup"
 private const val DUMMY_PLAYER_AI_ROUTE = "dummy_player_ai"
 private const val VOLKARE_AI_ROUTE = "volkare_ai"
+private const val PROXY_PLAYER_AI_ROUTE = "proxy_player_ai"
+
+/**
+ * Which of the Dummy Player tab's 3 modes is currently selected on the setup screen - see
+ * `CONTEXT.md`'s "Dummy Player tab" entry. Replaces the old `volkareSelected: Boolean` flag now
+ * that Proxy Player also needs its own selected state alongside Standard and Volkare.
+ */
+private enum class DummyPlayerMode { STANDARD, VOLKARE, PROXY_PLAYER }
 
 /**
  * Root composable for the Dummy Player tab: the Knight-select setup screen is the tab's start
@@ -105,7 +119,12 @@ private const val VOLKARE_AI_ROUTE = "volkare_ai"
  * reference (issue #88).
  */
 @Composable
-fun DummyPlayerTab(repository: DummyPlayerSessionRepository, volkareRepository: VolkareSessionRepository, fieldHelp: Map<String, FieldHelp>) {
+fun DummyPlayerTab(
+    repository: DummyPlayerSessionRepository,
+    volkareRepository: VolkareSessionRepository,
+    proxyPlayerRepository: ProxyPlayerSessionRepository,
+    fieldHelp: Map<String, FieldHelp>,
+) {
     val nestedNavController = rememberNavController()
 
     NavHost(navController = nestedNavController, startDestination = DUMMY_PLAYER_SETUP_ROUTE) {
@@ -113,12 +132,15 @@ fun DummyPlayerTab(repository: DummyPlayerSessionRepository, volkareRepository: 
             DummyPlayerSetupScreen(
                 repository = repository,
                 volkareRepository = volkareRepository,
+                proxyPlayerRepository = proxyPlayerRepository,
                 // Both Start and Restore Game land on the same AI-screen route - once a session
                 // exists (freshly started or restored), the AI screen just loads whatever's saved.
                 onStart = { nestedNavController.navigate(DUMMY_PLAYER_AI_ROUTE) },
                 onRestore = { nestedNavController.navigate(DUMMY_PLAYER_AI_ROUTE) },
                 onStartVolkare = { nestedNavController.navigate(VOLKARE_AI_ROUTE) },
                 onRestoreVolkare = { nestedNavController.navigate(VOLKARE_AI_ROUTE) },
+                onStartProxyPlayer = { nestedNavController.navigate(PROXY_PLAYER_AI_ROUTE) },
+                onRestoreProxyPlayer = { nestedNavController.navigate(PROXY_PLAYER_AI_ROUTE) },
             )
         }
         composable(DUMMY_PLAYER_AI_ROUTE) {
@@ -129,34 +151,51 @@ fun DummyPlayerTab(repository: DummyPlayerSessionRepository, volkareRepository: 
         composable(VOLKARE_AI_ROUTE) {
             VolkareAiScreen(repository = volkareRepository, onBack = { nestedNavController.popBackStack() })
         }
+        composable(PROXY_PLAYER_AI_ROUTE) {
+            ProxyPlayerAiScreen(repository = proxyPlayerRepository, fieldHelp = fieldHelp, onBack = { nestedNavController.popBackStack() })
+        }
     }
 }
 
 /**
- * The setup screen: pick a Knight (or "Random"), or "Volkare" to switch into Volkare mode's own
- * fields ([VolkareSetupFields]) instead - see `CONTEXT.md`'s "Volkare" entry: Volkare replaces the
- * whole picker step, there's no Knight backing selection underneath it. Either way, Start or
- * Restore Game lands on the matching AI screen. Hosts both [DummyPlayerSetupViewModel] and
- * [VolkareSetupViewModel] side by side (only one drives the visible fields/Start at a time, per
- * [volkareSelected]) so switching between them mid-setup doesn't lose either one's state, and so
- * Restore Game can compare both repositories' recency regardless of which is currently selected.
+ * The setup screen: a top-level choice between **Volkare** (no Knight at all - his deck/turn
+ * rules don't depend on one) and **a Knight** ([VolkareOrKnightSelector]); only within the Knight
+ * branch does [StandardOrProxyPlayerSelector] then offer Standard vs. Proxy Player, since those
+ * two are just different depths of the same Knight-backed Dummy Player, not a peer choice to
+ * Volkare (see `CONTEXT.md`'s "Dummy Player tab" entry). Either way, Start or Restore Game lands
+ * on the matching AI screen. Hosts [DummyPlayerSetupViewModel], [VolkareSetupViewModel], and
+ * [ProxyPlayerSetupViewModel] side by side (only the one matching [DummyPlayerMode] drives the
+ * visible fields/Start at a time) so switching between modes mid-setup doesn't lose any of their
+ * state, and so Restore Game can compare all 3 repositories' recency regardless of which mode is
+ * currently selected. Picking a Knight (or Random) while in the Knight branch updates *both*
+ * [DummyPlayerSetupViewModel] and [ProxyPlayerSetupViewModel] together (see [onKnightSelected]/
+ * [onRandomSelected] below), so toggling Standard/Proxy Player afterward keeps showing the same
+ * Knight instead of jumping to whichever ViewModel wasn't just edited.
  */
 @Composable
 private fun DummyPlayerSetupScreen(
     repository: DummyPlayerSessionRepository,
     volkareRepository: VolkareSessionRepository,
+    proxyPlayerRepository: ProxyPlayerSessionRepository,
     onStart: () -> Unit,
     onRestore: () -> Unit,
     onStartVolkare: () -> Unit,
     onRestoreVolkare: () -> Unit,
+    onStartProxyPlayer: () -> Unit,
+    onRestoreProxyPlayer: () -> Unit,
 ) {
     val viewModel: DummyPlayerSetupViewModel = viewModel(factory = DummyPlayerSetupViewModel.factory(repository))
     val volkareViewModel: VolkareSetupViewModel = viewModel(factory = VolkareSetupViewModel.factory(volkareRepository))
+    val proxyPlayerViewModel: ProxyPlayerSetupViewModel = viewModel(factory = ProxyPlayerSetupViewModel.factory(proxyPlayerRepository))
     val scope = rememberCoroutineScope()
-    // rememberSaveable, not plain remember: this drives which of the two ViewModels above is
+    // rememberSaveable, not plain remember: this drives which of the 3 ViewModels above is
     // "active", so it needs to survive navigating away to the AI screen and back (plain remember
     // state is lost when Navigation Compose disposes this composable while another route is shown).
-    var volkareSelected by rememberSaveable { mutableStateOf(false) }
+    var mode by rememberSaveable { mutableStateOf(DummyPlayerMode.STANDARD) }
+    // Feeds whichever of the 3 ViewModels' start() ends up called below - shared across all
+    // modes (not one per ViewModel) since it's the same physical fact ("did the table start this
+    // game at night") regardless of which mode is chosen.
+    var startsAtNight by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -164,16 +203,18 @@ private fun DummyPlayerSetupScreen(
     ) {
         Text("Dummy Player")
 
-        KnightPicker(
-            knight = viewModel.knight,
-            wasRandom = viewModel.wasRandom,
-            volkareSelected = volkareSelected,
-            onKnightSelected = { viewModel.pickKnight(it); volkareSelected = false },
-            onRandomSelected = { viewModel.pickRandom(); volkareSelected = false },
-            onVolkareSelected = { volkareSelected = true },
+        // Top-level choice: Volkare has no Knight at all, so it's a peer of "a Knight" as a whole,
+        // not of Standard/Proxy Player individually (those are 2 depths of the same Knight-backed
+        // opponent - see StandardOrProxyPlayerSelector below).
+        VolkareOrKnightSelector(
+            isVolkare = mode == DummyPlayerMode.VOLKARE,
+            onSelectVolkare = { mode = DummyPlayerMode.VOLKARE },
+            // Falls back to Standard, not whatever `mode` held before Volkare was selected -
+            // "Knight" isn't itself a mode, Standard is just a sensible default entry point.
+            onSelectKnight = { mode = DummyPlayerMode.STANDARD },
         )
 
-        if (volkareSelected) {
+        if (mode == DummyPlayerMode.VOLKARE) {
             VolkareSetupFields(
                 scenario = volkareViewModel.scenario,
                 raceLevel = volkareViewModel.raceLevel,
@@ -183,20 +224,49 @@ private fun DummyPlayerSetupScreen(
                 onRaceLevelSelected = volkareViewModel::pickRaceLevel,
                 onWoundCountChanged = volkareViewModel::changeWoundCount,
             )
+        } else {
+            // Always reads/writes viewModel's (Standard's) Knight state, not
+            // proxyPlayerViewModel's - onKnightSelected/onRandomSelected below keep both in sync,
+            // so it doesn't matter which one backs the display as long as it's consistent.
+            KnightOnlyPicker(
+                knight = viewModel.knight,
+                wasRandom = viewModel.wasRandom,
+                onKnightSelected = { knight ->
+                    viewModel.pickKnight(knight)
+                    proxyPlayerViewModel.pickKnight(knight)
+                },
+                onRandomSelected = {
+                    viewModel.pickRandom()
+                    // Reuse the same rolled Knight for Proxy Player instead of an independent
+                    // re-roll, so toggling Standard/Proxy Player after "Random" never shows a
+                    // different Knight than the one just rolled.
+                    proxyPlayerViewModel.pickKnight(viewModel.knight)
+                },
+            )
+            // Only offered once a Knight is already selected (i.e. Volkare wasn't) - see this
+            // function's doc comment.
+            StandardOrProxyPlayerSelector(mode = mode, onModeSelected = { mode = it })
         }
+
+        // Shown regardless of which mode is selected above - most Mage Knight scenarios start at
+        // day (Round 1), so this defaults unchecked. Day/night for any later Round is then just
+        // derived from the Round number (see isDayRound), not tracked turn-by-turn.
+        LabeledCheckbox(
+            checked = startsAtNight,
+            onCheckedChange = { startsAtNight = it },
+            label = "Starts at night?",
+        )
 
         Button(
             onClick = {
                 // Building the session and autosaving it is a suspend call (Room I/O), so it
-                // needs a coroutine scope; onStart()/onStartVolkare() only run after that save
-                // completes.
+                // needs a coroutine scope; onStart()/onStartVolkare()/onStartProxyPlayer() only
+                // run after that save completes.
                 scope.launch {
-                    if (volkareSelected) {
-                        volkareViewModel.start()
-                        onStartVolkare()
-                    } else {
-                        viewModel.start()
-                        onStart()
+                    when (mode) {
+                        DummyPlayerMode.STANDARD -> { viewModel.start(startsAtNight); onStart() }
+                        DummyPlayerMode.VOLKARE -> { volkareViewModel.start(startsAtNight); onStartVolkare() }
+                        DummyPlayerMode.PROXY_PLAYER -> { proxyPlayerViewModel.start(startsAtNight); onStartProxyPlayer() }
                     }
                 }
             },
@@ -207,18 +277,50 @@ private fun DummyPlayerSetupScreen(
 
         OutlinedButton(
             onClick = {
-                // Restore Game always resumes whichever of the two saved sessions is most recent,
+                // Restore Game always resumes whichever of the 3 saved sessions is most recent,
                 // regardless of what's currently selected above - see this function's doc comment.
                 scope.launch {
-                    val volkareIsNewer = (volkareRepository.updatedAt() ?: -1) > (repository.updatedAt() ?: -1)
-                    if (volkareIsNewer) onRestoreVolkare() else onRestore()
+                    val timestamps = listOf(
+                        DummyPlayerMode.STANDARD to (repository.updatedAt() ?: -1),
+                        DummyPlayerMode.VOLKARE to (volkareRepository.updatedAt() ?: -1),
+                        DummyPlayerMode.PROXY_PLAYER to (proxyPlayerRepository.updatedAt() ?: -1),
+                    )
+                    when (timestamps.maxByOrNull { it.second }?.first) {
+                        DummyPlayerMode.VOLKARE -> onRestoreVolkare()
+                        DummyPlayerMode.PROXY_PLAYER -> onRestoreProxyPlayer()
+                        else -> onRestore()
+                    }
                 }
             },
-            enabled = viewModel.hasSavedSession || volkareViewModel.hasSavedSession,
+            enabled = viewModel.hasSavedSession || volkareViewModel.hasSavedSession || proxyPlayerViewModel.hasSavedSession,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Restore Game")
         }
+    }
+}
+
+/**
+ * The top-level Volkare-vs-Knight choice - see [DummyPlayerSetupScreen]'s doc comment for why this
+ * is a 2-way choice rather than 3-way alongside Standard/Proxy Player.
+ */
+@Composable
+private fun VolkareOrKnightSelector(isVolkare: Boolean, onSelectVolkare: () -> Unit, onSelectKnight: () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(selected = !isVolkare, onClick = onSelectKnight, label = { Text("Knight") })
+        FilterChip(selected = isVolkare, onClick = onSelectVolkare, label = { Text("Volkare") })
+    }
+}
+
+/**
+ * Once a Knight is selected (i.e. Volkare wasn't), which depth of Dummy Player to play as - see
+ * `CONTEXT.md`'s "Proxy Player" entry.
+ */
+@Composable
+private fun StandardOrProxyPlayerSelector(mode: DummyPlayerMode, onModeSelected: (DummyPlayerMode) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(selected = mode == DummyPlayerMode.STANDARD, onClick = { onModeSelected(DummyPlayerMode.STANDARD) }, label = { Text("Standard") })
+        FilterChip(selected = mode == DummyPlayerMode.PROXY_PLAYER, onClick = { onModeSelected(DummyPlayerMode.PROXY_PLAYER) }, label = { Text("Proxy Player") })
     }
 }
 
@@ -232,28 +334,20 @@ private fun DummyPlayerSetupScreen(
  * "Random" reuses that same generic glyph with a "?" overlaid (see [RandomShieldIcon]) to mark
  * it as the wildcard choice, distinct from the plain per-Knight entries.
  *
- * "Volkare" is a further entry, after every Knight - see `CONTEXT.md`'s "Volkare" entry: picking
- * it replaces the whole rest of the setup screen with Volkare mode's own fields, so it's excluded
- * from "Random" on purpose (Volkare is a deliberate choice, never a random substitute for a
- * Knight). [volkareSelected] drives the field's displayed value/icon once picked; unlike "Random"
- * it carries no other state of its own here (see [VolkareSetupViewModel] for the fields it reveals).
+ * Used by both Standard and Proxy Player mode ([DummyPlayerMode]) - Volkare mode picks no Knight
+ * at all (see `CONTEXT.md`'s "Volkare" entry), and mode selection itself now lives one level up
+ * in [DummyPlayerModeSelector] rather than as a hidden entry in this dropdown.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun KnightPicker(
+private fun KnightOnlyPicker(
     knight: Knight,
     wasRandom: Boolean,
-    volkareSelected: Boolean,
     onKnightSelected: (Knight) -> Unit,
     onRandomSelected: () -> Unit,
-    onVolkareSelected: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val displayText = when {
-        volkareSelected -> "Volkare"
-        wasRandom -> "${knight.displayName} (Random)"
-        else -> knight.displayName
-    }
+    val displayText = if (wasRandom) "${knight.displayName} (Random)" else knight.displayName
 
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
         OutlinedTextField(
@@ -261,7 +355,7 @@ private fun KnightPicker(
             onValueChange = {},
             readOnly = true,
             label = { Text("Knight") },
-            leadingIcon = { if (volkareSelected) VolkareShieldIcon() else KnightShieldIcon(knight = knight) },
+            leadingIcon = { KnightShieldIcon(knight = knight) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
@@ -289,14 +383,6 @@ private fun KnightPicker(
                     },
                 )
             }
-            DropdownMenuItem(
-                text = { Text("Volkare") },
-                leadingIcon = { VolkareShieldIcon() },
-                onClick = {
-                    onVolkareSelected()
-                    expanded = false
-                },
-            )
         }
     }
 }
@@ -360,9 +446,6 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 },
                 actions = {
                     if (session != null) {
-                        TextButton(onClick = { showSummary = !showSummary }) {
-                            Text(if (showSummary) "Hide Summary" else "Summary")
-                        }
                         RoundChip(round = session.round)
                         Spacer(modifier = Modifier.width(8.dp))
                     }
@@ -408,9 +491,13 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item { HeroRow(session = session) }
-                item { TableauCard(session = session) }
-                if (showSummary) {
-                    item { StatGridCard(session = session) }
+                // The toggle button now lives inside DeckPanel's own header instead of the top
+                // app bar, so it reads as attached to the panel it controls; the panel's body
+                // still swaps mutually exclusively rather than showing both at once.
+                item {
+                    DeckPanel(showSummary = showSummary, onToggleSummary = { showSummary = !showSummary }) {
+                        if (showSummary) StatGridBody(session = session) else TableauBody(session = session)
+                    }
                 }
                 item {
                     Text("Log", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -436,9 +523,13 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
     }
 }
 
-/** The pill-shaped "ROUND N" indicator in the top bar. */
+/**
+ * The pill-shaped "ROUND N" indicator in the top bar.
+ *
+ * `internal`, not `private`: `ProxyPlayerScreen.kt`'s `ProxyPlayerAiScreen` reuses this directly.
+ */
 @Composable
-private fun RoundChip(round: Int) {
+internal fun RoundChip(round: Int) {
     Surface(
         shape = RoundedCornerShape(percent = 50),
         color = MaterialTheme.colorScheme.secondaryContainer,
@@ -470,43 +561,92 @@ private fun HeroRow(session: DummyPlayerSession) {
 }
 
 /**
- * The card-tableau: how many cards are left in the deck, a pile of their colors grouped by
- * [CardColor] (not the actual shuffled deck order - a real player wouldn't know that order ahead
- * of time either, so this only conveys the same per-color counts the tally row below states
- * numerically), a per-color count breakdown, and the crystal Inventory. Mirrors Variant D of the
- * `prototype/dummy-player-ai-screen` mock, the winning layout from issue #28.
+ * The deck panel's shared shell: a title, the Summary/Full View toggle button (styled and placed
+ * so it reads as part of this panel rather than a stray top-bar label - issue feedback was that
+ * the old top-app-bar TextButton looked detached from the thing it controlled), and [content]
+ * (either [TableauBody] or [StatGridBody]) below. `internal`, not `private`: `ProxyPlayerScreen.kt`
+ * has its own copy ([ProxyPlayerDeckPanel]) rather than sharing this one, matching this file's
+ * existing duplication rationale for [MiniCard]/[TableauCard]-shaped composables.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TableauCard(session: DummyPlayerSession) {
+private fun DeckPanel(showSummary: Boolean, onToggleSummary: () -> Unit, content: @Composable () -> Unit) {
     // fillMaxWidth on the Card itself - without it, a Card sizes to wrap its widest child, which
     // used to be the full-width mini-card row when the deck was full. As the deck (and that row)
     // shrinks, nothing else here forces full width, so the whole card would visibly narrow too.
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
-                Text(
-                    "cards left in deck",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            // heightIn(min) reserves 2 rows' worth of space always, so the card shrinks/grows
-            // by at most a few dp as the pile empties instead of visibly collapsing row-by-row
-            // (a 16-card starting deck wraps to 2 rows on a typical phone width).
-            FlowRow(
-                modifier = Modifier.heightIn(min = 61.dp),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                session.deckOrder.sortedBy { it.sortKey() }.forEach { identity -> MiniCard(colors = identity.colors()) }
+                Text("Deck", style = MaterialTheme.typography.titleMedium)
+                // OutlinedButton (bordered, filled-adjacent) instead of the old TextButton, which
+                // read as plain text rather than a tappable control.
+                OutlinedButton(onClick = onToggleSummary, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
+                    Icon(
+                        if (showSummary) Icons.Filled.UnfoldMore else Icons.Filled.UnfoldLess,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(if (showSummary) "Full View" else "Summary")
+                }
             }
+            content()
+        }
+    }
+}
 
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+/**
+ * The card-tableau body: how many cards are left in the deck, a pile of their colors grouped by
+ * [CardColor] (not the actual shuffled deck order - a real player wouldn't know that order ahead
+ * of time either, so this only conveys the same per-color counts the tally row below states
+ * numerically), a per-color count breakdown, and the crystal Inventory. Mirrors Variant D of the
+ * `prototype/dummy-player-ai-screen` mock, the winning layout from issue #28. Rendered inside
+ * [DeckPanel]'s Column, so its children lay out as siblings of that Column's header row - no Card
+ * or padding of its own.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TableauBody(session: DummyPlayerSession) {
+    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
+        Text(
+            "left in deck",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+
+    // heightIn(min) reserves 2 rows' worth of space always, so the panel shrinks/grows by at most
+    // a few dp as the pile empties instead of visibly collapsing row-by-row (a 16-card starting
+    // deck wraps to 2 rows on a typical phone width).
+    FlowRow(
+        modifier = Modifier.heightIn(min = 61.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        session.deckOrder.sortedBy { it.sortKey() }.forEach { identity -> MiniCard(colors = identity.colors()) }
+    }
+
+    // Cards and Crystals side by side, in matching label-above-content shape (a "Cards" title
+    // mirroring "Crystals", each above their own value row) - issue feedback was that Crystals had
+    // a title above its icons but the per-color card breakdown didn't, reading as asymmetric.
+    // Matches ProxyPlayerScreen.kt's ProxyPlayerTableauBody.
+    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "Cards",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 CardColor.entries.forEach { color ->
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         CardColorDot(color = color)
                         Text(
                             session.remainingByColor.getValue(color).toString(),
@@ -516,7 +656,8 @@ private fun TableauCard(session: DummyPlayerSession) {
                     }
                 }
             }
-
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 "Crystals",
                 style = MaterialTheme.typography.labelSmall,
@@ -531,31 +672,31 @@ private fun TableauCard(session: DummyPlayerSession) {
     }
 }
 
-/** The alternate, denser per-color tile grid (Variant A of the prototype), shown when "Summary" is toggled on. */
+/**
+ * The alternate, denser per-color tile grid (Variant A of the prototype) body, replacing
+ * [TableauBody] when "Summary" is toggled on. Rendered inside [DeckPanel]'s Column - no Card or
+ * padding of its own.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun StatGridCard(session: DummyPlayerSession) {
-    Card {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                CardColor.entries.forEach { color ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.widthIn(max = 56.dp),
-                    ) {
-                        CardColorDot(color = color)
-                        Text(session.remainingByColor.getValue(color).toString(), style = MaterialTheme.typography.titleMedium)
-                        // Crystal icons instead of a "N crystal(s)" caption - matches how
-                        // TableauCard shows crystals, so the count is read the same way in both views.
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                            modifier = Modifier.widthIn(max = 56.dp),
-                        ) {
-                            repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
-                        }
-                    }
+private fun StatGridBody(session: DummyPlayerSession) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        CardColor.entries.forEach { color ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.widthIn(max = 56.dp),
+            ) {
+                CardColorDot(color = color)
+                Text(session.remainingByColor.getValue(color).toString(), style = MaterialTheme.typography.titleMedium)
+                // Crystal icons instead of a "N crystal(s)" caption - matches how TableauBody
+                // shows crystals, so the count is read the same way in both views.
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.widthIn(max = 56.dp),
+                ) {
+                    repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
                 }
             }
         }
@@ -574,29 +715,55 @@ private fun StatGridCard(session: DummyPlayerSession) {
  * colors come from [ProxyPlayerCard.colors] instead, but the swatch-rendering itself is identical.
  */
 @Composable
-internal fun MiniCard(colors: List<CardColor>) {
-    // Row, not a single Box: colors is a 1- or 2-element list, so this naturally draws one
-    // full-width swatch or two half-width swatches side by side, without a separate branch for
-    // each case.
-    Row(
-        modifier = Modifier
-            .size(width = 20.dp, height = 28.dp)
-            .clip(RoundedCornerShape(4.dp)),
-    ) {
-        colors.forEach { color ->
+internal fun MiniCard(colors: List<CardColor>, isNonBasic: Boolean = false, width: Dp = 20.dp, height: Dp = 28.dp) {
+    // The outer Box lets the star badge (isNonBasic) overlay the swatch's corner without affecting
+    // its own layout - the inner Row is what actually draws the swatch(es) and sizes/clips to fill it.
+    Box(modifier = Modifier.size(width = width, height = height)) {
+        // Row, not a single Box: colors is a 1- or 2-element list, so this naturally draws one
+        // full-width swatch or two half-width swatches side by side, without a separate branch for
+        // each case.
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(4.dp)),
+        ) {
+            colors.forEach { color ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(color.swatch)
+                        .then(
+                            if (color == CardColor.WHITE) {
+                                Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
+                            } else {
+                                Modifier
+                            },
+                        ),
+                )
+            }
+        }
+        if (isNonBasic) {
+            // Advanced Action / Unique cards get a star badge - Basic Action cards get nothing. A
+            // dark circular scrim sits behind the star so it stays visible even on a White card's
+            // swatch, where a bare white star would nearly disappear; centering (rather than a
+            // corner) keeps it clear of the White swatch's own border too. Sized relative to
+            // height (not a fixed Dp) so it stays proportional whether this MiniCard is drawn at
+            // deck-tray size or enlarged (see the Objective section's use of this same composable).
             Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(color.swatch)
-                    .then(
-                        if (color == CardColor.WHITE) {
-                            Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
-                        } else {
-                            Modifier
-                        },
-                    ),
-            )
+                    .align(Alignment.Center)
+                    .size(height / 2.2f)
+                    .background(Color.Black.copy(alpha = 0.55f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Filled.Star,
+                    contentDescription = "Advanced Action or Unique card",
+                    tint = Color.White,
+                    modifier = Modifier.size(height / 3.2f),
+                )
+            }
         }
     }
 }
@@ -887,7 +1054,14 @@ internal fun ColorPickerRow(
 internal fun IdentityPickerRow(label: String, selected: CardIdentity, onSelect: (CardIdentity) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Centered (not left-packed): the 4 single-color chips usually fill their row edge-to-edge,
+        // but the 4 dual-color chips below wrap 2-per-row and, left-aligned, left a lopsided gap of
+        // empty space on the right - issue feedback was to center those wrapped rows instead.
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             ADVANCED_ACTION_OFFER_OPTIONS.forEach { identity ->
                 FilterChip(
                     selected = identity == selected,

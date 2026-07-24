@@ -25,7 +25,18 @@ data class ProxyPlayerSession private constructor(
     val objectiveCard: ProxyPlayerCard?,
     val objectiveShields: Int,
     val log: List<ProxyPlayerEvent>,
+    // Whether this session began on a night Round (Round 1 = night) instead of the usual day
+    // start - set once at setup, never changed afterward. See [isDay].
+    val startsAtNight: Boolean = false,
 ) {
+    /**
+     * Whether the current [round] is a day round - see [isDayRound] for the odd/even derivation
+     * from [startsAtNight]. Consumed by the movement-points mana-die bonus
+     * (docs/rules/proxy-player.md's "Movement points": a Gold die only counts by day).
+     */
+    val isDay: Boolean
+        get() = isDayRound(round, startsAtNight)
+
     /**
      * How many of [deckOrder]'s remaining cards match each [CardColor] - mirrors
      * [DummyPlayerSession.remainingByColor] exactly, for the same per-color tally the UI's deck
@@ -80,17 +91,17 @@ data class ProxyPlayerSession private constructor(
 
     /**
      * Discards the current [objectiveCard] and clears [objectiveShields] - docs/rules/proxy-player.md's
-     * "Resolution": both Explored and Completed have the identical state effect, so [resolution]
-     * only affects the logged event's narration, not what actually changes. A no-op if there's no
-     * current objective (defensive - the UI should only offer this action when one exists).
+     * "Resolution": Explored and Completed have the identical state effect, so the app doesn't
+     * distinguish which one happened, only that the objective is now resolved. A no-op if there's
+     * no current objective (defensive - the UI should only offer this action when one exists).
      */
-    fun resolveObjective(resolution: ProxyPlayerObjectiveResolution): ProxyPlayerSession {
+    fun resolveObjective(): ProxyPlayerSession {
         val card = objectiveCard ?: return this
         return copy(
             objectiveCard = null,
             objectiveShields = 0,
             discardPile = discardPile + card,
-            log = log + ProxyPlayerEvent.ObjectiveResolved(round, card, resolution),
+            log = log + ProxyPlayerEvent.ObjectiveResolved(round, card),
         )
     }
 
@@ -100,6 +111,9 @@ data class ProxyPlayerSession private constructor(
      * by docs/rules/proxy-player.md's "When preparing a new Round"), plus one Proxy Player-only
      * step first: if there's a lingering [objectiveCard] (still being pursued when the Round
      * ended), it's discarded along with its Shields before the standard offer interactions run.
+     * "The deck is reshuffled" means the whole discard pile - including that just-discarded
+     * objective card - is merged back into [deckOrder] along with the new Advanced Action card and
+     * shuffled together, leaving [discardPile] empty (mirrors [DummyPlayerSession.endRound]).
      */
     fun endRound(advancedActionOfferColor: CardIdentity, spellOfferColor: CardColor): ProxyPlayerSession {
         val discardedObjective = objectiveCard
@@ -107,8 +121,8 @@ data class ProxyPlayerSession private constructor(
         return copy(
             objectiveCard = null,
             objectiveShields = 0,
-            deckOrder = (deckOrder + ProxyPlayerCard.AdvancedAction(advancedActionOfferColor)).shuffled(),
-            discardPile = discardAfterObjective,
+            deckOrder = (deckOrder + discardAfterObjective + ProxyPlayerCard.AdvancedAction(advancedActionOfferColor)).shuffled(),
+            discardPile = emptyList(),
             crystals = crystals + (spellOfferColor to crystals.getValue(spellOfferColor) + 1),
             round = round + 1,
             roundEnded = false,
@@ -177,6 +191,7 @@ data class ProxyPlayerSession private constructor(
             knight: Knight,
             wasRandom: Boolean = false,
             deckOrder: List<ProxyPlayerCard> = buildStartingDeck(knight).shuffled(),
+            startsAtNight: Boolean = false,
         ): ProxyPlayerSession = ProxyPlayerSession(
             knight = knight,
             wasRandom = wasRandom,
@@ -188,12 +203,13 @@ data class ProxyPlayerSession private constructor(
             objectiveCard = null,
             objectiveShields = 0,
             log = listOf(ProxyPlayerEvent.RoundStarted(round = 1)),
+            startsAtNight = startsAtNight,
         )
 
         /** Begins a new session with a randomly-chosen [Knight] - mirrors [DummyPlayerSession.startRandom]. */
-        fun startRandom(random: Random = Random): ProxyPlayerSession {
+        fun startRandom(random: Random = Random, startsAtNight: Boolean = false): ProxyPlayerSession {
             val knight = Knight.entries.toList().random(random)
-            return start(knight, wasRandom = true)
+            return start(knight, wasRandom = true, startsAtNight = startsAtNight)
         }
 
         /** Reconstructs a session from its full persisted state - not for general use; [start]/[startRandom] begin a new session. */
@@ -208,6 +224,7 @@ data class ProxyPlayerSession private constructor(
             objectiveCard: ProxyPlayerCard?,
             objectiveShields: Int,
             log: List<ProxyPlayerEvent>,
+            startsAtNight: Boolean = false,
         ): ProxyPlayerSession = ProxyPlayerSession(
             knight = knight,
             wasRandom = wasRandom,
@@ -219,6 +236,7 @@ data class ProxyPlayerSession private constructor(
             objectiveCard = objectiveCard,
             objectiveShields = objectiveShields,
             log = log,
+            startsAtNight = startsAtNight,
         )
     }
 }

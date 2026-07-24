@@ -61,6 +61,8 @@ Sum of:
 - **+1** per Shield token currently on the objective card.
 - **+1** if there's a mana die of the objective card's color in the Source, or a gold die and it's day (a basic-color die is preferred over gold if both are available). Immediately reroll that die afterward.
 
+**Day/night**: the base rulebook alternates day/night every Round (odd Rounds are day by default), which the player would normally just read off the board. This app tracks it itself instead — a "Starts at night?" checkbox at setup (default unchecked) plus the current Round number are enough to derive day/night for the Gold-die bonus above, without the player needing to report it each turn. An app-specific convenience, not a rules change.
+
 Movement rules (for the physical resolution, not app-tracked):
 
 - Must move by the most direct path toward the objective; terrain move cost is irrelevant.
@@ -85,6 +87,8 @@ Reveal one new map tile (player's choice of placement if there's a choice, decid
 ### Completed
 
 However the objective was actually resolved at the table — conquering an adventure site (ruins: discard its lowest-Fame enemy token, or all tokens for other adventure sites; mark conquered with a Shield token), conquering a fortified site (discard the lowest-Fame enemy token in a city, or all enemy tokens for a non-city; mark conquered), burning a monastery (mark it destroyed), fighting a rampaging enemy that blocked the path (discard the enemy token), or interacting (recruit the lowest-Influence-cost Unit/Advanced Action/Spell available, preferring a Unit over either — see "Interacting" below) — the app treats all of these identically: discard the objective card and its Shield tokens. **Interacting never changes the Proxy Player's own deck or crystals** — see below.
+
+**App note**: since Explored and Completed have the identical tracked-state effect (discard the objective card and its Shields, nothing else), the app's single "Resolve Objective" action doesn't ask the player which one happened — it's the same button and the same log entry either way. This is a UI simplification only; the table-level distinction above is unchanged.
 
 ### Interacting, in detail (reference only — not app-tracked)
 
@@ -131,6 +135,7 @@ They only ever enter a deck via the round-end Advanced Action offer step (see ab
 
 - **Movement targeting** (see "Objective" above): counts as both colors — closest site valid for either objective color.
 - **Crystal-chain deck flip** (see "The Proxy Player's turn" above): matches if the Proxy Player holds crystals of *either* color, extending the chain by the *higher* of the two colors' crystal counts (not their sum) — an app-specific ruling, not stated in the rulebook.
+- **Movement-point mana-die bonus** (see "Movement points" above): counts as matching if there's a Source die of *either* color — an app-specific ruling, not stated in the rulebook (dual-color cards are from a separate product).
 - **Movement-point bonus**: no different from any other Advanced Action — always +2 regardless of color(s).
 
 ## Using a Proxy Player in a scenario

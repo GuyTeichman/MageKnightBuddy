@@ -170,5 +170,13 @@
   "Volkare Combat Bonus": {
     "text": "Only scored if Volkare was defeated: start from 30/40/50 Fame for Daring/Heroic/Legendary Combat Level, +2 Fame per card still left in Volkare's deck, then multiply that subtotal only by 1× / 1.5× / 2× for Fair/Tight/Thrilling Race Level.",
     "source": "Volkare's Quest / Volkare's Return scoring, Lost Legion rulebook p.17/p.14"
+  },
+  "Proxy Player Movement": {
+    "text": "Move by the most direct path toward your objective - terrain cost doesn't matter. You can't move into a space with another Hero, a lake, or a mountain. If your path would provoke or pass through a rampaging enemy, or pass through an unconquered fortified site/another player's keep, stop and resolve that instead of continuing.",
+    "source": "Mage Knight: The Apocalypse Dragon rulebook, p.17"
+  },
+  "Proxy Player Objective": {
+    "text": "Green: move to the closest unconquered adventure site. Red: closest unconquered fortified site or monastery. White: closest site to recruit a Unit or learn an Advanced Action/Spell. Blue: whichever of those is furthest from the portal. If none is reachable, explore instead.",
+    "source": "Mage Knight: The Apocalypse Dragon rulebook, p.16-17"
   }
 }

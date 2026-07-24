@@ -106,6 +106,27 @@ class ProxyPlayerSessionTest {
     }
 
     @Test
+    fun `isDay derives from round and startsAtNight via isDayRound, defaulting startsAtNight to false`() {
+        val defaultSession = ProxyPlayerSession.start(Knight.CORAL)
+        assertEquals(isDayRound(round = 1, startsAtNight = false), defaultSession.isDay)
+
+        val nightStartSession = ProxyPlayerSession.restore(
+            knight = Knight.CORAL,
+            wasRandom = false,
+            deckOrder = emptyList(),
+            discardPile = emptyList(),
+            crystals = startingCrystals(Knight.CORAL),
+            round = 2,
+            roundEnded = false,
+            objectiveCard = null,
+            objectiveShields = 0,
+            log = emptyList(),
+            startsAtNight = true,
+        )
+        assertEquals(isDayRound(round = 2, startsAtNight = true), nightStartSession.isDay)
+    }
+
+    @Test
     fun `playTurn on an empty deck announces End of Round instead of flipping`() {
         val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
 
@@ -234,7 +255,7 @@ class ProxyPlayerSessionTest {
     }
 
     @Test
-    fun `resolveObjective discards the objective card and clears its Shields, regardless of resolution`() {
+    fun `resolveObjective discards the objective card and clears its Shields`() {
         val session = ProxyPlayerSession.restore(
             knight = Knight.CORAL,
             wasRandom = false,
@@ -248,21 +269,14 @@ class ProxyPlayerSessionTest {
             log = emptyList(),
         )
 
-        val explored = session.resolveObjective(ProxyPlayerObjectiveResolution.EXPLORED)
-        val completed = session.resolveObjective(ProxyPlayerObjectiveResolution.COMPLETED)
+        val next = session.resolveObjective()
 
-        for (next in listOf(explored, completed)) {
-            assertEquals(null, next.objectiveCard)
-            assertEquals(0, next.objectiveShields)
-            assertEquals(listOf(ProxyPlayerCard.BasicAction(CardColor.GREEN)), next.discardPile)
-        }
+        assertEquals(null, next.objectiveCard)
+        assertEquals(0, next.objectiveShields)
+        assertEquals(listOf(ProxyPlayerCard.BasicAction(CardColor.GREEN)), next.discardPile)
         assertEquals(
-            ProxyPlayerEvent.ObjectiveResolved(1, ProxyPlayerCard.BasicAction(CardColor.GREEN), ProxyPlayerObjectiveResolution.EXPLORED),
-            explored.log.last(),
-        )
-        assertEquals(
-            ProxyPlayerEvent.ObjectiveResolved(1, ProxyPlayerCard.BasicAction(CardColor.GREEN), ProxyPlayerObjectiveResolution.COMPLETED),
-            completed.log.last(),
+            ProxyPlayerEvent.ObjectiveResolved(1, ProxyPlayerCard.BasicAction(CardColor.GREEN)),
+            next.log.last(),
         )
     }
 
@@ -270,7 +284,7 @@ class ProxyPlayerSessionTest {
     fun `resolveObjective is a no-op if there's no current objective card`() {
         val session = ProxyPlayerSession.start(Knight.CORAL)
 
-        val next = session.resolveObjective(ProxyPlayerObjectiveResolution.EXPLORED)
+        val next = session.resolveObjective()
 
         assertEquals(session, next)
     }
@@ -310,11 +324,55 @@ class ProxyPlayerSessionTest {
 
         assertEquals(null, next.objectiveCard)
         assertEquals(0, next.objectiveShields)
-        assertEquals(listOf(ProxyPlayerCard.BasicAction(CardColor.RED)), next.discardPile)
+        // The discarded objective joins the round-prep reshuffle just like any other discarded
+        // card - see the "shuffles the discard pile back into the deck" test below - so it ends
+        // up in the deck, not lingering in the discard pile.
+        assertEquals(emptyList(), next.discardPile)
+        assertEquals(
+            setOf(
+                ProxyPlayerCard.BasicAction(CardColor.RED),
+                ProxyPlayerCard.AdvancedAction(CardIdentity.SingleColor(CardColor.WHITE)),
+            ),
+            next.deckOrder.toSet(),
+        )
         assertEquals(
             ProxyPlayerEvent.RoundEnded(1, CardIdentity.SingleColor(CardColor.WHITE), CardColor.BLUE, ProxyPlayerCard.BasicAction(CardColor.RED)),
             next.log.last(),
         )
+    }
+
+    @Test
+    fun `endRound shuffles the discard pile back into the deck and clears it`() {
+        // 1 card left in the deck, 2 already discarded from earlier turns this Round.
+        val session = ProxyPlayerSession.restore(
+            knight = Knight.CORAL,
+            wasRandom = false,
+            deckOrder = listOf(ProxyPlayerCard.BasicAction(CardColor.RED)),
+            discardPile = listOf(ProxyPlayerCard.BasicAction(CardColor.BLUE), ProxyPlayerCard.BasicAction(CardColor.GREEN)),
+            crystals = startingCrystals(Knight.CORAL),
+            round = 1,
+            roundEnded = false,
+            objectiveCard = null,
+            objectiveShields = 0,
+            log = emptyList(),
+        )
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+            spellOfferColor = CardColor.BLUE,
+        )
+
+        assertEquals(emptyList(), next.discardPile)
+        assertEquals(
+            setOf(
+                ProxyPlayerCard.BasicAction(CardColor.RED),
+                ProxyPlayerCard.BasicAction(CardColor.BLUE),
+                ProxyPlayerCard.BasicAction(CardColor.GREEN),
+                ProxyPlayerCard.AdvancedAction(CardIdentity.SingleColor(CardColor.WHITE)),
+            ),
+            next.deckOrder.toSet(),
+        )
+        assertEquals(4, next.deckOrder.size)
     }
 
     @Test

@@ -36,6 +36,7 @@ data class VolkareSessionEntity(
     val lost: Boolean,
     val logJson: String,
     val updatedAt: Long,
+    val startsAtNight: Boolean = false,
 ) {
     companion object {
         /** The fixed primary key every saved row uses, enforcing the single-slot autosave design above. */

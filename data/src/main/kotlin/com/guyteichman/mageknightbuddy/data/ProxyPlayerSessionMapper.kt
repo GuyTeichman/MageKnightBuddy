@@ -11,7 +11,6 @@ import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerCard
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent
-import com.guyteichman.mageknightbuddy.domain.ProxyPlayerObjectiveResolution
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -55,7 +54,7 @@ private fun ProxyPlayerEvent.toDto(): ProxyPlayerEventDto = when (this) {
     is ProxyPlayerEvent.NewObjectiveDrawn -> ProxyPlayerEventDto.NewObjectiveDrawn(round, objectiveCard.toDto(), discarded.map { it.toDto() })
     is ProxyPlayerEvent.TurnContinued -> ProxyPlayerEventDto.TurnContinued(round, objectiveCard.toDto(), shieldsNow, revealed.map { it.toDto() })
     is ProxyPlayerEvent.EndOfRoundAnnounced -> ProxyPlayerEventDto.EndOfRoundAnnounced(round)
-    is ProxyPlayerEvent.ObjectiveResolved -> ProxyPlayerEventDto.ObjectiveResolved(round, objectiveCard.toDto(), resolution.name)
+    is ProxyPlayerEvent.ObjectiveResolved -> ProxyPlayerEventDto.ObjectiveResolved(round, objectiveCard.toDto())
     is ProxyPlayerEvent.RoundEnded -> ProxyPlayerEventDto.RoundEnded(round, advancedActionOfferColor.toDto(), spellOfferColor.name, discardedObjective?.toDto())
 }
 
@@ -64,7 +63,7 @@ private fun ProxyPlayerEventDto.toDomain(): ProxyPlayerEvent = when (this) {
     is ProxyPlayerEventDto.NewObjectiveDrawn -> ProxyPlayerEvent.NewObjectiveDrawn(round, objectiveCard.toDomain(), discarded.map { it.toDomain() })
     is ProxyPlayerEventDto.TurnContinued -> ProxyPlayerEvent.TurnContinued(round, objectiveCard.toDomain(), shieldsNow, revealed.map { it.toDomain() })
     is ProxyPlayerEventDto.EndOfRoundAnnounced -> ProxyPlayerEvent.EndOfRoundAnnounced(round)
-    is ProxyPlayerEventDto.ObjectiveResolved -> ProxyPlayerEvent.ObjectiveResolved(round, objectiveCard.toDomain(), ProxyPlayerObjectiveResolution.valueOf(resolution))
+    is ProxyPlayerEventDto.ObjectiveResolved -> ProxyPlayerEvent.ObjectiveResolved(round, objectiveCard.toDomain())
     is ProxyPlayerEventDto.RoundEnded -> ProxyPlayerEvent.RoundEnded(round, advancedActionOfferColor.toDomain(), CardColor.valueOf(spellOfferColor), discardedObjective?.toDomain())
 }
 
@@ -88,6 +87,7 @@ fun ProxyPlayerSession.toEntity(updatedAt: Long = System.currentTimeMillis()): P
     objectiveShields = objectiveShields,
     logJson = Json.encodeToString(log.map { it.toDto() }),
     updatedAt = updatedAt,
+    startsAtNight = startsAtNight,
 )
 
 /** Converts a persisted Room row back into a domain session, via [ProxyPlayerSession.restore] (the reverse of [toEntity] above). */
@@ -107,4 +107,5 @@ fun ProxyPlayerSessionEntity.toDomain(): ProxyPlayerSession = ProxyPlayerSession
     objectiveCard = objectiveCardJson.toProxyPlayerCardOrNull(),
     objectiveShields = objectiveShields,
     log = Json.decodeFromString<List<ProxyPlayerEventDto>>(logJson).map { it.toDomain() },
+    startsAtNight = startsAtNight,
 )
