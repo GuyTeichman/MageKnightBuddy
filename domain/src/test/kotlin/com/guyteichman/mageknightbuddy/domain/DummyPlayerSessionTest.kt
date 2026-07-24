@@ -207,6 +207,32 @@ class DummyPlayerSessionTest {
     }
 
     @Test
+    fun `endRound shuffles the discard pile back into the deck and clears it`() {
+        // 2 cards left in the deck, 3 already discarded from earlier turns this Round.
+        val session = DummyPlayerSession.restore(
+            knight = Knight.CORAL,
+            wasRandom = false,
+            deckOrder = listOf(CardColor.RED, CardColor.GREEN).map { CardIdentity.SingleColor(it) },
+            discardPile = listOf(CardColor.BLUE, CardColor.BLUE, CardColor.WHITE).map { CardIdentity.SingleColor(it) },
+            crystals = startingCrystals(Knight.CORAL),
+            round = 1,
+            roundEnded = false,
+            log = emptyList(),
+        )
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+            spellOfferColor = CardColor.BLUE,
+        )
+
+        assertEquals(emptyList(), next.discardPile)
+        assertEquals(
+            mapOf(CardColor.RED to 1, CardColor.GREEN to 1, CardColor.BLUE to 2, CardColor.WHITE to 2),
+            next.remainingByColor,
+        )
+    }
+
+    @Test
     fun `endRound can append a Dual-Color Advanced Action card, counted toward both colors' remainingByColor`() {
         val session = DummyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
 

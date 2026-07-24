@@ -111,6 +111,9 @@ data class ProxyPlayerSession private constructor(
      * by docs/rules/proxy-player.md's "When preparing a new Round"), plus one Proxy Player-only
      * step first: if there's a lingering [objectiveCard] (still being pursued when the Round
      * ended), it's discarded along with its Shields before the standard offer interactions run.
+     * "The deck is reshuffled" means the whole discard pile - including that just-discarded
+     * objective card - is merged back into [deckOrder] along with the new Advanced Action card and
+     * shuffled together, leaving [discardPile] empty (mirrors [DummyPlayerSession.endRound]).
      */
     fun endRound(advancedActionOfferColor: CardIdentity, spellOfferColor: CardColor): ProxyPlayerSession {
         val discardedObjective = objectiveCard
@@ -118,8 +121,8 @@ data class ProxyPlayerSession private constructor(
         return copy(
             objectiveCard = null,
             objectiveShields = 0,
-            deckOrder = (deckOrder + ProxyPlayerCard.AdvancedAction(advancedActionOfferColor)).shuffled(),
-            discardPile = discardAfterObjective,
+            deckOrder = (deckOrder + discardAfterObjective + ProxyPlayerCard.AdvancedAction(advancedActionOfferColor)).shuffled(),
+            discardPile = emptyList(),
             crystals = crystals + (spellOfferColor to crystals.getValue(spellOfferColor) + 1),
             round = round + 1,
             roundEnded = false,

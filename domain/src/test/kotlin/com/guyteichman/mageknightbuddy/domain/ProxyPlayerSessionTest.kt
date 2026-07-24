@@ -331,11 +331,55 @@ class ProxyPlayerSessionTest {
 
         assertEquals(null, next.objectiveCard)
         assertEquals(0, next.objectiveShields)
-        assertEquals(listOf(ProxyPlayerCard.BasicAction(CardColor.RED)), next.discardPile)
+        // The discarded objective joins the round-prep reshuffle just like any other discarded
+        // card - see the "shuffles the discard pile back into the deck" test below - so it ends
+        // up in the deck, not lingering in the discard pile.
+        assertEquals(emptyList(), next.discardPile)
+        assertEquals(
+            setOf(
+                ProxyPlayerCard.BasicAction(CardColor.RED),
+                ProxyPlayerCard.AdvancedAction(CardIdentity.SingleColor(CardColor.WHITE)),
+            ),
+            next.deckOrder.toSet(),
+        )
         assertEquals(
             ProxyPlayerEvent.RoundEnded(1, CardIdentity.SingleColor(CardColor.WHITE), CardColor.BLUE, ProxyPlayerCard.BasicAction(CardColor.RED)),
             next.log.last(),
         )
+    }
+
+    @Test
+    fun `endRound shuffles the discard pile back into the deck and clears it`() {
+        // 1 card left in the deck, 2 already discarded from earlier turns this Round.
+        val session = ProxyPlayerSession.restore(
+            knight = Knight.CORAL,
+            wasRandom = false,
+            deckOrder = listOf(ProxyPlayerCard.BasicAction(CardColor.RED)),
+            discardPile = listOf(ProxyPlayerCard.BasicAction(CardColor.BLUE), ProxyPlayerCard.BasicAction(CardColor.GREEN)),
+            crystals = startingCrystals(Knight.CORAL),
+            round = 1,
+            roundEnded = false,
+            objectiveCard = null,
+            objectiveShields = 0,
+            log = emptyList(),
+        )
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+            spellOfferColor = CardColor.BLUE,
+        )
+
+        assertEquals(emptyList(), next.discardPile)
+        assertEquals(
+            setOf(
+                ProxyPlayerCard.BasicAction(CardColor.RED),
+                ProxyPlayerCard.BasicAction(CardColor.BLUE),
+                ProxyPlayerCard.BasicAction(CardColor.GREEN),
+                ProxyPlayerCard.AdvancedAction(CardIdentity.SingleColor(CardColor.WHITE)),
+            ),
+            next.deckOrder.toSet(),
+        )
+        assertEquals(4, next.deckOrder.size)
     }
 
     @Test
