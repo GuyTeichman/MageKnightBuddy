@@ -41,9 +41,29 @@ Existing pre-standard code is being brought up to this standard via dedicated, s
 
 ## Build
 
-- Local system JDK is too old for the Android Gradle Plugin (needs JDK 17+). Use Android Studio's bundled JBR:
-  `JAVA_HOME="/d/Guy_Teichman/Android/android-studio/jbr" ./gradlew <task>`
-- Android SDK lives at `C:/Users/guyte/android-sdk` (see `local.properties`); includes the `emulator` package and an `android-36;google_apis;x86_64` system image for local emulator testing.
-- `./gradlew build` — full build.
-- `./gradlew test` — unit tests (`domain`, `data`).
+The repo ships a `Makefile` wrapping the day-to-day dev loop. Run `make help` to list targets; run `make doctor` first on any new machine — it reports whether `JAVA_HOME`, `ANDROID_SDK`, and `AVD_NAME` were auto-detected correctly, and every other target depends on those being right.
+
+- `make build` — assemble + install the debug APK on whatever device/emulator is connected.
+- `make test` — unit tests (`domain`, `data`).
+- `make lint` — Android Lint.
+- `make clean` — `./gradlew clean`.
+- `make emulator` — boot the AVD (software rendering — avoids a GPU black-window quirk seen on some machines).
+- `make launch` / `make reload` / `make stop` / `make uninstall` — run and iterate on the installed app (`reload` = build + launch in one step).
+- `make screenshot` — grab a screenshot from the connected device/emulator into `screenshots/` (gitignored, timestamped filename).
+- `make logcat` — tail this app's logcat only.
+- `make devices` / `make avds` — list connected devices / AVDs known to the SDK.
+
+`JAVA_HOME` and `ANDROID_SDK` are auto-detected per machine (JBR by scanning common Android Studio install paths; SDK from `local.properties`'s `sdk.dir` — the same value Gradle itself reads), so the Makefile needs no editing between machines. Override either by exporting the env var or passing it inline, e.g. `make build JAVA_HOME=...` or `make emulator AVD_NAME=Other_Avd`.
+
+### Windows `make` gotcha
+
+GNU Make's Windows port only routes recipes through a real POSIX shell if it can find `sh.exe` on `PATH` *before* Make starts — setting `SHELL` inside the Makefile itself is too late, since Make locks in whether recipes get shell-wrapped at all during its own startup probe. Without that, it tries to exec each recipe line's first word directly (e.g. `echo`) and fails with a `CreateProcess` error. Fix, done once per machine: keep `C:\Program Files\Git\usr\bin` (the real `sh.exe`, not the `Git\cmd` shim dir most Git-for-Windows installs put on `PATH`) on the user `PATH`. Already applied on this machine.
+
+- `make` itself: `winget install --id ezwinports.make -e --scope user` (GNU Make 4.4.1, native Win32 build, no admin rights needed).
+- Manual fallback without the Makefile: `PATH="/c/Program Files/Git/usr/bin:$PATH" JAVA_HOME="/d/Guy_Teichman/Android/android-studio/jbr" ./gradlew <task>` — the `PATH` prefix matters, see below.
+
+A real `sh.exe` on `PATH` isn't quite the end of it, either: `./gradlew` is itself a POSIX script that shells out to `cygpath` to convert its classpath from POSIX (`/d/...`) to Windows form before invoking `java.exe`. If some *other* MSYS-based toolchain (Anaconda, MSYS2, Cygwin, Strawberry Perl, ...) sits earlier on `PATH` than Git and ships its own incompatible `cygpath`, that gets picked up instead, silently mangles the path, and `java` fails with `ClassNotFoundException: org.gradle.wrapper.GradleWrapperMain` — a "can't find the class" error that's actually "the classpath string was garbage." This only shows up when Make spawns `sh.exe` directly for a recipe (inheriting the raw ambient `PATH`), not in an interactive Git Bash session (whose launcher already puts Git's own `bin` dirs first). The `GRADLE` variable in the Makefile works around it by pinning `PATH` to the directory of the exact `sh.exe` Make itself resolved (`$(SHELL)`) for gradle invocations only, so it can't be shadowed regardless of what else is installed — via the shell's own `dirname "$(SHELL)"`, not Make's `$(dir ...)` function, since `$(dir ...)` word-splits on whitespace and mangles a path like `C:/Program Files/Git/...`.
+
+`dirname "$(SHELL)"` alone isn't sufficient, either: `$(SHELL)` is reported in Windows-drive form (`C:/Program Files/Git/usr/bin/sh.exe`), and a `PATH` entry in that form (`C:/Program Files/Git/usr/bin`) is silently skipped by MSYS's own exec search, which only recognizes POSIX-absolute entries (`/c/Program Files/Git/usr/bin`). Without converting the drive letter, the prepend is a no-op — `PATH` search falls straight through to whichever shadowing toolchain is next, producing the exact `ClassNotFoundException` above even with the "fix" in place. The Makefile handles this with `dirname "$(SHELL)" | sed -E 's#^([A-Za-z]):#/\L\1#'` (GNU sed's `\L` lowercases the captured drive letter); a manual fallback needs the same POSIX-form path, as in the command above.
+
 - Package: `com.guyteichman.mageknightbuddy` · minSdk 26 · target/compileSdk 36.
