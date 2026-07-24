@@ -16,12 +16,12 @@ import com.guyteichman.mageknightbuddy.R
 import com.guyteichman.mageknightbuddy.domain.Knight
 
 /**
- * A Knight's shield-token art at [size], or a generic shield glyph for any Knight whose art
- * hasn't been sourced yet (currently just Coral - see issue #69). [Image] renders the drawable's
- * actual pixels (the shield icon), unlike [Icon], which is meant for single-color glyphs - so
- * [tint] only affects the fallback glyph, never the real art. Defaults to [LocalContentColor] so
- * the fallback matches whatever color plain [Icon]s already use at its call site (e.g. a picker's
- * leading icons); callers with a different prior tint pass it explicitly.
+ * A Knight's shield-token art at [size]. [Image] renders the drawable's actual pixels (the shield
+ * icon), unlike [Icon], which is meant for single-color glyphs - so [tint] only affects the
+ * fallback glyph (kept for any future Knight whose art isn't sourced yet), never the real art.
+ * Defaults to [LocalContentColor] so the fallback matches whatever color plain [Icon]s already use
+ * at its call site (e.g. a picker's leading icons); callers with a different prior tint pass it
+ * explicitly.
  *
  * Shared by the Dummy Player tab's Knight picker (issue #69) and the Score Calculator's Setup
  * page Knight picker (issue #111) - moved here once the second consumer needed it, following the
@@ -47,5 +47,5 @@ internal val Knight.shieldIconRes: Int?
         Knight.WOLFHAWK -> R.drawable.wolfhawk_shield
         Knight.GOLDYX -> R.drawable.goldyx_shield
         Knight.NOROWAS -> R.drawable.norowas_shield
-        Knight.CORAL -> null
+        Knight.CORAL -> R.drawable.coral_shield
     }
