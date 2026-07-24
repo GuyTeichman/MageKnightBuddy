@@ -25,7 +25,32 @@ class VolkareSessionMapperTest {
         val roundTripped = session.toEntity().toDomain()
 
         assertEquals(session, roundTripped)
-        assertEquals(ManaColor.BLACK, (roundTripped.log.last() as VolkareEvent.CardRevealed).manaRoll)
+
+        // Independent ground truth, worked out by hand from docs/rules/volkare.md's playTurn()
+        // doc comment rather than just capturing whatever `session` happened to hold - see issue
+        // #150. A self-referential assertEquals(session, roundTripped) alone only confirms
+        // serialization preserved whatever playTurn() produced, bug or not.
+        //
+        // The single Wound is revealed and moved to the discard pile; since it's a Wound, the
+        // given manaRoll is recorded on the CardRevealed event. Volkare's Return never reshuffles,
+        // so the deck stays empty and round/cityRevealed/lost are untouched by a card reveal.
+        assertEquals(emptyList(), roundTripped.deckOrder)
+        assertEquals(listOf(VolkareCard.Wound), roundTripped.discardPile)
+        assertEquals(1, roundTripped.round)
+        assertEquals(false, roundTripped.cityRevealed)
+        assertEquals(false, roundTripped.lost)
+        assertEquals(
+            listOf(
+                VolkareEvent.RoundStarted(round = 1),
+                VolkareEvent.CardRevealed(
+                    round = 1,
+                    card = VolkareCard.Wound,
+                    cityRevealed = false,
+                    manaRoll = ManaColor.BLACK,
+                ),
+            ),
+            roundTripped.log,
+        )
     }
 
     @Test
@@ -43,6 +68,45 @@ class VolkareSessionMapperTest {
         val roundTripped = session.toEntity().toDomain()
 
         assertEquals(session, roundTripped)
+
+        // Independent ground truth (see the first test's comment for why this matters).
+        // playTurn() #1 reveals BasicAction(RED) (not a Wound, so manaRoll stays null) while
+        // cityRevealed is still false; toggleCityRevealed() then flips it to true without logging
+        // anything. playTurn() #2 reveals the last card, CompetitiveSpell(BLUE), now with
+        // cityRevealed = true (the flag is captured at reveal time, per CardRevealed's doc
+        // comment - toggling it afterward never rewrites an already-logged reveal). playTurn() #3
+        // hits an empty deck: Volkare's Return logs Frenzy instead of reshuffling or losing.
+        // endRound() logs RoundEnded for the completed round (1) and increments round to 2 - unlike
+        // DummyPlayerSession, it has no reshuffle or crystal/offer interaction to apply
+        // (docs/rules/volkare.md's endRound doc comment, issue #128).
+        assertEquals(emptyList(), roundTripped.deckOrder)
+        assertEquals(
+            listOf(VolkareCard.BasicAction(CardColor.RED), VolkareCard.CompetitiveSpell(CardColor.BLUE)),
+            roundTripped.discardPile,
+        )
+        assertEquals(2, roundTripped.round)
+        assertEquals(true, roundTripped.cityRevealed)
+        assertEquals(false, roundTripped.lost)
+        assertEquals(
+            listOf(
+                VolkareEvent.RoundStarted(round = 1),
+                VolkareEvent.CardRevealed(
+                    round = 1,
+                    card = VolkareCard.BasicAction(CardColor.RED),
+                    cityRevealed = false,
+                    manaRoll = null,
+                ),
+                VolkareEvent.CardRevealed(
+                    round = 1,
+                    card = VolkareCard.CompetitiveSpell(CardColor.BLUE),
+                    cityRevealed = true,
+                    manaRoll = null,
+                ),
+                VolkareEvent.Frenzy(round = 1),
+                VolkareEvent.RoundEnded(round = 1),
+            ),
+            roundTripped.log,
+        )
     }
 
     @Test
@@ -57,6 +121,24 @@ class VolkareSessionMapperTest {
         val roundTripped = session.toEntity().toDomain()
 
         assertEquals(session, roundTripped)
+
+        // Independent ground truth (see the first test's comment for why this matters). The deck
+        // starts empty, so playTurn() takes the empty-deck branch immediately; for Volkare's Quest
+        // (unlike Volkare's Return's Frenzy) that branch sets lost = true and logs QuestLost
+        // instead, per docs/rules/volkare.md's playTurn() doc comment. deckOrder/discardPile/round/
+        // cityRevealed are all untouched since no card was actually revealed.
+        assertEquals(emptyList(), roundTripped.deckOrder)
+        assertEquals(emptyList(), roundTripped.discardPile)
+        assertEquals(1, roundTripped.round)
+        assertEquals(false, roundTripped.cityRevealed)
+        assertEquals(true, roundTripped.lost)
+        assertEquals(
+            listOf(
+                VolkareEvent.RoundStarted(round = 1),
+                VolkareEvent.QuestLost(round = 1),
+            ),
+            roundTripped.log,
+        )
     }
 
     @Test
