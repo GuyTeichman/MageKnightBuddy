@@ -105,7 +105,7 @@ private const val PROXY_PLAYER_AI_ROUTE = "proxy_player_ai"
  * `CONTEXT.md`'s "Dummy Player tab" entry. Replaces the old `volkareSelected: Boolean` flag now
  * that Proxy Player also needs its own selected state alongside Standard and Volkare.
  */
-private enum class DummyPlayerMode { STANDARD, VOLKARE, PROXY_PLAYER }
+internal enum class DummyPlayerMode { STANDARD, VOLKARE, PROXY_PLAYER }
 
 /**
  * Root composable for the Dummy Player tab: the Knight-select setup screen is the tab's start
@@ -196,6 +196,15 @@ private fun DummyPlayerSetupScreen(
     // modes (not one per ViewModel) since it's the same physical fact ("did the table start this
     // game at night") regardless of which mode is chosen.
     var startsAtNight by rememberSaveable { mutableStateOf(false) }
+    // Plain remember (not rememberSaveable): re-queried fresh via LaunchedEffect below every time
+    // this composable enters composition (including navigating back from the AI screen), the same
+    // "don't trust a stale cache of on-disk state" reasoning DummyPlayerSetupViewModel.hasSavedSession
+    // already uses - RestoreGamePreview isn't Parcelable/Serializable anyway, so it couldn't be
+    // saved across process death the way rememberSaveable state can be.
+    var restorePreview by remember { mutableStateOf<RestoreGamePreview?>(null) }
+    LaunchedEffect(Unit) {
+        restorePreview = loadRestoreGamePreview(repository, volkareRepository, proxyPlayerRepository)
+    }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -275,17 +284,21 @@ private fun DummyPlayerSetupScreen(
             Text("Start")
         }
 
+        // Shown above the button (issue #125's 2nd item) so the player knows what they're about
+        // to resume before tapping it - only once restorePreview has actually loaded, since
+        // LaunchedEffect's load is async and briefly leaves it null right after this screen
+        // appears.
+        restorePreview?.let { preview -> RestoreGamePreviewRow(preview) }
+
         OutlinedButton(
             onClick = {
                 // Restore Game always resumes whichever of the 3 saved sessions is most recent,
                 // regardless of what's currently selected above - see this function's doc comment.
+                // Re-loads fresh here (rather than trusting the restorePreview state above) so the
+                // navigation decision is always correct as of the actual tap, not a possibly-stale
+                // snapshot from whenever this screen last entered composition.
                 scope.launch {
-                    val timestamps = listOf(
-                        DummyPlayerMode.STANDARD to (repository.updatedAt() ?: -1),
-                        DummyPlayerMode.VOLKARE to (volkareRepository.updatedAt() ?: -1),
-                        DummyPlayerMode.PROXY_PLAYER to (proxyPlayerRepository.updatedAt() ?: -1),
-                    )
-                    when (timestamps.maxByOrNull { it.second }?.first) {
+                    when (loadRestoreGamePreview(repository, volkareRepository, proxyPlayerRepository)?.mode) {
                         DummyPlayerMode.VOLKARE -> onRestoreVolkare()
                         DummyPlayerMode.PROXY_PLAYER -> onRestoreProxyPlayer()
                         else -> onRestore()
@@ -296,6 +309,53 @@ private fun DummyPlayerSetupScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Restore Game")
+        }
+    }
+}
+
+/** Human-readable label for a [DummyPlayerMode] - matches the setup screen's own selector chip text. */
+private val DummyPlayerMode.label: String
+    get() = when (this) {
+        DummyPlayerMode.STANDARD -> "Standard"
+        DummyPlayerMode.VOLKARE -> "Volkare"
+        DummyPlayerMode.PROXY_PLAYER -> "Proxy Player"
+    }
+
+/**
+ * A compact preview of what "Restore Game" would resume right now (issue #125's 2nd item): the
+ * Knight's shield icon (or [VolkareShieldIcon] for Volkare mode, which has no Knight), its name,
+ * which of the 3 modes it is, and its round/turn (mirrors the AI screen's own "ROUND N · TURN M"
+ * header - issue #125's 1st item). Shown just above the "Restore Game" button so the player can
+ * see what they're about to resume before tapping it, rather than only finding out after.
+ */
+@Composable
+private fun RestoreGamePreviewRow(preview: RestoreGamePreview) {
+    // Local val, not a repeated preview.knight read: Knight is declared in the domain module, so
+    // Kotlin can't smart-cast a nullable property read from a different module across two
+    // statements (same cross-module limitation ProxyPlayerScreen.kt's objectiveCard hits).
+    val knight = preview.knight
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (knight != null) KnightShieldIcon(knight = knight, size = 28.dp) else VolkareShieldIcon(size = 28.dp)
+        Column {
+            Text(
+                // Volkare mode already names itself in the "Volkare" line below, so its own title
+                // line is just "Volkare" rather than repeating the mode label a second time -
+                // Standard/Proxy Player instead lead with the actual Knight's name.
+                knight?.displayName ?: "Volkare",
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                // Volkare's title line above already says "Volkare", so its subtitle only needs
+                // Round/Turn - Standard/Proxy Player's subtitle also states the mode, since their
+                // title line is the Knight's name instead.
+                if (preview.mode == DummyPlayerMode.VOLKARE) {
+                    "Round ${preview.round} · Turn ${preview.turn}"
+                } else {
+                    "${preview.mode.label} · Round ${preview.round} · Turn ${preview.turn}"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
