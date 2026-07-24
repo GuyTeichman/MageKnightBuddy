@@ -525,7 +525,7 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
 
 /**
  * The pill-shaped "ROUND N · TURN M" indicator in the top bar - [turn] is
- * [DummyPlayerSession.turnInRound]/[ProxyPlayerSession.turnInRound] (issue #125), how many turns
+ * [DummyPlayerSession.turnInRound]/`ProxyPlayerSession.turnInRound` (issue #125), how many turns
  * have already been played in the current [round], so a player picking the app back up mid-game
  * can immediately see where they left off (e.g. "ROUND 2 · TURN 4").
  *

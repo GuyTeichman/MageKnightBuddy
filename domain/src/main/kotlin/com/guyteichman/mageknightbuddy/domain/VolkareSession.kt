@@ -50,6 +50,11 @@ data class VolkareSession private constructor(
      */
     val turnInRound: Int
         get() = log.count { event ->
+            // `when` dispatches on event's actual sealed-interface case (see VolkareEvent's own
+            // doc comment on why `sealed` enables this); each `is X ->` branch smart-casts `event`
+            // to that case for the rest of its own branch, so `event.round` below reads X's own
+            // `round` property. `else -> false` covers every other event case, which aren't a
+            // played turn.
             when (event) {
                 is VolkareEvent.CardRevealed -> event.round == round
                 is VolkareEvent.Frenzy -> event.round == round

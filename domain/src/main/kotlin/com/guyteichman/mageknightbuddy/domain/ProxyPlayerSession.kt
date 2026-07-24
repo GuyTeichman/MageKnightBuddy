@@ -57,6 +57,12 @@ data class ProxyPlayerSession private constructor(
      */
     val turnInRound: Int
         get() = log.count { event ->
+            // `when` dispatches on event's actual sealed-interface case (see ProxyPlayerEvent's
+            // own doc comment on why `sealed` enables this) - each `is X ->` branch smart-casts
+            // `event` to that case for the rest of its own branch, so `event.round` below is
+            // reading X's own `round` property, not some property shared by the interface itself
+            // (ProxyPlayerEvent declares no such shared property). `else -> false` covers every
+            // other event case, which don't represent a played turn.
             when (event) {
                 is ProxyPlayerEvent.NewObjectiveDrawn -> event.round == round
                 is ProxyPlayerEvent.TurnContinued -> event.round == round
