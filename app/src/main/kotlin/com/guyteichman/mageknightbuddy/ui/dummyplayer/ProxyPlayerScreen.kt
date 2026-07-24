@@ -430,16 +430,8 @@ private fun ProxyPlayerDeckPanel(showSummary: Boolean, onToggleSummary: () -> Un
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ProxyPlayerTableauBody(session: ProxyPlayerSession) {
-    // Cards and Crystals side by side, in matching label-above-content shape (a "Cards" title
-    // mirroring "Crystals", each above their own value row) - issue feedback was that Crystals had
-    // a title above its icons but the card count didn't, reading as asymmetric.
     Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                "Cards",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
                 Text(
@@ -447,6 +439,41 @@ private fun ProxyPlayerTableauBody(session: ProxyPlayerSession) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+    }
+    FlowRow(
+        modifier = Modifier.heightIn(min = 61.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        session.deckOrder.sortedBy { it.sortKey() }
+            .forEach { card -> MiniCard(colors = card.colors(), isNonBasic = card.isNonBasic()) }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "Cards",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                CardColor.entries.forEach { color ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        CardColorDot(color = color)
+                        Text(
+                            session.remainingByColor.getValue(color).toString(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -459,25 +486,6 @@ private fun ProxyPlayerTableauBody(session: ProxyPlayerSession) {
                 CardColor.entries.forEach { color ->
                     repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
                 }
-            }
-        }
-    }
-    FlowRow(
-        modifier = Modifier.heightIn(min = 61.dp),
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
-        session.deckOrder.sortedBy { it.sortKey() }.forEach { card -> MiniCard(colors = card.colors(), isNonBasic = card.isNonBasic()) }
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        CardColor.entries.forEach { color ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                CardColorDot(color = color)
-                Text(
-                    session.remainingByColor.getValue(color).toString(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
     }
