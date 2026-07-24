@@ -55,7 +55,6 @@ import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerCard
 import com.guyteichman.mageknightbuddy.domain.objectiveLabel
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent
-import com.guyteichman.mageknightbuddy.domain.ProxyPlayerObjectiveResolution
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
@@ -356,7 +355,7 @@ fun ProxyPlayerAiScreen(
 
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(
-                                    onClick = { scope.launch { viewModel.resolveObjective(ProxyPlayerObjectiveResolution.COMPLETED) } },
+                                    onClick = { scope.launch { viewModel.resolveObjective() } },
                                     enabled = !viewModel.isBusy,
                                     modifier = Modifier.weight(1f),
                                 ) {
@@ -618,13 +617,7 @@ private fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
         meta = "Round $round",
         description = buildList {
             addCardDots(objectiveCard.colors())
-            add(
-                DescriptionSpan.Words(
-                    " ${objectiveCard.displayText()} - ${
-                        resolution.name.lowercase().replaceFirstChar { it.uppercase() }
-                    }.",
-                ),
-            )
+            add(DescriptionSpan.Words(" ${objectiveCard.displayText()} - Completed."))
         },
     )
 

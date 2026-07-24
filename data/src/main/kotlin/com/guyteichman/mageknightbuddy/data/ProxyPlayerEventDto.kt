@@ -30,14 +30,10 @@ sealed interface ProxyPlayerEventDto {
     @SerialName("end_of_round_announced")
     data class EndOfRoundAnnounced(val round: Int) : ProxyPlayerEventDto
 
-    /**
-     * Mirrors [com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent.ObjectiveResolved].
-     * [resolution] stores [com.guyteichman.mageknightbuddy.domain.ProxyPlayerObjectiveResolution]'s
-     * enum name as a plain `String`, same convention as [VolkareEventDto.CardRevealed.manaRoll].
-     */
+    /** Mirrors [com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent.ObjectiveResolved]. */
     @Serializable
     @SerialName("objective_resolved")
-    data class ObjectiveResolved(val round: Int, val objectiveCard: ProxyPlayerCardDto, val resolution: String) : ProxyPlayerEventDto
+    data class ObjectiveResolved(val round: Int, val objectiveCard: ProxyPlayerCardDto) : ProxyPlayerEventDto
 
     /** Mirrors [com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent.RoundEnded]. */
     @Serializable

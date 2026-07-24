@@ -91,17 +91,17 @@ data class ProxyPlayerSession private constructor(
 
     /**
      * Discards the current [objectiveCard] and clears [objectiveShields] - docs/rules/proxy-player.md's
-     * "Resolution": both Explored and Completed have the identical state effect, so [resolution]
-     * only affects the logged event's narration, not what actually changes. A no-op if there's no
-     * current objective (defensive - the UI should only offer this action when one exists).
+     * "Resolution": Explored and Completed have the identical state effect, so the app doesn't
+     * distinguish which one happened, only that the objective is now resolved. A no-op if there's
+     * no current objective (defensive - the UI should only offer this action when one exists).
      */
-    fun resolveObjective(resolution: ProxyPlayerObjectiveResolution): ProxyPlayerSession {
+    fun resolveObjective(): ProxyPlayerSession {
         val card = objectiveCard ?: return this
         return copy(
             objectiveCard = null,
             objectiveShields = 0,
             discardPile = discardPile + card,
-            log = log + ProxyPlayerEvent.ObjectiveResolved(round, card, resolution),
+            log = log + ProxyPlayerEvent.ObjectiveResolved(round, card),
         )
     }
 

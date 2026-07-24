@@ -11,7 +11,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.CardIdentity
-import com.guyteichman.mageknightbuddy.domain.ProxyPlayerObjectiveResolution
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
 import kotlinx.coroutines.launch
 
@@ -57,12 +56,12 @@ class ProxyPlayerAiViewModel(private val repository: ProxyPlayerSessionRepositor
         }
     }
 
-    /** Resolves the current Objective Card as Explored or Completed (docs/rules/proxy-player.md's "Resolution") and autosaves. */
-    suspend fun resolveObjective(resolution: ProxyPlayerObjectiveResolution) {
+    /** Resolves the current Objective Card, discarding it and its Shields (docs/rules/proxy-player.md's "Resolution") and autosaves. */
+    suspend fun resolveObjective() {
         if (isBusy) return
         isBusy = true
         try {
-            val next = session?.resolveObjective(resolution) ?: return
+            val next = session?.resolveObjective() ?: return
             session = next
             repository.save(next)
         } finally {

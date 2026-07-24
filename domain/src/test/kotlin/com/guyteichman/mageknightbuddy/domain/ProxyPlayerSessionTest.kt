@@ -255,7 +255,7 @@ class ProxyPlayerSessionTest {
     }
 
     @Test
-    fun `resolveObjective discards the objective card and clears its Shields, regardless of resolution`() {
+    fun `resolveObjective discards the objective card and clears its Shields`() {
         val session = ProxyPlayerSession.restore(
             knight = Knight.CORAL,
             wasRandom = false,
@@ -269,21 +269,14 @@ class ProxyPlayerSessionTest {
             log = emptyList(),
         )
 
-        val explored = session.resolveObjective(ProxyPlayerObjectiveResolution.EXPLORED)
-        val completed = session.resolveObjective(ProxyPlayerObjectiveResolution.COMPLETED)
+        val next = session.resolveObjective()
 
-        for (next in listOf(explored, completed)) {
-            assertEquals(null, next.objectiveCard)
-            assertEquals(0, next.objectiveShields)
-            assertEquals(listOf(ProxyPlayerCard.BasicAction(CardColor.GREEN)), next.discardPile)
-        }
+        assertEquals(null, next.objectiveCard)
+        assertEquals(0, next.objectiveShields)
+        assertEquals(listOf(ProxyPlayerCard.BasicAction(CardColor.GREEN)), next.discardPile)
         assertEquals(
-            ProxyPlayerEvent.ObjectiveResolved(1, ProxyPlayerCard.BasicAction(CardColor.GREEN), ProxyPlayerObjectiveResolution.EXPLORED),
-            explored.log.last(),
-        )
-        assertEquals(
-            ProxyPlayerEvent.ObjectiveResolved(1, ProxyPlayerCard.BasicAction(CardColor.GREEN), ProxyPlayerObjectiveResolution.COMPLETED),
-            completed.log.last(),
+            ProxyPlayerEvent.ObjectiveResolved(1, ProxyPlayerCard.BasicAction(CardColor.GREEN)),
+            next.log.last(),
         )
     }
 
@@ -291,7 +284,7 @@ class ProxyPlayerSessionTest {
     fun `resolveObjective is a no-op if there's no current objective card`() {
         val session = ProxyPlayerSession.start(Knight.CORAL)
 
-        val next = session.resolveObjective(ProxyPlayerObjectiveResolution.EXPLORED)
+        val next = session.resolveObjective()
 
         assertEquals(session, next)
     }

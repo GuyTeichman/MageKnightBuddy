@@ -41,8 +41,12 @@ import androidx.room.RoomDatabase
     // setup screen's new "Starts at night?" checkbox. No hand-written migration -
     // fallbackToDestructiveMigration (see createDatabase()) is fine pre-release, same as every
     // prior bump. Bumped 8 -> 9: added the same startsAtNight column to DummyPlayerSessionEntity
-    // and ProxyPlayerSessionEntity, for parity across all 3 Dummy Player tab modes.
-    version = 9,
+    // and ProxyPlayerSessionEntity, for parity across all 3 Dummy Player tab modes. Bumped 9 -> 10:
+    // ProxyPlayerEventDto.ObjectiveResolved dropped its resolution field (the Proxy Player screen's
+    // Explored/Completed buttons were merged into one, since the two outcomes have identical
+    // tracked-state effect - see docs/rules/proxy-player.md's "Resolution") - same "JSON content
+    // shape changed, column didn't" reasoning as the 3 -> 4 and 4 -> 5 bumps above.
+    version = 10,
     exportSchema = false,
 )
 abstract class MageKnightBuddyDatabase : RoomDatabase() {

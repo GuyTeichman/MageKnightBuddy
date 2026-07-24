@@ -88,6 +88,8 @@ Reveal one new map tile (player's choice of placement if there's a choice, decid
 
 However the objective was actually resolved at the table — conquering an adventure site (ruins: discard its lowest-Fame enemy token, or all tokens for other adventure sites; mark conquered with a Shield token), conquering a fortified site (discard the lowest-Fame enemy token in a city, or all enemy tokens for a non-city; mark conquered), burning a monastery (mark it destroyed), fighting a rampaging enemy that blocked the path (discard the enemy token), or interacting (recruit the lowest-Influence-cost Unit/Advanced Action/Spell available, preferring a Unit over either — see "Interacting" below) — the app treats all of these identically: discard the objective card and its Shield tokens. **Interacting never changes the Proxy Player's own deck or crystals** — see below.
 
+**App note**: since Explored and Completed have the identical tracked-state effect (discard the objective card and its Shields, nothing else), the app's single "Resolve Objective" action doesn't ask the player which one happened — it's the same button and the same log entry either way. This is a UI simplification only; the table-level distinction above is unchanged.
+
 ### Interacting, in detail (reference only — not app-tracked)
 
 - Acquires the lowest-Influence-cost Unit, Advanced Action (6 Influence), or Spell (7 Influence) available at the site.

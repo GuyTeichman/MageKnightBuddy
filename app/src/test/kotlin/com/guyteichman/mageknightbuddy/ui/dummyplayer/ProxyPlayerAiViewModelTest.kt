@@ -5,7 +5,6 @@ import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerCard
-import com.guyteichman.mageknightbuddy.domain.ProxyPlayerObjectiveResolution
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -87,7 +86,7 @@ class ProxyPlayerAiViewModelTest {
         val viewModel = ProxyPlayerAiViewModel(repository)
         advanceUntilIdle()
 
-        viewModel.resolveObjective(ProxyPlayerObjectiveResolution.COMPLETED)
+        viewModel.resolveObjective()
 
         assertNull(viewModel.session?.objectiveCard)
         assertNull(repository.restore()?.objectiveCard)
