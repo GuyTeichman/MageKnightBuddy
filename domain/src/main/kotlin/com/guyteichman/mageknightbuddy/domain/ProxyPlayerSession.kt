@@ -46,6 +46,25 @@ data class ProxyPlayerSession private constructor(
         get() = CardColor.entries.associateWith { color -> deckOrder.count { it.matches(color) } }
 
     /**
+     * How many turns have been played so far in the current [round] - mirrors
+     * [DummyPlayerSession.turnInRound] (issue #125), counting whichever of [playTurn]'s two log
+     * entries fired ([ProxyPlayerEvent.NewObjectiveDrawn] or [ProxyPlayerEvent.TurnContinued]) -
+     * both represent one played turn, just branching on whether there was already an objective
+     * card. [ProxyPlayerEvent.EndOfRoundAnnounced] doesn't count - see that event's own doc
+     * comment: the deck emptying isn't a played turn. Filtered by the event's own `round` field,
+     * not log position since the last round-boundary entry, for the same reason
+     * [DummyPlayerSession.turnInRound] is: `endRound()` never logs a fresh `RoundStarted`.
+     */
+    val turnInRound: Int
+        get() = log.count { event ->
+            when (event) {
+                is ProxyPlayerEvent.NewObjectiveDrawn -> event.round == round
+                is ProxyPlayerEvent.TurnContinued -> event.round == round
+                else -> false
+            }
+        }
+
+    /**
      * Plays one Proxy Player turn (docs/rules/proxy-player.md's "The Proxy Player's turn"). If
      * the deck is empty, announces End of Round instead (mirrors
      * [DummyPlayerSession.playTurn]'s empty-deck guard). Otherwise branches on whether there's a

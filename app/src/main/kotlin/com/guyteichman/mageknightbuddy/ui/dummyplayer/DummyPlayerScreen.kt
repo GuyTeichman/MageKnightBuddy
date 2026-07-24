@@ -446,7 +446,7 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 },
                 actions = {
                     if (session != null) {
-                        RoundChip(round = session.round)
+                        RoundChip(round = session.round, turn = session.turnInRound)
                         Spacer(modifier = Modifier.width(8.dp))
                     }
                 },
@@ -524,18 +524,21 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
 }
 
 /**
- * The pill-shaped "ROUND N" indicator in the top bar.
+ * The pill-shaped "ROUND N · TURN M" indicator in the top bar - [turn] is
+ * [DummyPlayerSession.turnInRound]/[ProxyPlayerSession.turnInRound] (issue #125), how many turns
+ * have already been played in the current [round], so a player picking the app back up mid-game
+ * can immediately see where they left off (e.g. "ROUND 2 · TURN 4").
  *
  * `internal`, not `private`: `ProxyPlayerScreen.kt`'s `ProxyPlayerAiScreen` reuses this directly.
  */
 @Composable
-internal fun RoundChip(round: Int) {
+internal fun RoundChip(round: Int, turn: Int) {
     Surface(
         shape = RoundedCornerShape(percent = 50),
         color = MaterialTheme.colorScheme.secondaryContainer,
     ) {
         Text(
-            "ROUND $round",
+            "ROUND $round · TURN $turn",
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelMedium,
         )

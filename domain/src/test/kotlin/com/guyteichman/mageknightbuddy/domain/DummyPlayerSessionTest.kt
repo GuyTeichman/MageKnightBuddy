@@ -369,6 +369,57 @@ class DummyPlayerSessionTest {
     }
 
     @Test
+    fun `turnInRound is 0 right after start, before any turn is played`() {
+        val session = DummyPlayerSession.start(Knight.CORAL)
+
+        assertEquals(0, session.turnInRound)
+    }
+
+    @Test
+    fun `turnInRound counts one TurnPlayed event per playTurn call this round`() {
+        // 3 turns' worth of cards (9), built via real playTurn() calls rather than a hand-picked
+        // count, per CLAUDE.md's guidance on exercising a method's own prior methods.
+        val session = DummyPlayerSession.start(
+            Knight.CORAL,
+            deckOrder = List(9) { CardIdentity.SingleColor(CardColor.RED) },
+        )
+
+        val afterOneTurn = session.playTurn()
+        val afterTwoTurns = afterOneTurn.playTurn()
+        val afterThreeTurns = afterTwoTurns.playTurn()
+
+        assertEquals(1, afterOneTurn.turnInRound)
+        assertEquals(2, afterTwoTurns.turnInRound)
+        assertEquals(3, afterThreeTurns.turnInRound)
+    }
+
+    @Test
+    fun `turnInRound does not count an EndOfRoundAnnounced turn - the deck emptying isn't a played turn`() {
+        val session = DummyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+
+        val next = session.playTurn()
+
+        assertEquals(true, next.roundEnded)
+        assertEquals(0, next.turnInRound)
+    }
+
+    @Test
+    fun `turnInRound resets to 0 once endRound advances to the next round, not counting the prior round's turns`() {
+        val session = DummyPlayerSession.start(
+            Knight.CORAL,
+            deckOrder = List(6) { CardIdentity.SingleColor(CardColor.RED) },
+        ).playTurn().playTurn()
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+            spellOfferColor = CardColor.BLUE,
+        )
+
+        assertEquals(2, session.turnInRound) // sanity: the prior round's own count is unaffected by endRound
+        assertEquals(0, next.turnInRound)
+    }
+
+    @Test
     fun `isDay derives from round and startsAtNight via isDayRound, defaulting startsAtNight to false`() {
         val defaultSession = DummyPlayerSession.start(Knight.CORAL)
         assertEquals(isDayRound(round = 1, startsAtNight = false), defaultSession.isDay)

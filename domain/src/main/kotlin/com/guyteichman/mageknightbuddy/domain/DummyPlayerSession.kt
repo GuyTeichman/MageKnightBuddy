@@ -56,6 +56,20 @@ data class DummyPlayerSession private constructor(
         get() = CardColor.entries.associateWith { color -> deckOrder.count { it.matches(color) } }
 
     /**
+     * How many turns have been played so far in the *current* [round] - e.g. "Round 2, Turn 4" in
+     * the AI screen's header (issue #125). Counts [DummyPlayerEvent.TurnPlayed] entries in [log]
+     * whose own `round` matches this session's current [round]; every other event kind (including
+     * [DummyPlayerEvent.EndOfRoundAnnounced], which fires when the deck is empty instead of a real
+     * turn) doesn't count. Filtering by the event's own `round` field - rather than, say, the
+     * position since the last `RoundStarted`/`RoundEnded` log entry - means this stays correct even
+     * though `endRound()` never logs a fresh `RoundStarted` for the round it advances into (see
+     * that event's own doc comment): a freshly-advanced round simply has no [TurnPlayed] entries
+     * tagged with its number yet, so this naturally reads 0 right after `endRound()`.
+     */
+    val turnInRound: Int
+        get() = log.count { it is DummyPlayerEvent.TurnPlayed && it.round == round }
+
+    /**
      * Plays one Dummy Player turn: the flip-3-cards-then-chain-on-crystal-match procedure from
      * docs/rules/dummy-player.md ("Turn procedure"). Flips the top 3 cards from the deck onto the
      * discard pile unconditionally, then looks at the color of the 3rd (last) card - if the Dummy

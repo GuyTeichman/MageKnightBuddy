@@ -127,6 +127,56 @@ class ProxyPlayerSessionTest {
     }
 
     @Test
+    fun `turnInRound is 0 right after start, before any turn is played`() {
+        val session = ProxyPlayerSession.start(Knight.CORAL)
+
+        assertEquals(0, session.turnInRound)
+    }
+
+    @Test
+    fun `turnInRound counts one event per playTurn call this round, whether it drew a new objective or continued one`() {
+        // 3 turns' worth of cards (9), built via real playTurn() calls per CLAUDE.md's guidance.
+        val session = ProxyPlayerSession.start(
+            Knight.CORAL,
+            deckOrder = List(9) { ProxyPlayerCard.BasicAction(CardColor.RED) },
+        )
+
+        val afterOneTurn = session.playTurn() // NewObjectiveDrawn
+        val afterTwoTurns = afterOneTurn.playTurn() // TurnContinued
+        val afterThreeTurns = afterTwoTurns.playTurn() // TurnContinued
+
+        assertEquals(1, afterOneTurn.turnInRound)
+        assertEquals(2, afterTwoTurns.turnInRound)
+        assertEquals(3, afterThreeTurns.turnInRound)
+    }
+
+    @Test
+    fun `turnInRound does not count an EndOfRoundAnnounced turn - the deck emptying isn't a played turn`() {
+        val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+
+        val next = session.playTurn()
+
+        assertEquals(true, next.roundEnded)
+        assertEquals(0, next.turnInRound)
+    }
+
+    @Test
+    fun `turnInRound resets to 0 once endRound advances to the next round, not counting the prior round's turns`() {
+        val session = ProxyPlayerSession.start(
+            Knight.CORAL,
+            deckOrder = List(6) { ProxyPlayerCard.BasicAction(CardColor.RED) },
+        ).playTurn().playTurn()
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+            spellOfferColor = CardColor.BLUE,
+        )
+
+        assertEquals(2, session.turnInRound) // sanity: the prior round's own count is unaffected by endRound
+        assertEquals(0, next.turnInRound)
+    }
+
+    @Test
     fun `playTurn on an empty deck announces End of Round instead of flipping`() {
         val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
 

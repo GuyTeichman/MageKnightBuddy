@@ -364,6 +364,55 @@ class VolkareSessionTest {
     }
 
     @Test
+    fun `turnInRound is 0 right after start, before any turn is played`() {
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR, woundCount = 0, deckOrder = emptyList())
+
+        assertEquals(0, session.turnInRound)
+    }
+
+    @Test
+    fun `turnInRound counts one CardRevealed per playTurn call this round`() {
+        val session = VolkareSession.start(
+            Scenario.VolkaresReturn,
+            RaceLevel.FAIR,
+            woundCount = 0,
+            deckOrder = List(3) { VolkareCard.BasicAction(CardColor.RED) },
+        )
+
+        val afterOneTurn = session.playTurn()
+        val afterTwoTurns = afterOneTurn.playTurn()
+        val afterThreeTurns = afterTwoTurns.playTurn()
+
+        assertEquals(1, afterOneTurn.turnInRound)
+        assertEquals(2, afterTwoTurns.turnInRound)
+        assertEquals(3, afterThreeTurns.turnInRound)
+    }
+
+    @Test
+    fun `turnInRound keeps counting Frenzy turns once the deck empties in Volkares Return`() {
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR, woundCount = 0, deckOrder = emptyList())
+
+        val afterFrenzies = session.playTurn().playTurn()
+
+        assertEquals(2, afterFrenzies.turnInRound)
+    }
+
+    @Test
+    fun `turnInRound resets to 0 once endRound advances to the next round, not counting the prior round's turns`() {
+        val session = VolkareSession.start(
+            Scenario.VolkaresReturn,
+            RaceLevel.FAIR,
+            woundCount = 0,
+            deckOrder = List(2) { VolkareCard.BasicAction(CardColor.RED) },
+        ).playTurn().playTurn()
+
+        val next = session.endRound()
+
+        assertEquals(2, session.turnInRound) // sanity: the prior round's own count is unaffected by endRound
+        assertEquals(0, next.turnInRound)
+    }
+
+    @Test
     fun `endRound only increments round and logs RoundEnded - deck and discard are untouched`() {
         val session = VolkareSession.start(
             Scenario.VolkaresReturn,
