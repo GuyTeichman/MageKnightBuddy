@@ -27,7 +27,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,7 +44,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -102,15 +100,6 @@ private fun ProxyPlayerCard.objectiveLabel(): String = when (this) {
 }
 
 /**
- * Whether the player has confirmed a matching-color (or Gold, by day) mana die is currently in
- * the Source this turn - a 3rd state ([UNANSWERED]) instead of a plain [Boolean] so the UI can
- * tell "not yet checked this turn" apart from "checked and it's No", which a reset-to-false
- * checkbox couldn't distinguish (a player could easily mistake a silently-reset unchecked box for
- * their own already-recorded "No").
- */
-private enum class ManaDieAnswer { UNANSWERED, YES, NO }
-
-/**
  * Proxy Player mode's AI (turn/round) screen: shows the Proxy Player's deck/crystal state (mirrors
  * `DummyPlayerScreen.kt`'s `TableauCard`), the current Objective Card (or a prompt to play a turn,
  * before the first one) via [displayText], its Shield count, the computed movement-point total
@@ -131,13 +120,6 @@ fun ProxyPlayerAiScreen(
     val viewModel: ProxyPlayerAiViewModel = viewModel(factory = ProxyPlayerAiViewModel.factory(repository))
     val scope = rememberCoroutineScope()
     val session = viewModel.session
-    // The player's per-turn report of whether a matching-color (or gold, by day) mana die
-    // currently sits in the Source - see docs/rules/proxy-player.md's "Movement points": that die
-    // is immediately rerolled once used, so this fact never carries over to the next turn. A
-    // plain per-composition remember (not saved across process death) is fine for the same
-    // reason - it's explicitly reset to UNANSWERED in Play Turn's onClick below rather than left
-    // to persist, so nothing here needs to survive beyond a single turn.
-    var manaDieAnswer by remember { mutableStateOf(ManaDieAnswer.UNANSWERED) }
     var showEndRoundDialog by remember { mutableStateOf(false) }
     var showSummary by remember { mutableStateOf(false) }
 
@@ -168,18 +150,7 @@ fun ProxyPlayerAiScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Button(
-                        onClick = {
-                            scope.launch {
-                                viewModel.playTurn()
-                                // manaDieAnswer is "is a matching die in the Source *this* turn" -
-                                // docs/rules/proxy-player.md has that die immediately rerolled once
-                                // used, so last turn's report says nothing about the turn that just
-                                // started. Reset it here rather than leaving it answered, which
-                                // would silently keep applying last turn's answer to the displayed
-                                // movement points every subsequent turn.
-                                manaDieAnswer = ManaDieAnswer.UNANSWERED
-                            }
-                        },
+                        onClick = { scope.launch { viewModel.playTurn() } },
                         enabled = !session.roundEnded && !viewModel.isBusy,
                         modifier = Modifier.weight(1f),
                     ) {
@@ -230,29 +201,21 @@ fun ProxyPlayerAiScreen(
                     if (objectiveCard == null) {
                         Text("No current objective - tap Play Turn to draw one.")
                     } else {
-                        // Computed up front (not inline where each was previously read) since the
-                        // mana-die question now renders in the header Row, above the Shields/
-                        // Movement row that used to precede it.
-                        //
-                        // Names the actual color(s) to check for, dropping the vague "matching" -
-                        // and the "or a Gold die" clause only appears on day Rounds, since Gold
-                        // can't grant the bonus at night (docs/rules/proxy-player.md's "Movement
-                        // points"). A dual-color objective's colors are joined with "or" - either
-                        // counts (this app's 3rd dual-color ruling, alongside crystal-chain and
-                        // targeting - see docs/rules/proxy-player.md).
+                        // Names the actual color(s) that grant the movement-point bonus, dropping
+                        // the vague "matching" - and the "or Gold" clause only appears on day
+                        // Rounds, since Gold can't grant the bonus at night
+                        // (docs/rules/proxy-player.md's "Movement points"). A dual-color
+                        // objective's colors are joined with "or" - either counts (this app's 3rd
+                        // dual-color ruling, alongside crystal-chain and targeting - see
+                        // docs/rules/proxy-player.md).
                         val dieColors = objectiveCard.colors().joinToString(" or ") { it.label }
-                        val dieQuestion = if (session.isDay) "$dieColors die (or Gold)?" else "$dieColors die?"
-                        // headlineLarge - one tier above the deck tracker's headlineMedium card
-                        // count - ranks this as the 2nd most important number on the screen, after
-                        // the objective itself. Unanswered shows the equation ("3(+1)?") rather
-                        // than a bare number, so the player can see both the guaranteed base value
-                        // and the still-uncertain potential bonus.
+                        val manaDieDescription = if (session.isDay) "$dieColors or Gold" else dieColors
+                        // No longer conditional on a per-turn player report (issue feedback: asking
+                        // Yes/No every turn was more friction than it was worth) - always shows both
+                        // the guaranteed base value and the potential bonus's condition together.
                         val basePoints = session.movementPoints(hasMatchingManaDie = false)
-                        val pointsText = when (manaDieAnswer) {
-                            ManaDieAnswer.UNANSWERED -> "$basePoints(+1)?"
-                            ManaDieAnswer.YES -> session.movementPoints(hasMatchingManaDie = true).toString()
-                            ManaDieAnswer.NO -> basePoints.toString()
-                        }
+                        val bonusPoints = session.movementPoints(hasMatchingManaDie = true)
+                        val pointsText = "$basePoints ($bonusPoints if $manaDieDescription mana die in Source)"
 
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(
@@ -283,61 +246,35 @@ fun ProxyPlayerAiScreen(
                                     // action the app can't actually determine.
                                     Text(objectiveCard.objectiveLabel(), style = MaterialTheme.typography.bodyMedium)
                                 }
-                                // Mana-die question + Yes/No moved up into the header row (was its
-                                // own row below Shields/Movement) - issue feedback was to use the
-                                // header row's spare width instead.
-                                Column(
-                                    horizontalAlignment = Alignment.End,
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Text(
-                                            "Shields",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            // Bare repeated icons, no numeral - same pattern as the
-                                            // crystal rows, using the Knight's own shield-token art
-                                            // (matches ProxyPlayerHeroRow).
-                                            repeat(session.objectiveShields) {
-                                                KnightShieldIcon(
-                                                    knight = session.knight,
-                                                    size = 16.dp
-                                                )
-                                            }
-                                        }
-                                    }
-                                    Text(
-                                        dieQuestion,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        textAlign = TextAlign.End
-                                    )
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        // Exactly one tap from UNANSWERED to either answer - neither
-                                        // chip starts selected, unlike a 2-state toggle that would
-                                        // need to cycle.
-                                        FilterChip(
-                                            selected = manaDieAnswer == ManaDieAnswer.YES,
-                                            onClick = { manaDieAnswer = ManaDieAnswer.YES },
-                                            label = { Text("Yes") },
-                                        )
-                                        FilterChip(
-                                            selected = manaDieAnswer == ManaDieAnswer.NO,
-                                            onClick = { manaDieAnswer = ManaDieAnswer.NO },
-                                            label = { Text("No") },
-                                        )
-                                    }
-                                }
                             }
 
                             // Shields and Movement Points side by side - both are compact,
                             // single-purpose stats, so pairing them frees a full row instead of
-                            // stacking every element in this section vertically.
+                            // stacking every element in this section vertically. Shields now lives
+                            // here (it used to sit in the header Row above, alongside the mana-die
+                            // Yes/No prompt that's since been removed).
                             Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        "Shields",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        // Bare repeated icons, no numeral - same pattern as the
+                                        // crystal rows, using the Knight's own shield-token art
+                                        // (matches ProxyPlayerHeroRow).
+                                        repeat(session.objectiveShields) {
+                                            KnightShieldIcon(
+                                                knight = session.knight,
+                                                size = 16.dp
+                                            )
+                                        }
+                                    }
+                                }
                                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     // Subtitle above the number (not below) - the label/value order
-                                    // now matches Shields' label-above-icons layout.
+                                    // matches Shields' label-above-icons layout.
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -349,7 +286,7 @@ fun ProxyPlayerAiScreen(
                                         )
                                         HelpButton(keys = listOf("Proxy Player Movement"), fieldHelp = fieldHelp)
                                     }
-                                    Text(pointsText, style = MaterialTheme.typography.headlineLarge)
+                                    Text(pointsText, style = MaterialTheme.typography.titleMedium)
                                 }
                             }
 
