@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.UnfoldLess
 import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material3.AlertDialog
@@ -44,6 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -82,6 +85,14 @@ private fun ProxyPlayerCard.colors(): List<CardColor> = when (this) {
     is ProxyPlayerCard.AdvancedAction -> identity.colors()
 }
 
+/**
+ * Just the color(s) [this] card renders as (e.g. "Green", or "Blue/White" for a dual-color card) -
+ * no Basic/Unique/Advanced Action suffix, unlike [displayText]. Basic-vs-Advanced only matters for
+ * the *objective* card (it's what the movement-point bonus depends on) - a merely revealed or
+ * discarded card in the log doesn't need that distinction stated.
+ */
+private fun ProxyPlayerCard.colorLabel(): String = colors().joinToString("/") { it.label }
+
 /** Sort key for laying out a deck of [ProxyPlayerCard]s in a stable, color-grouped order (see [CardColor]'s declaration order). */
 private fun ProxyPlayerCard.sortKey(): Int = colors().minOf { it.ordinal }
 
@@ -102,9 +113,11 @@ private fun ProxyPlayerCard.objectiveLabel(): String = when (this) {
 /**
  * Proxy Player mode's AI (turn/round) screen: shows the Proxy Player's deck/crystal state (mirrors
  * `DummyPlayerScreen.kt`'s `TableauCard`), the current Objective Card (or a prompt to play a turn,
- * before the first one) via [displayText], its Shield count, the computed movement-point total
- * (see [ProxyPlayerSession.movementPoints]), the event log, and the mutating actions - Play Turn,
- * End Round, and (only once there's a current objective) Explored/Completed to resolve it. Per
+ * before the first one) - its Shield count as a small chip hanging off the card, mirroring how the
+ * rulebook physically stacks Shield tokens on top of it - the computed movement-point total (see
+ * [ProxyPlayerSession.movementPoints]), the event log, and the mutating actions - Play Turn, End
+ * Round, and Complete Objective (always present, just disabled until there's a current objective to
+ * resolve - a control popping in and out of the layout read as broken during testing). Per
  * docs/rules/proxy-player.md's app-scope note: this screen never decides *where* the Hero moves or
  * *what* gets conquered - only the movement-point number and Objective Card/Shield bookkeeping.
  * Not `private`: called from `DummyPlayerScreen.kt`'s `DummyPlayerTab`, the same cross-file
@@ -198,107 +211,115 @@ fun ProxyPlayerAiScreen(
                     }
                 }
                 item {
-                    if (objectiveCard == null) {
-                        Text("No current objective - tap Play Turn to draw one.")
-                    } else {
-                        // Names the actual color(s) that grant the movement-point bonus, dropping
-                        // the vague "matching" - and the "or Gold" clause only appears on day
-                        // Rounds, since Gold can't grant the bonus at night
-                        // (docs/rules/proxy-player.md's "Movement points"). A dual-color
-                        // objective's colors are joined with "or" - either counts (this app's 3rd
-                        // dual-color ruling, alongside crystal-chain and targeting - see
-                        // docs/rules/proxy-player.md).
-                        val dieColors = objectiveCard.colors().joinToString(" or ") { it.label }
-                        val manaDieDescription = if (session.isDay) "$dieColors or Gold" else dieColors
-                        // No longer conditional on a per-turn player report (issue feedback: asking
-                        // Yes/No every turn was more friction than it was worth) - always shows both
-                        // the guaranteed base value and the potential bonus's condition together.
-                        val basePoints = session.movementPoints(hasMatchingManaDie = false)
-                        val bonusPoints = session.movementPoints(hasMatchingManaDie = true)
-                        val pointsText = "$basePoints ($bonusPoints if $manaDieDescription mana die in Source)"
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (objectiveCard == null) {
+                            Text("No current objective - tap Play Turn to draw one.")
+                        } else {
+                            // Names the actual color(s) that grant the movement-point bonus,
+                            // dropping the vague "matching" - and the "or Gold" clause only
+                            // appears on day Rounds, since Gold can't grant the bonus at night
+                            // (docs/rules/proxy-player.md's "Movement points"). A dual-color
+                            // objective's colors are joined with "or" - either counts (this app's
+                            // 3rd dual-color ruling, alongside crystal-chain and targeting - see
+                            // docs/rules/proxy-player.md).
+                            val dieColors = objectiveCard.colors().joinToString(" or ") { it.label }
+                            val manaDieDescription = if (session.isDay) "$dieColors or Gold" else dieColors
+                            val basePoints = session.movementPoints(hasMatchingManaDie = false)
+                            val bonusPoints = session.movementPoints(hasMatchingManaDie = true)
 
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                // 36x50.4.dp (36 x the deck tray's 20x28.dp height/width ratio) as
-                                // the section's visual anchor - same split-swatch/star-badge
-                                // rendering as the deck tracker's MiniCards, just bigger, rather
-                                // than a second way of drawing card color on this screen.
-                                MiniCard(
-                                    colors = objectiveCard.colors(),
-                                    isNonBasic = objectiveCard.isNonBasic(),
-                                    width = 36.dp,
-                                    height = 36.dp * 1.4f
+                                // The card is the section's visual anchor; its Shield count hangs
+                                // off its own bottom edge (see ProxyPlayerObjectiveCard) rather
+                                // than sitting in a separate labeled row.
+                                ProxyPlayerObjectiveCard(
+                                    objectiveCard = objectiveCard,
+                                    shields = session.objectiveShields,
                                 )
-                                Column(
+                                // verticalAlignment = Top (not CenterVertically) - Objective and
+                                // Movement need to top-align to *each other*, not each independently
+                                // center against the taller card beside them, which is what made
+                                // this row read as lopsided before.
+                                Row(
                                     modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                    verticalAlignment = Alignment.Top,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(objectiveCard.displayText(), style = MaterialTheme.typography.titleMedium)
-                                        HelpButton(keys = listOf("Proxy Player Objective"), fieldHelp = fieldHelp)
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            // Generic "Objective" - not the card's own color/type
+                                            // text, which the card's own art (color + star badge)
+                                            // already conveys. Matches "Movement" below exactly
+                                            // (same style), so the two columns' label lines land
+                                            // on the same size/weight instead of one column having
+                                            // no label at all.
+                                            Text(
+                                                "Objective",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            HelpButton(keys = listOf("Proxy Player Objective"), fieldHelp = fieldHelp)
+                                        }
+                                        // What this color's movement target actually means in-game
+                                        // - see CardColor.objectiveLabel's doc comment for why
+                                        // Blue's own wording states its distance condition rather
+                                        // than a specific action the app can't actually determine.
+                                        // Promoted to titleMedium (was the card's color/type text's
+                                        // size) - this is what you actually need to read every
+                                        // turn, not the color/type the card's own art already shows.
+                                        Text(objectiveCard.objectiveLabel(), style = MaterialTheme.typography.titleMedium)
                                     }
-                                    // What this color's movement target actually means in-game -
-                                    // see CardColor.objectiveLabel's doc comment for why Blue's own
-                                    // wording states its distance condition rather than a specific
-                                    // action the app can't actually determine.
-                                    Text(objectiveCard.objectiveLabel(), style = MaterialTheme.typography.bodyMedium)
-                                }
-                            }
-
-                            // Shields and Movement Points side by side - both are compact,
-                            // single-purpose stats, so pairing them frees a full row instead of
-                            // stacking every element in this section vertically. Shields now lives
-                            // here (it used to sit in the header Row above, alongside the mana-die
-                            // Yes/No prompt that's since been removed).
-                            Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(
-                                        "Shields",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        // Bare repeated icons, no numeral - same pattern as the
-                                        // crystal rows, using the Knight's own shield-token art
-                                        // (matches ProxyPlayerHeroRow).
-                                        repeat(session.objectiveShields) {
-                                            KnightShieldIcon(
-                                                knight = session.knight,
-                                                size = 16.dp
+                                    Column(
+                                        horizontalAlignment = Alignment.End,
+                                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                                    ) {
+                                        // Text+HelpButton, matching Objective's own label row
+                                        // exactly (not just a bare Text) - IconButton's 48dp touch
+                                        // target otherwise inflates only *this* column's first row,
+                                        // which is what was pushing the two labels out of alignment
+                                        // even under a shared Alignment.Top.
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                "Movement",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            HelpButton(keys = listOf("Proxy Player Movement"), fieldHelp = fieldHelp)
+                                        }
+                                        Text(basePoints.toString(), style = MaterialTheme.typography.headlineLarge)
+                                        Surface(
+                                            shape = RoundedCornerShape(percent = 50),
+                                            color = MaterialTheme.colorScheme.secondaryContainer,
+                                        ) {
+                                            Text(
+                                                // bonusPoints - basePoints (not a hardcoded "+1"):
+                                                // the mana-die bonus size is movementPoints' own
+                                                // formula, not an assumption restated here.
+                                                "+${bonusPoints - basePoints} if $manaDieDescription",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                             )
                                         }
                                     }
                                 }
-                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    // Subtitle above the number (not below) - the label/value order
-                                    // matches Shields' label-above-icons layout.
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Text(
-                                            "movement points",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        HelpButton(keys = listOf("Proxy Player Movement"), fieldHelp = fieldHelp)
-                                    }
-                                    Text(pointsText, style = MaterialTheme.typography.titleMedium)
-                                }
                             }
-
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(
-                                    onClick = { scope.launch { viewModel.resolveObjective() } },
-                                    enabled = !viewModel.isBusy,
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Text("Explored/Completed Objective")
-                                }
-                            }
+                        }
+                        // Always rendered (not only when objectiveCard != null) - a control that
+                        // pops in and out of the layout as the objective resolves read as broken
+                        // during testing. Disabled instead: same position every turn, whether or
+                        // not there's currently an objective to resolve. Sized to its own content
+                        // and left-aligned (Column's own default) - directly under the objective
+                        // card above, not trailing the numeric Movement column.
+                        OutlinedButton(
+                            onClick = { scope.launch { viewModel.resolveObjective() } },
+                            enabled = objectiveCard != null && !viewModel.isBusy,
+                        ) {
+                            Text("Complete Objective")
                         }
                     }
                 }
@@ -347,6 +368,54 @@ private fun ProxyPlayerHeroRow(session: ProxyPlayerSession) {
                     "RANDOM",
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                     style = MaterialTheme.typography.labelSmall,
+                )
+            }
+        }
+    }
+}
+
+/** Fixed gold/bronze tint for the Shield-count chip's glyph - matches Theme.kt's own gold seed
+ * color (0xFFE4B25C, tertiary in light theme / primary in dark), chosen as a plain constant
+ * rather than a ColorScheme role since dynamic color (Material You) can otherwise replace that
+ * role with an arbitrary wallpaper-derived hue - shields should read the same regardless. */
+private val ShieldChipGold = Color(0xFFE4B25C)
+
+/**
+ * The current Objective Card, with its Shield count as a small chip hanging off the card's bottom
+ * edge - mirrors the rulebook physically stacking Shield tokens on top of the objective card
+ * (docs/rules/proxy-player.md's "The Proxy Player's turn"), rather than a separate labeled row.
+ * The chip is placed at a *negative* y-offset (pulling it up to overlap the card) instead of
+ * computing an absolute position: [Modifier.offset] only shifts where a composable is *painted*,
+ * not how much space Column reserves for it, so the chip's full height still counts toward this
+ * Column's layout size - which is exactly what keeps whatever's below from colliding with it.
+ * The glyph itself is the same generic shield shape [KnightShieldIcon] falls back to for Coral
+ * (whose own art isn't sourced yet) - not the current Knight's own shield art, since this chip is
+ * a plain Shield-count indicator, not a 2nd place to render the Knight's heraldry.
+ */
+@Composable
+private fun ProxyPlayerObjectiveCard(objectiveCard: ProxyPlayerCard, shields: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        MiniCard(
+            colors = objectiveCard.colors(),
+            isNonBasic = objectiveCard.isNonBasic(),
+            width = 58.dp,
+            height = 58.dp * 1.4f,
+        )
+        Surface(
+            shape = RoundedCornerShape(percent = 50),
+            color = MaterialTheme.colorScheme.inverseSurface,
+            modifier = Modifier.offset(y = (-10).dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            ) {
+                Icon(Icons.Filled.Shield, contentDescription = null, tint = ShieldChipGold, modifier = Modifier.size(12.dp))
+                Text(
+                    shields.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.inverseOnSurface,
                 )
             }
         }
@@ -514,7 +583,9 @@ private fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
                 discarded.forEachIndexed { index, card ->
                     if (index > 0) add(DescriptionSpan.Words(", "))
                     addCardDots(card.colors())
-                    add(DescriptionSpan.Words(" ${card.displayText()}"))
+                    // colorLabel(), not displayText() - Basic/Advanced only matters for the
+                    // objective card, not a merely-discarded one.
+                    add(DescriptionSpan.Words(" ${card.colorLabel()}"))
                 }
                 add(DescriptionSpan.Words("."))
             }
@@ -534,7 +605,9 @@ private fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
                 revealed.forEachIndexed { index, card ->
                     if (index > 0) add(DescriptionSpan.Words(", "))
                     addCardDots(card.colors())
-                    add(DescriptionSpan.Words(" ${card.displayText()}"))
+                    // colorLabel(), not displayText() - Basic/Advanced only matters for the
+                    // objective card, not a merely-revealed one.
+                    add(DescriptionSpan.Words(" ${card.colorLabel()}"))
                 }
                 add(DescriptionSpan.Words("."))
             }
