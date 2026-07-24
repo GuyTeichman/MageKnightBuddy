@@ -39,6 +39,30 @@ data class VolkareSession private constructor(
         get() = isDayRound(round, startsAtNight)
 
     /**
+     * How many turns have been played so far in the current [round] - mirrors
+     * [DummyPlayerSession.turnInRound] (issue #125). Counts both [VolkareEvent.CardRevealed] (a
+     * normal reveal) and [VolkareEvent.Frenzy] (Volkare's Return's repeatable empty-deck turn) as
+     * played turns, since both are logged by an actual [playTurn] call; [VolkareEvent.QuestLost]
+     * is a marker logged *alongside* the [CardRevealed] for the same turn, not a turn of its own,
+     * so it's excluded to avoid double-counting that turn. Filtered by the event's own `round`
+     * field, not log position since the last round-boundary entry, for the same reason
+     * [DummyPlayerSession.turnInRound] is: `endRound()` never logs a fresh `RoundStarted`.
+     */
+    val turnInRound: Int
+        get() = log.count { event ->
+            // `when` dispatches on event's actual sealed-interface case (see VolkareEvent's own
+            // doc comment on why `sealed` enables this); each `is X ->` branch smart-casts `event`
+            // to that case for the rest of its own branch, so `event.round` below reads X's own
+            // `round` property. `else -> false` covers every other event case, which aren't a
+            // played turn.
+            when (event) {
+                is VolkareEvent.CardRevealed -> event.round == round
+                is VolkareEvent.Frenzy -> event.round == round
+                else -> false
+            }
+        }
+
+    /**
      * Plays one Volkare turn: reveals the top card of [deckOrder] onto [discardPile] and logs it.
      * If the deck is already empty (a defensive fallback - see below for the real trigger), the
      * fork is by scenario: Volkare's Return logs a [Frenzy] event and stays playable forever (his

@@ -147,7 +147,7 @@ fun ProxyPlayerAiScreen(
                 },
                 actions = {
                     if (session != null) {
-                        RoundChip(round = session.round)
+                        RoundChip(round = session.round, turn = session.turnInRound)
                         Spacer(modifier = Modifier.width(8.dp))
                     }
                 },
