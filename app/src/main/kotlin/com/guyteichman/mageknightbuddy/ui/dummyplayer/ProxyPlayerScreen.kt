@@ -326,25 +326,22 @@ fun ProxyPlayerAiScreen(repository: ProxyPlayerSessionRepository, fieldHelp: Map
 
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(
-                                    onClick = { scope.launch { viewModel.resolveObjective(ProxyPlayerObjectiveResolution.EXPLORED) } },
-                                    enabled = !viewModel.isBusy,
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Text("Explored")
-                                }
-                                OutlinedButton(
                                     onClick = { scope.launch { viewModel.resolveObjective(ProxyPlayerObjectiveResolution.COMPLETED) } },
                                     enabled = !viewModel.isBusy,
                                     modifier = Modifier.weight(1f),
                                 ) {
-                                    Text("Completed")
+                                    Text("Explored/Completed Objective")
                                 }
                             }
                         }
                     }
                 }
                 item {
-                    Text("Log", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+"Log",
+style = MaterialTheme.typography.labelLarge,
+color = MaterialTheme.colorScheme.onSurfaceVariant
+)
                 }
                 // Most-recent-first, matching DummyPlayerScreen.kt's DummyPlayerAiScreen (issue #35).
                 items(session.log.asReversed()) { event ->
