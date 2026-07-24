@@ -70,11 +70,23 @@ class ProxyPlayerSessionMapperTest {
 
     @Test
     fun `toEntity and toDomain round-trip a log containing every event type`() {
+        // Arythea has 0 Green crystals, so every Green card's matchingCrystalCount is 0 and none
+        // of these playTurn() calls chain extra flips - keeps the deck math simple: 5 cards lets
+        // the 1st playTurn (no objective yet) consume the mandatory 3 and start an objective, the
+        // 2nd playTurn (already has an objective) consume the remaining 2 and continue it, and the
+        // 3rd playTurn find an empty deck and announce End of Round - producing all 6
+        // ProxyPlayerEvent variants across this one session's log (RoundStarted from start(),
+        // NewObjectiveDrawn/TurnContinued/EndOfRoundAnnounced from the 3 playTurn() calls,
+        // ObjectiveResolved and RoundEnded from the calls below). The 1-card-deck scenario this
+        // test used before could only ever reach NewObjectiveDrawn, never TurnContinued or
+        // EndOfRoundAnnounced - see #146.
         val session = ProxyPlayerSession.start(
             Knight.ARYTHEA,
-            deckOrder = listOf(ProxyPlayerCard.BasicAction(CardColor.GREEN)),
+            deckOrder = List(5) { ProxyPlayerCard.BasicAction(CardColor.GREEN) },
         )
-            .playTurn() // NewObjectiveDrawn (or EndOfRoundAnnounced if deck too short - 1 card here yields NewObjectiveDrawn)
+            .playTurn() // NewObjectiveDrawn - no objective yet, deck 5 -> 2
+            .playTurn() // TurnContinued - objective already set, deck 2 -> 0
+            .playTurn() // EndOfRoundAnnounced - deck empty
             .resolveObjective() // ObjectiveResolved
             .endRound(CardIdentity.SingleColor(CardColor.RED), CardColor.BLUE) // RoundEnded
 
