@@ -265,15 +265,15 @@ fun ProxyPlayerAiScreen(
                                 // rendering as the deck tracker's MiniCards, just bigger, rather
                                 // than a second way of drawing card color on this screen.
                                 MiniCard(
-colors = objectiveCard.colors(),
-isNonBasic = objectiveCard.isNonBasic(),
-width = 36.dp,
-height = 36.dp * 1.4f
-)
+                                    colors = objectiveCard.colors(),
+                                    isNonBasic = objectiveCard.isNonBasic(),
+                                    width = 36.dp,
+                                    height = 36.dp * 1.4f
+                                )
                                 Column(
-modifier = Modifier.weight(1f),
-verticalArrangement = Arrangement.spacedBy(2.dp)
-) {
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(objectiveCard.displayText(), style = MaterialTheme.typography.titleMedium)
                                         HelpButton(keys = listOf("Proxy Player Objective"), fieldHelp = fieldHelp)
@@ -287,8 +287,33 @@ verticalArrangement = Arrangement.spacedBy(2.dp)
                                 // Mana-die question + Yes/No moved up into the header row (was its
                                 // own row below Shields/Movement) - issue feedback was to use the
                                 // header row's spare width instead.
-                                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(dieQuestion, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.End)
+                                Column(
+                                    horizontalAlignment = Alignment.End,
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            "Shields",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            // Bare repeated icons, no numeral - same pattern as the
+                                            // crystal rows, using the Knight's own shield-token art
+                                            // (matches ProxyPlayerHeroRow).
+                                            repeat(session.objectiveShields) {
+                                                KnightShieldIcon(
+                                                    knight = session.knight,
+                                                    size = 16.dp
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Text(
+                                        dieQuestion,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        textAlign = TextAlign.End
+                                    )
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         // Exactly one tap from UNANSWERED to either answer - neither
                                         // chip starts selected, unlike a 2-state toggle that would
@@ -311,19 +336,6 @@ verticalArrangement = Arrangement.spacedBy(2.dp)
                             // single-purpose stats, so pairing them frees a full row instead of
                             // stacking every element in this section vertically.
                             Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(
-                                        "Shields",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        // Bare repeated icons, no numeral - same pattern as the
-                                        // crystal rows, using the Knight's own shield-token art
-                                        // (matches ProxyPlayerHeroRow).
-                                        repeat(session.objectiveShields) { KnightShieldIcon(knight = session.knight, size = 16.dp) }
-                                    }
-                                }
                                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     // Subtitle above the number (not below) - the label/value order
                                     // now matches Shields' label-above-icons layout.
@@ -356,10 +368,10 @@ verticalArrangement = Arrangement.spacedBy(2.dp)
                 }
                 item {
                     Text(
-"Log",
-style = MaterialTheme.typography.labelLarge,
-color = MaterialTheme.colorScheme.onSurfaceVariant
-)
+                        "Log",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 // Most-recent-first, matching DummyPlayerScreen.kt's DummyPlayerAiScreen (issue #35).
                 items(session.log.asReversed()) { event ->
