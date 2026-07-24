@@ -790,7 +790,10 @@ internal fun MiniCard(colors: List<CardColor>, isNonBasic: Boolean = false, widt
                 .fillMaxSize()
                 .clip(RoundedCornerShape(4.dp)),
         ) {
-            colors.forEach { color ->
+            // forEachIndexed, not forEach: a White swatch's border shape depends on whether this
+            // swatch sits at the left/right edge of the whole MiniCard (see swatchOuterCorners),
+            // which needs both the index and the total count.
+            colors.forEachIndexed { index, color ->
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -798,7 +801,17 @@ internal fun MiniCard(colors: List<CardColor>, isNonBasic: Boolean = false, widt
                         .background(color.swatch)
                         .then(
                             if (color == CardColor.WHITE) {
-                                Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
+                                val corners = swatchOuterCorners(index, colors.size)
+                                Modifier.border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outline,
+                                    RoundedCornerShape(
+                                        topStart = if (corners.topStart) 4.dp else 0.dp,
+                                        topEnd = if (corners.topEnd) 4.dp else 0.dp,
+                                        bottomEnd = if (corners.bottomEnd) 4.dp else 0.dp,
+                                        bottomStart = if (corners.bottomStart) 4.dp else 0.dp,
+                                    ),
+                                )
                             } else {
                                 Modifier
                             },
@@ -829,6 +842,34 @@ internal fun MiniCard(colors: List<CardColor>, isNonBasic: Boolean = false, widt
             }
         }
     }
+}
+
+/**
+ * Which corners of a [MiniCard] swatch at position [index] (of [count] total swatches) are also
+ * outer corners of the whole card - i.e. should stay rounded rather than square. A single-color
+ * card ([count] == 1) has its one swatch touch all 4 corners; a dual-color card's left swatch only
+ * touches the 2 left corners, and its right swatch only the 2 right corners. Kept as a plain data
+ * class (no Compose types) so this corner-picking logic can be unit-tested on the JVM without an
+ * emulator, per this project's domain-testability convention.
+ */
+internal data class SwatchCorners(val topStart: Boolean, val topEnd: Boolean, val bottomStart: Boolean, val bottomEnd: Boolean)
+
+/**
+ * Computes [SwatchCorners] for the swatch at [index] out of [count] total swatches in a [MiniCard].
+ * Used to fix #147: a White swatch's border used to round all 4 corners unconditionally, which
+ * looked fine for a single-color card but drew a visible rounded notch at the seam between two
+ * halves of a dual-color card, since the inner corner facing the other half isn't actually an
+ * outer corner of the card.
+ */
+internal fun swatchOuterCorners(index: Int, count: Int): SwatchCorners {
+    val isLeftmost = index == 0
+    val isRightmost = index == count - 1
+    return SwatchCorners(
+        topStart = isLeftmost,
+        bottomStart = isLeftmost,
+        topEnd = isRightmost,
+        bottomEnd = isRightmost,
+    )
 }
 
 /** The color(s) [identity] renders/matches as - one color for [CardIdentity.SingleColor], two for [CardIdentity.DualColor]. */

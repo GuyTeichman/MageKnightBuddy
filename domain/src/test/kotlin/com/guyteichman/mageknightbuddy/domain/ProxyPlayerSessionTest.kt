@@ -305,6 +305,55 @@ class ProxyPlayerSessionTest {
     }
 
     @Test
+    fun `playTurn with an existing objective card chains extra flips off the 3rd card's matching crystals`() {
+        // Coral holds 2 White crystals (startingCrystals) - a White 3rd card should chain 2
+        // additional reveals, exactly like the "no objective card" branch's chaining test above,
+        // but here there's already an objective in progress so every revealed card (mandatory
+        // + chained) goes to the discard pile instead of one becoming a new objective.
+        val session = ProxyPlayerSession.restore(
+            knight = Knight.CORAL,
+            wasRandom = false,
+            deckOrder = listOf(
+                ProxyPlayerCard.BasicAction(CardColor.BLUE),
+                ProxyPlayerCard.BasicAction(CardColor.GREEN),
+                ProxyPlayerCard.BasicAction(CardColor.WHITE),
+                ProxyPlayerCard.BasicAction(CardColor.RED),
+                ProxyPlayerCard.BasicAction(CardColor.RED),
+            ),
+            discardPile = emptyList(),
+            crystals = startingCrystals(Knight.CORAL),
+            round = 1,
+            roundEnded = false,
+            objectiveCard = ProxyPlayerCard.UniqueAction(CardColor.WHITE),
+            objectiveShields = 1,
+            log = emptyList(),
+        )
+
+        val next = session.playTurn()
+
+        val revealed = listOf(
+            ProxyPlayerCard.BasicAction(CardColor.BLUE),
+            ProxyPlayerCard.BasicAction(CardColor.GREEN),
+            ProxyPlayerCard.BasicAction(CardColor.WHITE),
+            ProxyPlayerCard.BasicAction(CardColor.RED),
+            ProxyPlayerCard.BasicAction(CardColor.RED),
+        )
+        assertEquals(ProxyPlayerCard.UniqueAction(CardColor.WHITE), next.objectiveCard)
+        assertEquals(2, next.objectiveShields)
+        assertEquals(revealed, next.discardPile)
+        assertEquals(emptyList(), next.deckOrder)
+        assertEquals(
+            ProxyPlayerEvent.TurnContinued(
+                round = 1,
+                objectiveCard = ProxyPlayerCard.UniqueAction(CardColor.WHITE),
+                shieldsNow = 2,
+                revealed = revealed,
+            ),
+            next.log.last(),
+        )
+    }
+
+    @Test
     fun `resolveObjective discards the objective card and clears its Shields`() {
         val session = ProxyPlayerSession.restore(
             knight = Knight.CORAL,
