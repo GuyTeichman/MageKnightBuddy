@@ -2,21 +2,22 @@ package com.guyteichman.mageknightbuddy.data
 
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
 
+/** Proxy Player's instantiation of the generic [SingleSlotAutosaveRepository] - see that class for behavior. */
+typealias ProxyPlayerSessionRepository = SingleSlotAutosaveRepository<ProxyPlayerSession, ProxyPlayerSessionEntity>
+
 /**
- * Persistence entry point for the Dummy Player tab's Proxy Player mode: the rest of the app
- * (`app/`) calls [save]/[restore] with plain domain [ProxyPlayerSession] objects and never has to
- * know about Room, [ProxyPlayerSessionEntity], or the DTO/JSON conversion in
- * [ProxyPlayerSessionMapper]. Mirrors [VolkareSessionRepository]/[DummyPlayerSessionRepository] exactly.
+ * Builds a [ProxyPlayerSessionRepository] around [dao], wiring in [ProxyPlayerSession.toEntity]/
+ * [ProxyPlayerSessionEntity.toDomain] as the mapper pair. A top-level function with the same name
+ * as the typealias above is Kotlin's "factory that looks like a constructor" idiom (the same
+ * trick the stdlib uses for e.g. `List(size, init)`) - it's what lets every existing call site
+ * (`ProxyPlayerSessionRepository(dao)`, in `MageKnightBuddyApplication.kt` and this type's test)
+ * keep compiling unchanged even though the real class behind the name is now generic.
  */
-class ProxyPlayerSessionRepository(private val dao: ProxyPlayerSessionDao) {
-    /** Autosaves [session], overwriting whatever was previously saved. [updatedAt] defaults to "now". */
-    suspend fun save(session: ProxyPlayerSession, updatedAt: Long = System.currentTimeMillis()) {
-        dao.upsert(session.toEntity(updatedAt))
-    }
-
-    /** Loads the autosaved session, or `null` if nothing has been saved yet. */
-    suspend fun restore(): ProxyPlayerSession? = dao.get()?.toDomain()
-
-    /** Reads just the last save's timestamp, or `null` if nothing has been saved yet - lets the setup screen's "Restore Game" flow compare recency across all 3 Dummy Player tab modes. */
-    suspend fun updatedAt(): Long? = dao.getUpdatedAt()
-}
+fun ProxyPlayerSessionRepository(dao: ProxyPlayerSessionDao): ProxyPlayerSessionRepository =
+    SingleSlotAutosaveRepository(
+        upsert = dao::upsert,
+        get = dao::get,
+        getUpdatedAt = dao::getUpdatedAt,
+        toEntity = ProxyPlayerSession::toEntity,
+        toDomain = ProxyPlayerSessionEntity::toDomain,
+    )
