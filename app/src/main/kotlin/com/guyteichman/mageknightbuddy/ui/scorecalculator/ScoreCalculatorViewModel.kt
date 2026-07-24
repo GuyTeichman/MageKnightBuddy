@@ -1,5 +1,6 @@
 package com.guyteichman.mageknightbuddy.ui.scorecalculator
 
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -58,116 +59,140 @@ class ScoreCalculatorViewModel(
     private val repository: ScoringSessionRepository,
 ) : ViewModel() {
 
-    // `by savedStateHandle.saveable("key") { mutableStateOf(...) }` is a Kotlin *property
-    // delegate*: reading/writing `pageIndex` actually reads/writes a Compose `MutableState` that
-    // is mirrored into the ViewModel's SavedStateHandle under "pageIndex", so the value survives
-    // both tab switches (ViewModel outlives the composition) and process death (SavedStateHandle
-    // is backed by a Bundle). Every property below follows this same pattern, one per wizard
-    // field, each with its own string key and default value.
-    var pageIndex: Int by savedStateHandle.saveable("pageIndex") { mutableStateOf(0) }
+    // `by resettable("key", default)` is a Kotlin *property delegate*: reading/writing `pageIndex`
+    // actually reads/writes a Compose `MutableState` that is mirrored into the ViewModel's
+    // SavedStateHandle under "pageIndex", so the value survives both tab switches (ViewModel
+    // outlives the composition) and process death (SavedStateHandle is backed by a Bundle) - see
+    // [resettable]'s own doc comment below for how it also wires the field into [reset]. Every
+    // property below follows this same pattern, one per wizard field, each with its own string
+    // key and default value.
 
-    var scenarioId: String by savedStateHandle.saveable("scenarioId") { mutableStateOf(Scenario.SoloConquest.id) }
+    /**
+     * Reset closures, one per field, collected as each field is declared below via [resettable].
+     * Must be declared before the first `by resettable(...)` property in this class - property
+     * initializers run top-to-bottom during construction, so this list has to already exist by
+     * the time the first field's initializer tries to add to it.
+     */
+    private val resettables = mutableListOf<() -> Unit>()
+
+    /**
+     * Declares one wizard field: still backed by [SavedStateHandle] exactly as before (see
+     * docs/adr/0002-viewmodel-backed-wizard-state.md) - the only addition is remembering [default]
+     * so [reset] can restore it later without a hand-written line. Returns the same
+     * `MutableState<T>` `savedStateHandle.saveable` always returned, so `var x by resettable(key,
+     * default)` is a drop-in replacement for `var x by savedStateHandle.saveable(key) {
+     * mutableStateOf(default) }`.
+     */
+    private fun <T : Any> resettable(key: String, default: T): MutableState<T> {
+        val state = savedStateHandle.saveable(key) { mutableStateOf(default) }
+        resettables += { state.value = default }
+        return state
+    }
+
+    var pageIndex: Int by resettable("pageIndex", 0)
+
+    var scenarioId: String by resettable("scenarioId", Scenario.SoloConquest.id)
 
     // Computed property (no backing field): re-derives the Scenario object from the stored id
     // every time it's read, instead of storing the Scenario itself.
     val scenario: Scenario get() = Scenario.fromId(scenarioId)
 
-    var knight: Knight by savedStateHandle.saveable("knight") { mutableStateOf(Knight.entries.first()) }
-    var playerName: String by savedStateHandle.saveable("playerName") { mutableStateOf("") }
+    var knight: Knight by resettable("knight", Knight.entries.first())
+    var playerName: String by resettable("playerName", "")
 
-    var fame: String by savedStateHandle.saveable("fame") { mutableStateOf("0") }
+    var fame: String by resettable("fame", "0")
 
-    var spellsInDeck: String by savedStateHandle.saveable("spellsInDeck") { mutableStateOf("0") }
-    var advancedActionsInDeck: String by savedStateHandle.saveable("advancedActionsInDeck") { mutableStateOf("0") }
-    var unitLevel1Healthy: String by savedStateHandle.saveable("unitLevel1Healthy") { mutableStateOf("0") }
-    var unitLevel1Wounded: String by savedStateHandle.saveable("unitLevel1Wounded") { mutableStateOf("0") }
-    var unitLevel2Healthy: String by savedStateHandle.saveable("unitLevel2Healthy") { mutableStateOf("0") }
-    var unitLevel2Wounded: String by savedStateHandle.saveable("unitLevel2Wounded") { mutableStateOf("0") }
-    var unitLevel3Healthy: String by savedStateHandle.saveable("unitLevel3Healthy") { mutableStateOf("0") }
-    var unitLevel3Wounded: String by savedStateHandle.saveable("unitLevel3Wounded") { mutableStateOf("0") }
-    var unitLevel4Healthy: String by savedStateHandle.saveable("unitLevel4Healthy") { mutableStateOf("0") }
-    var unitLevel4Wounded: String by savedStateHandle.saveable("unitLevel4Wounded") { mutableStateOf("0") }
-    var shieldsOnAdventureSites: String by savedStateHandle.saveable("shieldsOnAdventureSites") { mutableStateOf("0") }
-    var artifacts: String by savedStateHandle.saveable("artifacts") { mutableStateOf("0") }
-    var crystalsInInventory: String by savedStateHandle.saveable("crystalsInInventory") { mutableStateOf("0") }
-    var shieldsOnConquerSites: String by savedStateHandle.saveable("shieldsOnConquerSites") { mutableStateOf("0") }
-    var woundsInDeck: String by savedStateHandle.saveable("woundsInDeck") { mutableStateOf("0") }
-    var questPoints: String by savedStateHandle.saveable("questPoints") { mutableStateOf("0") }
+    var spellsInDeck: String by resettable("spellsInDeck", "0")
+    var advancedActionsInDeck: String by resettable("advancedActionsInDeck", "0")
+    var unitLevel1Healthy: String by resettable("unitLevel1Healthy", "0")
+    var unitLevel1Wounded: String by resettable("unitLevel1Wounded", "0")
+    var unitLevel2Healthy: String by resettable("unitLevel2Healthy", "0")
+    var unitLevel2Wounded: String by resettable("unitLevel2Wounded", "0")
+    var unitLevel3Healthy: String by resettable("unitLevel3Healthy", "0")
+    var unitLevel3Wounded: String by resettable("unitLevel3Wounded", "0")
+    var unitLevel4Healthy: String by resettable("unitLevel4Healthy", "0")
+    var unitLevel4Wounded: String by resettable("unitLevel4Wounded", "0")
+    var shieldsOnAdventureSites: String by resettable("shieldsOnAdventureSites", "0")
+    var artifacts: String by resettable("artifacts", "0")
+    var crystalsInInventory: String by resettable("crystalsInInventory", "0")
+    var shieldsOnConquerSites: String by resettable("shieldsOnConquerSites", "0")
+    var woundsInDeck: String by resettable("woundsInDeck", "0")
+    var questPoints: String by resettable("questPoints", "0")
 
-    var city1Conquered: Boolean by savedStateHandle.saveable("city1Conquered") { mutableStateOf(false) }
-    var city2Conquered: Boolean by savedStateHandle.saveable("city2Conquered") { mutableStateOf(false) }
-    var roundsFinishedEarly: String by savedStateHandle.saveable("roundsFinishedEarly") { mutableStateOf("0") }
-    var cardsRemainingInDummyDeck: String by savedStateHandle.saveable("cardsRemainingInDummyDeck") { mutableStateOf("0") }
-    var endOfRoundAnnounced: Boolean by savedStateHandle.saveable("endOfRoundAnnounced") { mutableStateOf(true) }
+    var city1Conquered: Boolean by resettable("city1Conquered", false)
+    var city2Conquered: Boolean by resettable("city2Conquered", false)
+    var roundsFinishedEarly: String by resettable("roundsFinishedEarly", "0")
+    var cardsRemainingInDummyDeck: String by resettable("cardsRemainingInDummyDeck", "0")
+    var endOfRoundAnnounced: Boolean by resettable("endOfRoundAnnounced", true)
 
     // Scenario-specific fields below: each is only read by the input(s) that actually use it
     // (see the `when` in [input]), so leaving the others at their defaults for an unused
     // scenario is harmless.
-    var cityRevealed: Boolean by savedStateHandle.saveable("cityRevealed") { mutableStateOf(false) }
-    var highPriestessDefeated: Boolean by savedStateHandle.saveable("highPriestessDefeated") { mutableStateOf(false) }
+    var cityRevealed: Boolean by resettable("cityRevealed", false)
+    var highPriestessDefeated: Boolean by resettable("highPriestessDefeated", false)
     // An Int (not a String like most other Int-backed fields above), since it's driven entirely
     // by the NumberPillPicker widget (a fixed set of taps, no free-text typing) - same rationale
     // as the Boolean fields below being stored as Boolean rather than "true"/"false" strings.
-    var graveyardsSealed: Int by savedStateHandle.saveable("graveyardsSealed") { mutableStateOf(0) }
-    var necromancerDefeated: Boolean by savedStateHandle.saveable("necromancerDefeated") { mutableStateOf(false) }
+    var graveyardsSealed: Int by resettable("graveyardsSealed", 0)
+    var necromancerDefeated: Boolean by resettable("necromancerDefeated", false)
 
     // Heads Defeated is shared by Against the Dragon and Apocalypse is Here (same field
     // semantics, 0-4 non-Control heads); Horsemen Defeated is shared by Against the Horsemen and
     // Apocalypse is Here - each scenario's `input` branch below just reads the one(s) it needs.
-    var headsDefeated: Int by savedStateHandle.saveable("headsDefeated") { mutableStateOf(0) }
-    var horsemenDefeated: Int by savedStateHandle.saveable("horsemenDefeated") { mutableStateOf(0) }
-    var tezlaSpiritDefeated: Boolean by savedStateHandle.saveable("tezlaSpiritDefeated") { mutableStateOf(false) }
-    var darkTezlaDefeated: Boolean by savedStateHandle.saveable("darkTezlaDefeated") { mutableStateOf(false) }
-    var relicPiecesFound: Int by savedStateHandle.saveable("relicPiecesFound") { mutableStateOf(0) }
-    var destroyedSiteTokens: String by savedStateHandle.saveable("destroyedSiteTokens") { mutableStateOf("0") }
+    var headsDefeated: Int by resettable("headsDefeated", 0)
+    var horsemenDefeated: Int by resettable("horsemenDefeated", 0)
+    var tezlaSpiritDefeated: Boolean by resettable("tezlaSpiritDefeated", false)
+    var darkTezlaDefeated: Boolean by resettable("darkTezlaDefeated", false)
+    var relicPiecesFound: Int by resettable("relicPiecesFound", 0)
+    var destroyedSiteTokens: String by resettable("destroyedSiteTokens", "0")
     // Booleans, not the 0-3 floor number domain actually stores - since issue #100's fix, Solo
     // scoring only ever checks whether a floor was conquered, never which one, so the wizard maps
     // true/false to 1/0 in [input] below rather than asking the player to recall an irrelevant
     // floor number.
-    var zigguratFloorConquered: Boolean by savedStateHandle.saveable("zigguratFloorConquered") { mutableStateOf(false) }
-    var pyramidFloorConquered: Boolean by savedStateHandle.saveable("pyramidFloorConquered") { mutableStateOf(false) }
+    var zigguratFloorConquered: Boolean by resettable("zigguratFloorConquered", false)
+    var pyramidFloorConquered: Boolean by resettable("pyramidFloorConquered", false)
 
     // Solo Conquest Challenge's Knight-specific fields below - only one Knight's block is ever
     // read for a given session (see the `when (knight)` in [input]'s SoloConquestChallenge
     // branch), so leaving the others at their defaults for a different Knight is harmless.
-    var woundCardsOnUnits: String by savedStateHandle.saveable("woundCardsOnUnits") { mutableStateOf("0") }
+    var woundCardsOnUnits: String by resettable("woundCardsOnUnits", "0")
     // Goldyx: one checkbox per CardColor, deriving distinctCrystalColorsInInventory the same way
     // Solo Conquest's city1Conquered/city2Conquered derive citiesConquered.
-    var goldyxRedCrystal: Boolean by savedStateHandle.saveable("goldyxRedCrystal") { mutableStateOf(false) }
-    var goldyxGreenCrystal: Boolean by savedStateHandle.saveable("goldyxGreenCrystal") { mutableStateOf(false) }
-    var goldyxBlueCrystal: Boolean by savedStateHandle.saveable("goldyxBlueCrystal") { mutableStateOf(false) }
-    var goldyxWhiteCrystal: Boolean by savedStateHandle.saveable("goldyxWhiteCrystal") { mutableStateOf(false) }
-    var puppetMasterHighestFameValue: String by savedStateHandle.saveable("puppetMasterHighestFameValue") { mutableStateOf("0") }
-    var puppetMasterDistinctFameValues: String by savedStateHandle.saveable("puppetMasterDistinctFameValues") { mutableStateOf("0") }
-    var allBasicActionsInDeck: Boolean by savedStateHandle.saveable("allBasicActionsInDeck") { mutableStateOf(false) }
+    var goldyxRedCrystal: Boolean by resettable("goldyxRedCrystal", false)
+    var goldyxGreenCrystal: Boolean by resettable("goldyxGreenCrystal", false)
+    var goldyxBlueCrystal: Boolean by resettable("goldyxBlueCrystal", false)
+    var goldyxWhiteCrystal: Boolean by resettable("goldyxWhiteCrystal", false)
+    var puppetMasterHighestFameValue: String by resettable("puppetMasterHighestFameValue", "0")
+    var puppetMasterDistinctFameValues: String by resettable("puppetMasterDistinctFameValues", "0")
+    var allBasicActionsInDeck: Boolean by resettable("allBasicActionsInDeck", false)
     // Braevalar: one checkbox per CardColor, deriving distinctAdvancedActionColorsInDeck.
-    var braevalarRedAdvancedAction: Boolean by savedStateHandle.saveable("braevalarRedAdvancedAction") { mutableStateOf(false) }
-    var braevalarGreenAdvancedAction: Boolean by savedStateHandle.saveable("braevalarGreenAdvancedAction") { mutableStateOf(false) }
-    var braevalarBlueAdvancedAction: Boolean by savedStateHandle.saveable("braevalarBlueAdvancedAction") { mutableStateOf(false) }
-    var braevalarWhiteAdvancedAction: Boolean by savedStateHandle.saveable("braevalarWhiteAdvancedAction") { mutableStateOf(false) }
+    var braevalarRedAdvancedAction: Boolean by resettable("braevalarRedAdvancedAction", false)
+    var braevalarGreenAdvancedAction: Boolean by resettable("braevalarGreenAdvancedAction", false)
+    var braevalarBlueAdvancedAction: Boolean by resettable("braevalarBlueAdvancedAction", false)
+    var braevalarWhiteAdvancedAction: Boolean by resettable("braevalarWhiteAdvancedAction", false)
     // An Int (not String), driven by NumberPillPicker(2..5) - same rationale as graveyardsSealed.
     // Defaults to 2 (the range's minimum), matching the domain field's own non-zero default -
     // see SoloConquestChallengeScoringInput.finalSpaceMoveCostAtNight's KDoc for why 0 can't be
     // used as the usual "not this Knight" sentinel here.
-    var finalSpaceMoveCostAtNight: Int by savedStateHandle.saveable("finalSpaceMoveCostAtNight") { mutableStateOf(2) }
+    var finalSpaceMoveCostAtNight: Int by resettable("finalSpaceMoveCostAtNight", 2)
 
     // Combat/Race Level are shared by both Volkare scenarios (same two enums, same
     // VOLKARE_DIFFICULTY page). cardsRemainingInVolkaresDeck is also shared, even though the two
     // domain input types name it slightly differently (cardsRemainingInVolkaresDeck vs
     // cardsRemainingInVolkareDeck) - see the `when` in [input] for the mapping.
-    var combatLevel: CombatLevel by savedStateHandle.saveable("combatLevel") { mutableStateOf(CombatLevel.entries.first()) }
-    var raceLevel: RaceLevel by savedStateHandle.saveable("raceLevel") { mutableStateOf(RaceLevel.entries.first()) }
-    var volkareCitiesConquered: Int by savedStateHandle.saveable("volkareCitiesConquered") { mutableStateOf(0) }
-    var volkareDefeated: Boolean by savedStateHandle.saveable("volkareDefeated") { mutableStateOf(false) }
-    var cardsRemainingInVolkaresDeck: String by savedStateHandle.saveable("cardsRemainingInVolkaresDeck") { mutableStateOf("0") }
-    var cityConquered: Boolean by savedStateHandle.saveable("cityConquered") { mutableStateOf(false) }
+    var combatLevel: CombatLevel by resettable("combatLevel", CombatLevel.entries.first())
+    var raceLevel: RaceLevel by resettable("raceLevel", RaceLevel.entries.first())
+    var volkareCitiesConquered: Int by resettable("volkareCitiesConquered", 0)
+    var volkareDefeated: Boolean by resettable("volkareDefeated", false)
+    var cardsRemainingInVolkaresDeck: String by resettable("cardsRemainingInVolkaresDeck", "0")
+    var cityConquered: Boolean by resettable("cityConquered", false)
 
     // Which ReputationTrackSpace the player's Shield token sits on, stored by enum name rather
     // than an invented numeric index - the physical track only ever shows one number per space
     // (see ReputationTrackSpace), so the player just picks that one space
     // (ScoreCalculatorScreen's ReputationTrackPicker) and everything else For the Council's
     // scoring needs is derived from it.
-    var reputationTrackSpaceName: String by savedStateHandle.saveable("reputationTrackSpaceName") { mutableStateOf(ReputationTrackSpace.CENTER.name) }
+    var reputationTrackSpaceName: String by resettable("reputationTrackSpaceName", ReputationTrackSpace.CENTER.name)
 
     // Shared by every scenario except For the Council (which has no Standard Achievements at
     // all - see the `when` in [input]), so it's factored out instead of repeated 4 times.
@@ -340,67 +365,12 @@ class ScoreCalculatorViewModel(
     /**
      * Clears every field back to its default, for the "New scoring session" action - the
      * ViewModel would otherwise keep showing a finished session's data indefinitely, since its
-     * whole reason for existing (per ADR-0002) is to *not* reset itself on tab switches.
+     * whole reason for existing (per ADR-0002) is to *not* reset itself on tab switches. Each
+     * field's default lives next to its declaration (see [resettable]) rather than being
+     * hand-listed here, so a new field can't be added without also wiring up its reset.
      */
     fun reset() {
-        pageIndex = 0
-        scenarioId = Scenario.SoloConquest.id
-        knight = Knight.entries.first()
-        playerName = ""
-        fame = "0"
-        spellsInDeck = "0"
-        advancedActionsInDeck = "0"
-        unitLevel1Healthy = "0"
-        unitLevel1Wounded = "0"
-        unitLevel2Healthy = "0"
-        unitLevel2Wounded = "0"
-        unitLevel3Healthy = "0"
-        unitLevel3Wounded = "0"
-        unitLevel4Healthy = "0"
-        unitLevel4Wounded = "0"
-        shieldsOnAdventureSites = "0"
-        artifacts = "0"
-        crystalsInInventory = "0"
-        shieldsOnConquerSites = "0"
-        woundsInDeck = "0"
-        questPoints = "0"
-        city1Conquered = false
-        city2Conquered = false
-        roundsFinishedEarly = "0"
-        cardsRemainingInDummyDeck = "0"
-        endOfRoundAnnounced = true
-        cityRevealed = false
-        highPriestessDefeated = false
-        graveyardsSealed = 0
-        necromancerDefeated = false
-        reputationTrackSpaceName = ReputationTrackSpace.CENTER.name
-        headsDefeated = 0
-        horsemenDefeated = 0
-        tezlaSpiritDefeated = false
-        darkTezlaDefeated = false
-        relicPiecesFound = 0
-        destroyedSiteTokens = "0"
-        zigguratFloorConquered = false
-        pyramidFloorConquered = false
-        woundCardsOnUnits = "0"
-        goldyxRedCrystal = false
-        goldyxGreenCrystal = false
-        goldyxBlueCrystal = false
-        goldyxWhiteCrystal = false
-        puppetMasterHighestFameValue = "0"
-        puppetMasterDistinctFameValues = "0"
-        allBasicActionsInDeck = false
-        braevalarRedAdvancedAction = false
-        braevalarGreenAdvancedAction = false
-        braevalarBlueAdvancedAction = false
-        braevalarWhiteAdvancedAction = false
-        finalSpaceMoveCostAtNight = 2
-        combatLevel = CombatLevel.entries.first()
-        raceLevel = RaceLevel.entries.first()
-        volkareCitiesConquered = 0
-        volkareDefeated = false
-        cardsRemainingInVolkaresDeck = "0"
-        cityConquered = false
+        resettables.forEach { it() }
     }
 
     /**
