@@ -610,38 +610,13 @@ private fun DeckPanel(showSummary: Boolean, onToggleSummary: () -> Unit, content
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TableauBody(session: DummyPlayerSession) {
-    // Cards and Crystals side by side, in matching label-above-content shape (a "Cards" title
-    // mirroring "Crystals", each above their own value row) - issue feedback was that Crystals had
-    // a title above its icons but the card count didn't, reading as asymmetric. Matches
-    // ProxyPlayerScreen.kt's ProxyPlayerTableauBody.
-    Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                "Cards",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
-                Text(
-                    "left in deck",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                "Crystals",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                CardColor.entries.forEach { color ->
-                    repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
-                }
-            }
-        }
+    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
+        Text(
+            "left in deck",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 
     // heightIn(min) reserves 2 rows' worth of space always, so the panel shrinks/grows by at most
@@ -655,15 +630,43 @@ private fun TableauBody(session: DummyPlayerSession) {
         session.deckOrder.sortedBy { it.sortKey() }.forEach { identity -> MiniCard(colors = identity.colors()) }
     }
 
+    // Cards and Crystals side by side, in matching label-above-content shape (a "Cards" title
+    // mirroring "Crystals", each above their own value row) - issue feedback was that Crystals had
+    // a title above its icons but the per-color card breakdown didn't, reading as asymmetric.
+    // Matches ProxyPlayerScreen.kt's ProxyPlayerTableauBody.
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        CardColor.entries.forEach { color ->
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "Cards",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                CardColorDot(color = color)
-                Text(
-                    session.remainingByColor.getValue(color).toString(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                CardColor.entries.forEach { color ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        CardColorDot(color = color)
+                        Text(
+                            session.remainingByColor.getValue(color).toString(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "Crystals",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                CardColor.entries.forEach { color ->
+                    repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
+                }
             }
         }
     }
