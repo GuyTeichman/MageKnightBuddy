@@ -139,7 +139,10 @@ fun VolkareAiScreen(repository: VolkareSessionRepository, onBack: () -> Unit) {
                 },
                 actions = {
                     if (session != null) {
-                        VolkareRoundChip(round = session.round, turn = session.turnInRound)
+                        // Shares `DummyPlayerScreen.kt`'s `RoundChip` (issue #180) instead of the
+                        // Volkare-local copy this used to have, so all 3 modes' chips - including
+                        // their day/night indicator - stay identical by construction.
+                        RoundChip(round = session.round, turn = session.turnInRound, isDay = session.isDay)
                         Spacer(modifier = Modifier.width(8.dp))
                     }
                 },
@@ -215,19 +218,6 @@ fun VolkareAiScreen(repository: VolkareSessionRepository, onBack: () -> Unit) {
                 }
             }
         }
-    }
-}
-
-/**
- * The pill-shaped "ROUND N · TURN M" indicator in the top bar - a Volkare-mode-local copy of
- * `DummyPlayerScreen.kt`'s `RoundChip`. [turn] is [VolkareSession.turnInRound] (issue #125) - see
- * that property's doc comment for why Volkare gets this treatment too even though he has no
- * Knight: the turn-within-round count is about session/round state, not Knight identity.
- */
-@Composable
-private fun VolkareRoundChip(round: Int, turn: Int) {
-    Surface(shape = RoundedCornerShape(percent = 50), color = MaterialTheme.colorScheme.secondaryContainer) {
-        Text("ROUND $round · TURN $turn", modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium)
     }
 }
 

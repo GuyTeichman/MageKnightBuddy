@@ -49,7 +49,43 @@ class RestoreGamePreviewTest {
 
         val preview = loadRestoreGamePreview(repository, volkareRepository, proxyPlayerRepository)
 
-        assertEquals(RestoreGamePreview(DummyPlayerMode.STANDARD, Knight.ARYTHEA, round = 1, turn = 2), preview)
+        // Round 1 with startsAtNight = false is a Day round (docs/rules/proxy-player.md's
+        // "Day/night": odd Rounds are day by default).
+        assertEquals(RestoreGamePreview(DummyPlayerMode.STANDARD, Knight.ARYTHEA, round = 1, turn = 2, isDay = true), preview)
+    }
+
+    @Test
+    fun `loadRestoreGamePreview reports a night round when the session started at night`() = runTest {
+        val (repository, volkareRepository, proxyPlayerRepository) = repositories()
+        val session = DummyPlayerSession.start(
+            Knight.ARYTHEA,
+            startsAtNight = true,
+            deckOrder = List(6) { CardIdentity.SingleColor(CardColor.RED) },
+        ).playTurn()
+        repository.save(session, updatedAt = 1000)
+
+        val preview = loadRestoreGamePreview(repository, volkareRepository, proxyPlayerRepository)
+
+        // Round 1 with startsAtNight = true flips the parity, so Round 1 is Night.
+        assertEquals(RestoreGamePreview(DummyPlayerMode.STANDARD, Knight.ARYTHEA, round = 1, turn = 1, isDay = false), preview)
+    }
+
+    @Test
+    fun `loadRestoreGamePreview reports a day round for an even round of a session that started at night`() = runTest {
+        val (repository, volkareRepository, proxyPlayerRepository) = repositories()
+        // endRound() advances to Round 2, which is Day for a session that started at night.
+        val session = VolkareSession.start(
+            Scenario.VolkaresReturn,
+            RaceLevel.FAIR,
+            woundCount = 0,
+            startsAtNight = true,
+            deckOrder = List(3) { VolkareCard.BasicAction(CardColor.RED) },
+        ).playTurn().endRound()
+        volkareRepository.save(session, updatedAt = 1000)
+
+        val preview = loadRestoreGamePreview(repository, volkareRepository, proxyPlayerRepository)
+
+        assertEquals(RestoreGamePreview(DummyPlayerMode.VOLKARE, knight = null, round = 2, turn = 0, isDay = true), preview)
     }
 
     @Test
@@ -65,7 +101,7 @@ class RestoreGamePreviewTest {
 
         val preview = loadRestoreGamePreview(repository, volkareRepository, proxyPlayerRepository)
 
-        assertEquals(RestoreGamePreview(DummyPlayerMode.VOLKARE, knight = null, round = 1, turn = 1), preview)
+        assertEquals(RestoreGamePreview(DummyPlayerMode.VOLKARE, knight = null, round = 1, turn = 1, isDay = true), preview)
     }
 
     @Test
@@ -79,7 +115,7 @@ class RestoreGamePreviewTest {
 
         val preview = loadRestoreGamePreview(repository, volkareRepository, proxyPlayerRepository)
 
-        assertEquals(RestoreGamePreview(DummyPlayerMode.PROXY_PLAYER, Knight.GOLDYX, round = 1, turn = 1), preview)
+        assertEquals(RestoreGamePreview(DummyPlayerMode.PROXY_PLAYER, Knight.GOLDYX, round = 1, turn = 1, isDay = true), preview)
     }
 
     @Test
