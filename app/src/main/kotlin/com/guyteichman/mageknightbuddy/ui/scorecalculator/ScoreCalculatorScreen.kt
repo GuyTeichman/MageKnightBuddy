@@ -6,7 +6,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -32,6 +35,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
@@ -294,7 +299,15 @@ fun ScoreCalculatorScreen(
     // something that needs to survive a tab switch.
     var showResetConfirmation by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // imePadding() shrinks this Box by however tall the soft keyboard currently is, so the
+    // wizard's navigation row (and the reset FAB) stay above the keyboard instead of being
+    // covered by it (issue #173). The scrollable field area inside gives up the space, and
+    // Compose scrolls the focused text field back into view on its own.
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding(),
+    ) {
         WizardContent(
             viewModel = viewModel,
             wizardPages = wizardPages,
@@ -350,6 +363,9 @@ private fun WizardContent(
     scope: CoroutineScope,
     onDone: () -> Unit,
 ) {
+    // Used by the pages below to dismiss the keyboard when the last field's "Done" key is tapped.
+    val focusManager = LocalFocusManager.current
+
     Column(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -404,13 +420,25 @@ private fun WizardContent(
                         value = viewModel.playerName,
                         onValueChange = { viewModel.playerName = it },
                         label = { Text("Player name (optional)") },
+                        // Last (and only) text field on this page, so the keyboard's action key
+                        // just dismisses itself rather than offering a "next field" jump.
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 WizardPage.FAME -> NumberField(label = "Fame", value = viewModel.fame, onValueChange = { viewModel.fame = it })
                 WizardPage.GREATEST_KNOWLEDGE -> {
-                    NumberField(label = "Spells in deck", value = viewModel.spellsInDeck, onValueChange = { viewModel.spellsInDeck = it })
+                    // Two fields on this page: the first offers "Next" (jump to the second), the
+                    // second keeps NumberField's default "Done" (dismiss the keyboard). Same
+                    // pattern on every other multi-field page below.
+                    NumberField(
+                        label = "Spells in deck",
+                        value = viewModel.spellsInDeck,
+                        onValueChange = { viewModel.spellsInDeck = it },
+                        imeAction = ImeAction.Next,
+                    )
                     NumberField(
                         label = "Advanced Actions in deck",
                         value = viewModel.advancedActionsInDeck,
@@ -419,10 +447,19 @@ private fun WizardContent(
                 }
                 WizardPage.GREATEST_LEADER -> {
                     Text("Units (healthy / wounded, per level)", style = MaterialTheme.typography.labelLarge)
+                    // Rows 1-3 chain straight on to the next row's fields; only level 4's
+                    // "Wounded" field ends the page, so it's the one that shows "Done".
                     UnitLevelRow(1, viewModel.unitLevel1Healthy, { viewModel.unitLevel1Healthy = it }, viewModel.unitLevel1Wounded, { viewModel.unitLevel1Wounded = it })
                     UnitLevelRow(2, viewModel.unitLevel2Healthy, { viewModel.unitLevel2Healthy = it }, viewModel.unitLevel2Wounded, { viewModel.unitLevel2Wounded = it })
                     UnitLevelRow(3, viewModel.unitLevel3Healthy, { viewModel.unitLevel3Healthy = it }, viewModel.unitLevel3Wounded, { viewModel.unitLevel3Wounded = it })
-                    UnitLevelRow(4, viewModel.unitLevel4Healthy, { viewModel.unitLevel4Healthy = it }, viewModel.unitLevel4Wounded, { viewModel.unitLevel4Wounded = it })
+                    UnitLevelRow(
+                        4,
+                        viewModel.unitLevel4Healthy,
+                        { viewModel.unitLevel4Healthy = it },
+                        viewModel.unitLevel4Wounded,
+                        { viewModel.unitLevel4Wounded = it },
+                        woundedImeAction = ImeAction.Done,
+                    )
                 }
                 WizardPage.GREATEST_ADVENTURER -> NumberField(
                     label = "Shields on adventure sites",
@@ -430,7 +467,12 @@ private fun WizardContent(
                     onValueChange = { viewModel.shieldsOnAdventureSites = it },
                 )
                 WizardPage.GREATEST_LOOT -> {
-                    NumberField(label = "Artifacts", value = viewModel.artifacts, onValueChange = { viewModel.artifacts = it })
+                    NumberField(
+                        label = "Artifacts",
+                        value = viewModel.artifacts,
+                        onValueChange = { viewModel.artifacts = it },
+                        imeAction = ImeAction.Next,
+                    )
                     NumberField(
                         label = "Crystals in Inventory",
                         value = viewModel.crystalsInInventory,
@@ -611,6 +653,7 @@ private fun WizardContent(
                         label = "Highest Fame value among held Enemy tokens",
                         value = viewModel.puppetMasterHighestFameValue,
                         onValueChange = { viewModel.puppetMasterHighestFameValue = it },
+                        imeAction = ImeAction.Next,
                     )
                     NumberField(
                         label = "Distinct Fame values among held Enemy tokens",
