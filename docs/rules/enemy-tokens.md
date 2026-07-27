@@ -58,3 +58,21 @@ The grey / violet / brown / red / white enemy piles and the ruin pile, plus the 
 Shades of Tezla, and Apocalypse Dragon tokens, are not transcribed yet — the green pile is the
 first vertical slice (issue #178). The same "Enemy Tokens List" reference sheet covers every base
 and Lost Legion token and will be the source for the rest.
+
+## Follow-up work (issue #178)
+
+Tracked as GitHub sub-issues of #178:
+
+- Remaining base-game piles — grey/violet/brown/red/white + ruins (#187)
+- Lost Legion & Shades of Tezla tokens (#188)
+- Apocalypse Dragon — possessed enemies & faction tokens (#189); faction tokens → Score Calculator (#190)
+- Explicit Summon Draw action (#191)
+- Multi-pile simultaneous draw & large-batch display (#192)
+- Credits screen + art licensing review (#193)
+- Bug: destructive DB migration crash-loop on upgrade (#194)
+- Chore: refresh CLAUDE.md's stale scope line (#195)
+
+Design context lives in `CONTEXT.md` (Enemy Picker glossary), [ADR-0006](../adr/0006-enemy-picker-owns-pile-state-but-models-no-map.md),
+[ADR-0007](../adr/0007-token-catalogue-as-json-in-domain-resources.md), and
+`docs/design/architecture.md`. The art/data extraction method is in project memory
+(`tts_mod_asset_extraction.md`).
