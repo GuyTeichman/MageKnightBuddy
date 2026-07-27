@@ -36,5 +36,4 @@ internal fun AttackModifier.describe(): Pair<String, String> = when (this) {
     AttackModifier.PARALYZE -> "Paralyze" to "A wounded Unit is destroyed; a wounded Hero discards non-Wound cards."
     AttackModifier.ASSASSINATION -> "Assassination" to "Unblocked damage must all be assigned to the Hero, never Units."
     AttackModifier.CUMBERSOME -> "Cumbersome" to "May be reduced by spending Move points during the Block phase."
-    AttackModifier.SUMMON -> "Summon" to "Draws a random brown token to fight in its place (a Summon Draw)."
 }

@@ -59,6 +59,6 @@
     "copies": 2,
     "armor": 4,
     "fame": 4,
-    "attacks": [{ "value": 0, "modifiers": ["SUMMON"] }]
+    "attacks": [{ "summons": "BROWN" }]
   }
 ]

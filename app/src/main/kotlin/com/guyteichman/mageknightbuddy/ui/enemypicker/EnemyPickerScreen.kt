@@ -428,8 +428,13 @@ private fun TokenZoomDialog(
                     EnemyTokenFace(token = token, size = 140.dp)
                     Text(token.statLine(), style = MaterialTheme.typography.titleMedium)
                     token.attacks.forEach { attack ->
-                        val mods = if (attack.modifiers.isEmpty()) "" else " (" + attack.modifiers.joinToString { it.describe().first } + ")"
-                        Text("Attack ${attack.value} · ${attack.element.displayName()}$mods")
+                        if (attack.isSummon) {
+                            // A summon has no attack value - it draws a replacement from another pile.
+                            Text("Summons a ${attack.summons?.summonName() ?: "token"}")
+                        } else {
+                            val mods = if (attack.modifiers.isEmpty()) "" else " (" + attack.modifiers.joinToString { it.describe().first } + ")"
+                            Text("Attack ${attack.value} · ${attack.element.displayName()}$mods")
+                        }
                     }
                 }
                 if (state.tokenIds.size > 1) {
@@ -456,6 +461,10 @@ private fun TokenInfoDialog(token: EnemyToken, onDismiss: () -> Unit) {
         token.resistances.forEach { add(it.displayName() + " Resistance" to "Attacks of this element are inefficient (halved).") }
         token.abilities.forEach { add(it.describe()) }
         token.attacks.flatMap { it.modifiers }.distinct().forEach { add(it.describe()) }
+        // Summon isn't a modifier - it's a whole different kind of attack - so describe it here.
+        token.attacks.filter { it.isSummon }.forEach {
+            add("Summon" to "At the start of the Block phase, draws a ${it.summons?.summonName() ?: "token"} token to fight in its place.")
+        }
     }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -508,9 +517,22 @@ private fun FlagDialog(entry: DrawLogEntry, onSave: (Boolean, String) -> Unit, o
 /** Largest number of tokens a single stepper draw allows - a sanity cap, well above any real need. */
 private const val MAX_BATCH = 20
 
-/** "A3 · 4⚔ · 2✦" style compact stat line for a token. */
-private fun EnemyToken.statLine(): String =
-    "Armor $armor · Fame $fame" + (attacks.firstOrNull()?.let { " · Attack ${it.value}" } ?: "")
+/** "Armor 3 · Fame 2 · Attack 4" style stat line for a token (a summoner shows "Summon", no value). */
+private fun EnemyToken.statLine(): String {
+    val attack = attacks.firstOrNull()
+    val attackPart = when {
+        attack == null -> ""
+        attack.isSummon -> " · Summon"
+        else -> " · Attack ${attack.value}"
+    }
+    return "Armor $armor · Fame $fame$attackPart"
+}
+
+/** Player-facing name of a summoned pile, e.g. "Brown enemy" (used in the zoom's "Summons a …" line). */
+private fun TokenPileId.summonName(): String = when (this) {
+    TokenPileId.BROWN -> "Brown enemy"
+    else -> displayName()
+}
 
 /** Player-facing pile name. */
 private fun TokenPileId.displayName(): String = when (this) {

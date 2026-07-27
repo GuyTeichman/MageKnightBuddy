@@ -15,7 +15,9 @@ import kotlin.test.assertTrue
 class TokenCatalogueTest {
 
     // Expected physical token count per pile (copies summed). Grows as each pile is transcribed;
-    // for now only the green Marauding Orcs pile exists - 6 types x 2 copies = 12 (see the rules doc).
+    // for now only the *base game's* green Marauding Orcs are in - 6 types x 2 copies = 12 (see the
+    // rules doc). Green isn't finished: the Lost Legion's own green Marauding Orcs come later, and
+    // will raise this number when they're added.
     private val expectedPileCounts = mapOf(
         TokenPileId.GREEN to 12,
     )
@@ -37,7 +39,21 @@ class TokenCatalogueTest {
             assertTrue(token.copies >= 1, "${token.id} has copies < 1")
             assertTrue(token.armor >= 0, "${token.id} has negative armor")
             assertTrue(token.fame >= 0, "${token.id} has negative fame")
-            token.attacks.forEach { assertTrue(it.value >= 0, "${token.id} has a negative attack value") }
+            token.attacks.forEach { attack ->
+                attack.value?.let { assertTrue(it >= 0, "${token.id} has a negative attack value") }
+            }
+        }
+    }
+
+    @Test
+    fun `every attack is either a numeric attack or a summon, never both or neither`() {
+        TokenCatalogue.tokens.forEach { token ->
+            token.attacks.forEach { attack ->
+                assertTrue(
+                    (attack.value != null) != (attack.summons != null),
+                    "${token.id} has an attack that is neither purely numeric nor purely a summon: $attack",
+                )
+            }
         }
     }
 
@@ -92,8 +108,11 @@ class TokenCatalogueTest {
     }
 
     @Test
-    fun `Orc Summoners has a Summon attack`() {
+    fun `Orc Summoners summons a brown token instead of attacking`() {
         val summoners = assertNotNull(TokenCatalogue.byId("green_orc_summoners"))
-        assertTrue(summoners.attacks.single().modifiers.contains(AttackModifier.SUMMON))
+        val attack = summoners.attacks.single()
+        assertTrue(attack.isSummon)
+        assertEquals(TokenPileId.BROWN, attack.summons)
+        assertEquals(null, attack.value)
     }
 }

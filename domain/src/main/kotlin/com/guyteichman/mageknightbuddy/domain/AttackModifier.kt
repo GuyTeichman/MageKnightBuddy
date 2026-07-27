@@ -29,12 +29,4 @@ enum class AttackModifier {
 
     /** May be reduced by spending Move points in the Block phase (Quick Reference Sheet, Cumbersome). */
     CUMBERSOME,
-
-    /**
-     * Instead of attacking, at the start of the Block phase a random brown token is drawn to
-     * replace this enemy for the Block/Assign-Damage phases (Quick Reference Sheet, Summon). In the
-     * Enemy Picker this is a Summon Draw - an explicit action, not an automatic reveal (see
-     * `CONTEXT.md`'s "Summon Draw"); not exercised by the green pile.
-     */
-    SUMMON,
 }

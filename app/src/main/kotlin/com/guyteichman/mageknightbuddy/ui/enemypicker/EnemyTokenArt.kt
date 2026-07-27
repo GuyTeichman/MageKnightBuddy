@@ -52,8 +52,12 @@ internal fun EnemyTokenFace(token: EnemyToken, size: Dp = 96.dp) {
                 maxLines = 3,
             )
             Text(
-                // Compact stat line: Armor / topmost Attack / Fame.
-                text = "A${token.armor} · ${token.attacks.firstOrNull()?.value ?: 0}⚔ · ${token.fame}✦",
+                // Compact stat line: Armor / topmost Attack / Fame. A summon shows "S" (no value).
+                text = run {
+                    val attack = token.attacks.firstOrNull()
+                    val atk = if (attack?.isSummon == true) "S" else "${attack?.value ?: 0}"
+                    "A${token.armor} · $atk⚔ · ${token.fame}✦"
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

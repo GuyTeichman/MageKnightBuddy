@@ -44,11 +44,13 @@ Each round enemy token prints three numbers plus icons:
 | Cursed Hags   | 2 | 5 | 3 | Physical | Poison | 3 | — |
 | Wolf Riders   | 2 | 4 | 3 | Physical | Swift | 3 | — |
 | Ironclads     | 2 | 3 | 4 | Physical | Brutal | 4 | Physical Resistance |
-| Orc Summoners | 2 | 4 | — (Summon) | — | Summon | 4 | — |
+| Orc Summoners | 2 | 4 | — | — | Summon → Brown | 4 | — |
 
 Ability meanings are on the Quick Reference Sheet ("Enemy Token Abilities"); they're mirrored in
-the app's info window (`EnemyAbilityText.kt`). Summon: at the start of the Block phase a random
-brown token is drawn to fight in the summoner's place (see `CONTEXT.md`'s "Summon Draw").
+the app's info window (`EnemyAbilityText.kt`). **Orc Summoners has no printed attack value** — at
+the start of the Block phase it draws a **brown** token to fight in its place (see `CONTEXT.md`'s
+"Summon Draw"). The summoned pile is recorded per-token in the catalogue rather than assumed to be
+brown, since possessed/expansion summoners can draw from other colours.
 
 ## Other piles
 
