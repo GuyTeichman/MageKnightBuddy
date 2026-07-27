@@ -1,0 +1,89 @@
+package com.guyteichman.mageknightbuddy.data
+
+import com.guyteichman.mageknightbuddy.domain.DrawLogEntry
+import com.guyteichman.mageknightbuddy.domain.EnemyAttack
+import com.guyteichman.mageknightbuddy.domain.EnemyPickerSession
+import com.guyteichman.mageknightbuddy.domain.EnemyToken
+import com.guyteichman.mageknightbuddy.domain.Expansion
+import com.guyteichman.mageknightbuddy.domain.TokenPile
+import com.guyteichman.mageknightbuddy.domain.TokenPileId
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+
+class EnemyPickerSessionMapperTest {
+
+    private val noShuffle: (List<String>) -> List<String> = { it }
+
+    private val greenA = EnemyToken(id = "orc_a", name = "Orc A", pile = TokenPileId.GREEN, expansion = Expansion.BASE, copies = 2, armor = 3, fame = 2, attacks = listOf(EnemyAttack(4)))
+    private val greenB = EnemyToken(id = "orc_b", name = "Orc B", pile = TokenPileId.GREEN, expansion = Expansion.BASE, copies = 1, armor = 4, fame = 3, attacks = listOf(EnemyAttack(3)))
+    private val catalogue = listOf(greenA, greenB)
+
+    @Test
+    fun `toEntity then toDomain round-trips a session with drawn and defeated log entries`() {
+        // Build realistic state via the session's own methods, not by hand-constructing it (per
+        // CLAUDE.md): start, draw two (one batch), then mark the first entry defeated.
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+            .draw(TokenPileId.GREEN, count = 2, batchId = 42L, shuffle = noShuffle)
+            .setDefeated(index = 0, defeated = true, note = "keep, NE tile")
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+
+        // Independent ground truth, reasoned out by hand from the fixture (green pile is
+        // [orc_a, orc_a, orc_b] under identity shuffle), NOT read off `session` - a bare
+        // assertEquals(session, roundTripped) can't tell a correct mapper from a buggy one that
+        // preserved wrong data (issue #150). Two draws take the two leading orc_a copies to the
+        // discard, leaving orc_b in the draw pile.
+        assertEquals(
+            TokenPile(drawPile = listOf("orc_b"), discardPile = listOf("orc_a", "orc_a")),
+            roundTripped.piles.getValue(TokenPileId.GREEN),
+        )
+        assertEquals(
+            listOf(
+                DrawLogEntry(tokenId = "orc_a", pile = TokenPileId.GREEN, batchId = 42L, defeated = true, note = "keep, NE tile"),
+                DrawLogEntry(tokenId = "orc_a", pile = TokenPileId.GREEN, batchId = 42L),
+            ),
+            roundTripped.drawLog,
+        )
+        assertEquals(setOf(Expansion.BASE), roundTripped.tokenSet)
+        assertEquals(false, roundTripped.drawWithReplacement)
+    }
+
+    @Test
+    fun `toEntity then toDomain round-trips the token set and draw-with-replacement config`() {
+        val session = EnemyPickerSession.start(
+            catalogue,
+            tokenSet = setOf(Expansion.BASE, Expansion.LOST_LEGION),
+            drawWithReplacement = true,
+            shuffle = noShuffle,
+        )
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+        assertEquals(setOf(Expansion.BASE, Expansion.LOST_LEGION), roundTripped.tokenSet)
+        assertEquals(true, roundTripped.drawWithReplacement)
+    }
+
+    @Test
+    fun `toEntity stamps the given updatedAt onto the entity`() {
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+
+        val entity = session.toEntity(updatedAt = 99L)
+
+        assertEquals(99L, entity.updatedAt)
+    }
+
+    @Test
+    fun `toEntity defaults updatedAt to roughly the current time when not given explicitly`() {
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+        val before = System.currentTimeMillis()
+
+        val entity = session.toEntity()
+
+        val after = System.currentTimeMillis()
+        assertTrue(entity.updatedAt in before..after)
+    }
+}

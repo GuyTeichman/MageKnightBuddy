@@ -1,0 +1,103 @@
+package com.guyteichman.mageknightbuddy.ui.enemypicker
+
+import android.content.Context
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.guyteichman.mageknightbuddy.domain.EnemyToken
+
+/**
+ * Renders an [EnemyToken]'s round token face at [size]. If the token's art has been bundled (an
+ * asset at `enemy-tokens/<id>.jpg`, per ADR-0007), it's drawn clipped to a circle; otherwise a
+ * readable text fallback stands in (name + Armor/Attack/Fame), the same graceful-degradation spirit
+ * as [com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon] - so the picker stays usable
+ * for tokens whose art isn't sourced yet.
+ *
+ * Token art lives as Android *assets* (not `res/drawable`) because it's a large, id-keyed set that
+ * grows token-by-token and is referenced by the catalogue's string id, not a generated R id - so a
+ * new token needs no code change, just a file. Base/expansion art is cropped from the TTS Mage
+ * Knight mod; Apocalypse Dragon's from its rulebook (see this folder's README).
+ */
+@Composable
+internal fun EnemyTokenFace(token: EnemyToken, size: Dp = 96.dp) {
+    val context = LocalContext.current
+    // Decode once per token id and cache across recompositions. The images are small (512x512),
+    // so decoding on the composition thread is cheap enough to not warrant a background loader/Coil.
+    val bitmap = remember(token.id) { loadTokenBitmap(context, token.id) }
+
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap,
+            contentDescription = token.name,
+            modifier = Modifier.size(size).clip(CircleShape),
+        )
+    } else {
+        TokenTextFallback(token = token, size = size)
+    }
+}
+
+/** Loads `enemy-tokens/<id>.jpg` from assets, or null if that token's art isn't bundled yet. */
+private fun loadTokenBitmap(context: Context, id: String): ImageBitmap? = try {
+    // assets.open throws if the file is absent - that's the "no art yet" signal, caught below.
+    context.assets.open("enemy-tokens/$id.jpg").use { stream ->
+        BitmapFactory.decodeStream(stream)?.asImageBitmap()
+    }
+} catch (_: Exception) {
+    null
+}
+
+/** The stand-in shown until a token's real art exists: a colored disc with its name and stat line. */
+@Composable
+private fun TokenTextFallback(token: EnemyToken, size: Dp) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = token.name,
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = TextAlign.Center,
+                maxLines = 3,
+            )
+            Text(
+                // Compact stat line: Armor / topmost Attack / Fame. A summon shows "S" (no value).
+                text = run {
+                    val attack = token.attacks.firstOrNull()
+                    val atk = if (attack?.isSummon == true) "S" else "${attack?.value ?: 0}"
+                    "A${token.armor} · $atk⚔ · ${token.fame}✦"
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}

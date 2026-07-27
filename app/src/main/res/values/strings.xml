@@ -3,4 +3,5 @@
     <string name="tab_scoreboard">Scoreboard</string>
     <string name="tab_score_calculator">Score</string>
     <string name="tab_dummy_player">Dummy Player</string>
+    <string name="tab_enemy_picker">Enemies</string>
 </resources>
