@@ -1,5 +1,6 @@
 package com.guyteichman.mageknightbuddy.ui
 
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
@@ -106,7 +107,14 @@ fun MageKnightBuddyApp(
         NavHost(
             navController = navController,
             startDestination = Tab.Scoreboard.route,
-            modifier = Modifier.padding(innerPadding),
+            // padding(innerPadding) keeps content clear of the bottom bar; consumeWindowInsets
+            // then tells any inset-aware modifier *inside* a screen (e.g. the score wizard's
+            // Modifier.imePadding()) that this much of the window insets is already accounted
+            // for, so it doesn't add the bottom bar's height a second time when the soft
+            // keyboard opens (issue #173).
+            modifier = Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding),
         ) {
             composable(Tab.Scoreboard.route) {
                 ScoreboardTab(
