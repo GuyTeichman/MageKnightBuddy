@@ -108,9 +108,10 @@ this in `CONTEXT.md`'s "Summon Draw" entry and in issue #191 so it isn't lost.
 v10→v11 bump on this branch rather than two.)*
 
 **New follow-up sub-issue(s) of #178 (net-new UI):**
-- **Issue A — Defeat UI + multi-draw grid:** D2 *UI half* (Defeat button on detail) + D3 grid
+- **[#197] Defeat UI + multi-draw grid:** D2 *UI half* (Defeat button on detail) + D3 grid
   (with per-cell Defeat checkboxes).
-- **Issue B — pile back-art + tap-to-draw:** D4.
+- **[#198] pile back-art + tap-to-draw:** D4.
 
-*(Open for the author to merge A and B into one issue if preferred.)*
+Note 3 (summoned tokens re-apply their own offensive abilities, D6) is documented on **#191**
+(the Summon Draw action) rather than being its own issue.
 

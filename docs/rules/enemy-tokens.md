@@ -72,8 +72,10 @@ Tracked as GitHub sub-issues of #178:
 - Remaining base-game piles — grey/violet/brown/red/white + ruins (#187)
 - Lost Legion & Shades of Tezla tokens (#188)
 - Apocalypse Dragon — possessed enemies & faction tokens (#189); faction tokens → Score Calculator (#190)
-- Explicit Summon Draw action (#191)
+- Explicit Summon Draw action (#191) — incl. summoned tokens applying their own offensive abilities
 - Multi-pile simultaneous draw & large-batch display (#192)
+- Defeat action (detail button) + multi-draw grid overview (#197)
+- Pile back-art on the selector + tap-to-draw-1 (#198)
 - Credits screen + art licensing review (#193)
 - Bug: destructive DB migration crash-loop on upgrade (#194)
 - Chore: refresh CLAUDE.md's stale scope line (#195)
