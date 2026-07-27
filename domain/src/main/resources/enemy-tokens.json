@@ -1,0 +1,64 @@
+[
+  {
+    "id": "green_prowlers",
+    "name": "Prowlers",
+    "pile": "GREEN",
+    "expansion": "BASE",
+    "copies": 2,
+    "armor": 3,
+    "fame": 2,
+    "attacks": [{ "value": 4 }]
+  },
+  {
+    "id": "green_diggers",
+    "name": "Diggers",
+    "pile": "GREEN",
+    "expansion": "BASE",
+    "copies": 2,
+    "armor": 3,
+    "fame": 2,
+    "attacks": [{ "value": 3 }],
+    "abilities": ["FORTIFIED"]
+  },
+  {
+    "id": "green_cursed_hags",
+    "name": "Cursed Hags",
+    "pile": "GREEN",
+    "expansion": "BASE",
+    "copies": 2,
+    "armor": 5,
+    "fame": 3,
+    "attacks": [{ "value": 3, "modifiers": ["POISON"] }]
+  },
+  {
+    "id": "green_wolf_riders",
+    "name": "Wolf Riders",
+    "pile": "GREEN",
+    "expansion": "BASE",
+    "copies": 2,
+    "armor": 4,
+    "fame": 3,
+    "attacks": [{ "value": 3, "modifiers": ["SWIFT"] }]
+  },
+  {
+    "id": "green_ironclads",
+    "name": "Ironclads",
+    "pile": "GREEN",
+    "expansion": "BASE",
+    "copies": 2,
+    "armor": 3,
+    "fame": 4,
+    "attacks": [{ "value": 4, "modifiers": ["BRUTAL"] }],
+    "resistances": ["PHYSICAL"]
+  },
+  {
+    "id": "green_orc_summoners",
+    "name": "Orc Summoners",
+    "pile": "GREEN",
+    "expansion": "BASE",
+    "copies": 2,
+    "armor": 4,
+    "fame": 4,
+    "attacks": [{ "value": 0, "modifiers": ["SUMMON"] }]
+  }
+]

@@ -1,6 +1,5 @@
 package com.guyteichman.mageknightbuddy.ui.enemypicker
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -23,28 +21,18 @@ import com.guyteichman.mageknightbuddy.domain.EnemyToken
 
 /**
  * Renders an [EnemyToken]'s round token face at [size]. Follows the same graceful-degradation
- * pattern as [com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon]: if the token's art
- * has been sourced (a drawable named after its [EnemyToken.id], per ADR-0007), it's drawn with
- * [Image]; otherwise a readable text fallback stands in (name + Armor/Attack/Fame), so the picker
- * is fully usable before the token art is bundled.
+ * spirit as [com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon]: until a token's real
+ * art is bundled, a readable text fallback stands in (name + Armor/Attack/Fame), so the picker is
+ * fully usable before any art exists.
+ *
+ * Token art itself is a separate follow-up (per ADR-0007 it will live as Android *assets* in
+ * `app/src/main/assets/enemy-tokens/`, named after each [EnemyToken.id], sourced from the TTS Mage
+ * Knight mod for base/expansion tokens and the Apocalypse Dragon rulebook for its own). Rendering an
+ * asset bitmap in Compose needs a small loader that isn't worth adding until the art lands, so this
+ * currently always shows the fallback.
  */
 @Composable
 internal fun EnemyTokenFace(token: EnemyToken, size: Dp = 96.dp) {
-    val resId = enemyTokenDrawableRes(token.id)
-    if (resId != null) {
-        Image(
-            painter = painterResource(resId),
-            contentDescription = token.name,
-            modifier = Modifier.size(size).clip(CircleShape),
-        )
-    } else {
-        TokenTextFallback(token = token, size = size)
-    }
-}
-
-/** The stand-in shown until a token's real art exists: a colored disc with its name and stat line. */
-@Composable
-private fun TokenTextFallback(token: EnemyToken, size: Dp) {
     Box(
         modifier = Modifier
             .size(size)
@@ -73,13 +61,3 @@ private fun TokenTextFallback(token: EnemyToken, size: Dp) {
         }
     }
 }
-
-/**
- * Maps a token [id] to its bundled art drawable, or null where the art hasn't been sourced yet -
- * exactly [com.guyteichman.mageknightbuddy.ui.components.Knight.shieldIconRes]'s pattern. Returns
- * null for every token today (token art is a separate follow-up: extracted from the TTS Mage Knight
- * mod for base/expansion tokens, and from the Apocalypse Dragon rulebook for its own). Each `when`
- * arm added here as art arrives points an id at its `R.drawable.enemy_<id>` asset.
- */
-@Suppress("UNUSED_PARAMETER")
-private fun enemyTokenDrawableRes(id: String): Int? = null
