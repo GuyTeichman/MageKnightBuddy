@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
                     dummyPlayerRepository = app.dummyPlayerSessionRepository,
                     volkareRepository = app.volkareSessionRepository,
                     proxyPlayerRepository = app.proxyPlayerSessionRepository,
+                    enemyPickerRepository = app.enemyPickerSessionRepository,
                     fieldHelp = app.fieldHelp,
                 )
             }

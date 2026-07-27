@@ -3,6 +3,7 @@ package com.guyteichman.mageknightbuddy.ui
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Scoreboard
 import androidx.compose.material3.Icon
@@ -22,10 +23,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.guyteichman.mageknightbuddy.R
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
+import com.guyteichman.mageknightbuddy.data.EnemyPickerSessionRepository
 import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.ui.dummyplayer.DummyPlayerTab
+import com.guyteichman.mageknightbuddy.ui.enemypicker.EnemyPickerTab
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.scoreboard.ScoreboardTab
 import com.guyteichman.mageknightbuddy.ui.scorecalculator.ScoreCalculatorScreen
@@ -33,19 +36,20 @@ import com.guyteichman.mageknightbuddy.ui.scorecalculator.ScoreCalculatorScreen
 /**
  * One entry in the bottom navigation bar. `sealed class` restricts every possible
  * Tab to the `data object`s declared inside it, so a `when` elsewhere that handles
- * all three is guaranteed by the compiler to be exhaustive.
+ * them all is guaranteed by the compiler to be exhaustive.
  */
 private sealed class Tab(val route: String, val labelRes: Int, val icon: ImageVector) {
     data object Scoreboard : Tab("scoreboard", R.string.tab_scoreboard, Icons.Filled.Scoreboard)
     data object ScoreCalculator : Tab("score_calculator", R.string.tab_score_calculator, Icons.Filled.Calculate)
     data object DummyPlayer : Tab("dummy_player", R.string.tab_dummy_player, Icons.Filled.Groups)
+    data object EnemyPicker : Tab("enemy_picker", R.string.tab_enemy_picker, Icons.Filled.Casino)
 }
 
-private val tabs = listOf(Tab.Scoreboard, Tab.ScoreCalculator, Tab.DummyPlayer)
+private val tabs = listOf(Tab.Scoreboard, Tab.ScoreCalculator, Tab.DummyPlayer, Tab.EnemyPicker)
 
 /**
- * Top-level app composable: builds the nav graph for the three bottom-nav tabs
- * (Scoreboard, Score Calculator, Dummy Player - see docs/design/architecture.md's
+ * Top-level app composable: builds the nav graph for the four bottom-nav tabs
+ * (Scoreboard, Score Calculator, Dummy Player, Enemies - see docs/design/architecture.md's
  * "Tab roadmap") and wires the bottom navigation bar to it. This is the root of the
  * whole UI tree, set as the content of MainActivity.
  */
@@ -55,6 +59,7 @@ fun MageKnightBuddyApp(
     dummyPlayerRepository: DummyPlayerSessionRepository,
     volkareRepository: VolkareSessionRepository,
     proxyPlayerRepository: ProxyPlayerSessionRepository,
+    enemyPickerRepository: EnemyPickerSessionRepository,
     fieldHelp: Map<String, FieldHelp>,
 ) {
     // rememberNavController creates the NavController once and keeps the same instance
@@ -123,6 +128,9 @@ fun MageKnightBuddyApp(
                     proxyPlayerRepository = proxyPlayerRepository,
                     fieldHelp = fieldHelp,
                 )
+            }
+            composable(Tab.EnemyPicker.route) {
+                EnemyPickerTab(repository = enemyPickerRepository)
             }
         }
     }

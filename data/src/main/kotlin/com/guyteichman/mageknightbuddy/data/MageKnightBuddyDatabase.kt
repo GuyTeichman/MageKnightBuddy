@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
 // behind the scenes. `exportSchema = false` skips writing that schema to a JSON file on disk,
 // since this project isn't tracking schema history for migrations yet.
 @Database(
-    entities = [ScoringSessionEntity::class, DummyPlayerSessionEntity::class, VolkareSessionEntity::class, ProxyPlayerSessionEntity::class],
+    entities = [ScoringSessionEntity::class, DummyPlayerSessionEntity::class, VolkareSessionEntity::class, ProxyPlayerSessionEntity::class, EnemyPickerSessionEntity::class],
     // Bumped 2 -> 3: ScoringSessionEntity's ~22 wide columns collapsed into a single inputJson
     // column (see ScoringInputDto). Bumped 3 -> 4: ScoringInputDto.ForTheCouncil's own shape
     // changed (reputationModifier/shieldOnXSpace/reputation -> one reputationTrackPosition).
@@ -45,8 +45,11 @@ import androidx.room.RoomDatabase
     // ProxyPlayerEventDto.ObjectiveResolved dropped its resolution field (the Proxy Player screen's
     // Explored/Completed buttons were merged into one, since the two outcomes have identical
     // tracked-state effect - see docs/rules/proxy-player.md's "Resolution") - same "JSON content
-    // shape changed, column didn't" reasoning as the 3 -> 4 and 4 -> 5 bumps above.
-    version = 10,
+    // shape changed, column didn't" reasoning as the 3 -> 4 and 4 -> 5 bumps above. Bumped 10 -> 11:
+    // added the new EnemyPickerSessionEntity table (enemy_picker_sessions) for the Enemy Picker's
+    // autosaved pile state (issue #178, ADR-0006) - no hand-written migration,
+    // fallbackToDestructiveMigration is fine pre-release, same as every prior bump.
+    version = 11,
     exportSchema = false,
 )
 abstract class MageKnightBuddyDatabase : RoomDatabase() {
@@ -56,4 +59,5 @@ abstract class MageKnightBuddyDatabase : RoomDatabase() {
     abstract fun dummyPlayerSessionDao(): DummyPlayerSessionDao
     abstract fun volkareSessionDao(): VolkareSessionDao
     abstract fun proxyPlayerSessionDao(): ProxyPlayerSessionDao
+    abstract fun enemyPickerSessionDao(): EnemyPickerSessionDao
 }
