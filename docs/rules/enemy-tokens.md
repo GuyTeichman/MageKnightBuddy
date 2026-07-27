@@ -27,10 +27,11 @@ Each round enemy token prints three numbers plus icons:
 - **Armor** — top, in a dark shield badge. Fortification/resistance icons sit beside it (a stone
   tower = **Fortified**; a pentagon containing a fist/flame/snowflake = resistance to that element).
 - **Attack** — left, in a stone-fist badge for a physical attack (a coloured element badge for a
-  magical one). Per-attack modifier icons sit beside it (winged arrow = **Swift**; flaming skull =
-  **Brutal**; green skull-droplet = **Poison**). A **Summon** token shows a brown-token icon here
-  instead of an attack number — it draws a brown token to fight in its place, so it has no printed
-  attack value.
+  magical one). Offensive-ability icons print beside it (winged arrow = **Swift**; flaming skull =
+  **Brutal**; green skull-droplet = **Poison**). Although these icons sit next to the attack, they
+  are **whole-token** abilities that apply to *every* attack the enemy makes (Lost Legion, "Multiple
+  Attacks") — not per-attack modifiers. A **Summon** token shows a brown-token icon here instead of
+  an attack number — it draws a brown token to fight in its place, so it has no printed attack value.
 - **Fame** — bottom, in a red banner.
 
 ## Green pile — Marauding Orcs (base game)
@@ -46,8 +47,13 @@ Each round enemy token prints three numbers plus icons:
 | Ironclads     | 2 | 3 | 4 | Physical | Brutal | 4 | Physical Resistance |
 | Orc Summoners | 2 | 4 | — | — | Summon → Brown | 4 | — |
 
-Ability meanings are on the Quick Reference Sheet ("Enemy Token Abilities"); they're mirrored in
-the app's info window (`EnemyAbilityText.kt`). **Orc Summoners has no printed attack value** — at
+Ability meanings are on the Quick Reference Sheet ("Enemy Token Abilities"), split into **offensive**
+(Swift/Brutal/Poison/Paralyze/Cumbersome/Assassination/Vampiric — modify the enemy's own attacks) and
+**defensive** (Fortified/Elusive/Arcane Immunity, plus element Resistances — govern how it's
+attacked). Both are whole-token; the domain models them as `EnemyToken.offensiveAbilities` /
+`defensiveAbilities` / `resistances` (see `CONTEXT.md`'s "Offensive / Defensive Ability"), and
+they're mirrored in the app's info window (`EnemyAbilityText.kt`). **Orc Summoners has no printed
+attack value** — at
 the start of the Block phase it draws a **brown** token to fight in its place (see `CONTEXT.md`'s
 "Summon Draw"). The summoned pile is recorded per-token in the catalogue rather than assumed to be
 brown, since possessed/expansion summoners can draw from other colours.

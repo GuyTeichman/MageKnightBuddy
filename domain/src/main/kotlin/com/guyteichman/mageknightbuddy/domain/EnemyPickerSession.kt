@@ -8,7 +8,7 @@ package com.guyteichman.mageknightbuddy.domain
  * game (ADR-0006); it models no map, and a drawn token is discarded immediately.
  *
  * Follows the same shape as [VolkareSession]/[DummyPlayerSession]: a private constructor with a
- * companion-object [start]/[restore] pair, and every mutating method ([draw], [flagStillInPlay],
+ * companion-object [start]/[restore] pair, and every mutating method ([draw], [setDefeated],
  * [reset]) returns a **new** session rather than mutating this one. Randomness is always injected
  * (`shuffle`) so tests are deterministic, mirroring [VolkareSession.start]'s explicit `deckOrder`.
  */
@@ -70,12 +70,13 @@ data class EnemyPickerSession private constructor(
     }
 
     /**
-     * Sets the "still in play" flag and free-text [note] on the [drawLog] entry at [index]
-     * (chronological order, since the log is append-only). Purely a memory aid: it changes only
-     * that one log entry and touches **no** [TokenPile], so draw odds are unaffected (ADR-0006).
+     * Sets the [defeated] flag and free-text [note] on the [drawLog] entry at [index] (chronological
+     * order, since the log is append-only) - the one-tap Defeat action, and its inverse. Purely a
+     * memory aid: it changes only that one log entry and touches **no** [TokenPile], so draw odds
+     * are unaffected (ADR-0006 - a defeated enemy was already discarded when it was drawn).
      */
-    fun flagStillInPlay(index: Int, stillInPlay: Boolean = true, note: String = ""): EnemyPickerSession {
-        val updated = drawLog[index].copy(stillInPlay = stillInPlay, note = note)
+    fun setDefeated(index: Int, defeated: Boolean = true, note: String = ""): EnemyPickerSession {
+        val updated = drawLog[index].copy(defeated = defeated, note = note)
         // toMutableList().also { it[index] = ... } replaces one element without mutating the
         // original list (drawLog stays untouched; a fresh list is stored on the copy).
         return copy(drawLog = drawLog.toMutableList().also { it[index] = updated })

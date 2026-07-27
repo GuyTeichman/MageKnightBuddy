@@ -48,7 +48,11 @@ import androidx.room.RoomDatabase
     // shape changed, column didn't" reasoning as the 3 -> 4 and 4 -> 5 bumps above. Bumped 10 -> 11:
     // added the new EnemyPickerSessionEntity table (enemy_picker_sessions) for the Enemy Picker's
     // autosaved pile state (issue #178, ADR-0006) - no hand-written migration,
-    // fallbackToDestructiveMigration is fine pre-release, same as every prior bump.
+    // fallbackToDestructiveMigration is fine pre-release, same as every prior bump. (v11 is still
+    // unshipped: while finalising #178 its drawLogJson content was reshaped - DrawLogEntryDto's
+    // stillInPlay field became defeated, and the token catalogue's ability model split into
+    // offensive/defensive - so any pre-merge v11 test DB should be reinstalled clean rather than
+    // carried over. No further bump, since v11 never shipped.)
     version = 11,
     exportSchema = false,
 )

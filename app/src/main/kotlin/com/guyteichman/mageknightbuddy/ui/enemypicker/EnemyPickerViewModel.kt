@@ -52,9 +52,9 @@ class EnemyPickerViewModel(
     /** Draws [count] tokens from [pileId] as one batch and autosaves. */
     suspend fun draw(pileId: TokenPileId, count: Int = 1) = mutate { it.draw(pileId, count) }
 
-    /** Sets the still-in-play flag / [note] on the Draw Log entry at [index] and autosaves. */
-    suspend fun flag(index: Int, stillInPlay: Boolean, note: String = "") =
-        mutate { it.flagStillInPlay(index, stillInPlay, note) }
+    /** Sets the defeated flag / [note] on the Draw Log entry at [index] and autosaves. */
+    suspend fun setDefeated(index: Int, defeated: Boolean, note: String = "") =
+        mutate { it.setDefeated(index, defeated, note) }
 
     /** Rebuilds every pile and clears the Draw Log, keeping the current config, then autosaves. */
     suspend fun reset() = mutate { it.reset(catalogue) }

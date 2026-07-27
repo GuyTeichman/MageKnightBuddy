@@ -20,12 +20,12 @@ class EnemyPickerSessionMapperTest {
     private val catalogue = listOf(greenA, greenB)
 
     @Test
-    fun `toEntity then toDomain round-trips a session with drawn and flagged log entries`() {
+    fun `toEntity then toDomain round-trips a session with drawn and defeated log entries`() {
         // Build realistic state via the session's own methods, not by hand-constructing it (per
-        // CLAUDE.md): start, draw two (one batch), then flag the first entry still-in-play.
+        // CLAUDE.md): start, draw two (one batch), then mark the first entry defeated.
         val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
             .draw(TokenPileId.GREEN, count = 2, batchId = 42L, shuffle = noShuffle)
-            .flagStillInPlay(index = 0, stillInPlay = true, note = "keep, NE tile")
+            .setDefeated(index = 0, defeated = true, note = "keep, NE tile")
 
         val roundTripped = session.toEntity().toDomain()
 
@@ -42,7 +42,7 @@ class EnemyPickerSessionMapperTest {
         )
         assertEquals(
             listOf(
-                DrawLogEntry(tokenId = "orc_a", pile = TokenPileId.GREEN, batchId = 42L, stillInPlay = true, note = "keep, NE tile"),
+                DrawLogEntry(tokenId = "orc_a", pile = TokenPileId.GREEN, batchId = 42L, defeated = true, note = "keep, NE tile"),
                 DrawLogEntry(tokenId = "orc_a", pile = TokenPileId.GREEN, batchId = 42L),
             ),
             roundTripped.drawLog,

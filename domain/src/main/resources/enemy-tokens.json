@@ -18,7 +18,7 @@
     "armor": 3,
     "fame": 2,
     "attacks": [{ "value": 3 }],
-    "abilities": ["FORTIFIED"]
+    "defensiveAbilities": ["FORTIFIED"]
   },
   {
     "id": "green_cursed_hags",
@@ -28,7 +28,8 @@
     "copies": 2,
     "armor": 5,
     "fame": 3,
-    "attacks": [{ "value": 3, "modifiers": ["POISON"] }]
+    "attacks": [{ "value": 3 }],
+    "offensiveAbilities": ["POISON"]
   },
   {
     "id": "green_wolf_riders",
@@ -38,7 +39,8 @@
     "copies": 2,
     "armor": 4,
     "fame": 3,
-    "attacks": [{ "value": 3, "modifiers": ["SWIFT"] }]
+    "attacks": [{ "value": 3 }],
+    "offensiveAbilities": ["SWIFT"]
   },
   {
     "id": "green_ironclads",
@@ -48,8 +50,9 @@
     "copies": 2,
     "armor": 3,
     "fame": 4,
-    "attacks": [{ "value": 4, "modifiers": ["BRUTAL"] }],
-    "resistances": ["PHYSICAL"]
+    "attacks": [{ "value": 4 }],
+    "resistances": ["PHYSICAL"],
+    "offensiveAbilities": ["BRUTAL"]
   },
   {
     "id": "green_orc_summoners",

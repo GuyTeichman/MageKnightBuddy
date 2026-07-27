@@ -25,6 +25,6 @@ data class DrawLogEntryDto(
     val tokenId: String,
     val pile: String,
     val batchId: Long,
-    val stillInPlay: Boolean = false,
+    val defeated: Boolean = false,
     val note: String = "",
 )

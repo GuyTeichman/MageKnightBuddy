@@ -85,10 +85,11 @@ class TokenCatalogueTest {
         assertEquals(3, ironclads.armor)
         assertEquals(4, ironclads.fame)
         assertEquals(setOf(AttackElement.PHYSICAL), ironclads.resistances)
+        // Brutal is a whole-token offensive ability, not a per-attack modifier (Multiple Attacks).
+        assertEquals(setOf(OffensiveAbility.BRUTAL), ironclads.offensiveAbilities)
         val attack = ironclads.attacks.single()
         assertEquals(4, attack.value)
         assertEquals(AttackElement.PHYSICAL, attack.element)
-        assertEquals(setOf(AttackModifier.BRUTAL), attack.modifiers)
     }
 
     @Test
@@ -96,15 +97,14 @@ class TokenCatalogueTest {
         val hags = assertNotNull(TokenCatalogue.byId("green_cursed_hags"))
         assertEquals(5, hags.armor)
         assertEquals(3, hags.fame)
-        val attack = hags.attacks.single()
-        assertEquals(3, attack.value)
-        assertEquals(setOf(AttackModifier.POISON), attack.modifiers)
+        assertEquals(setOf(OffensiveAbility.POISON), hags.offensiveAbilities)
+        assertEquals(3, hags.attacks.single().value)
     }
 
     @Test
     fun `Diggers is fortified`() {
         val diggers = assertNotNull(TokenCatalogue.byId("green_diggers"))
-        assertTrue(EnemyAbility.FORTIFIED in diggers.abilities)
+        assertTrue(DefensiveAbility.FORTIFIED in diggers.defensiveAbilities)
     }
 
     @Test

@@ -12,8 +12,12 @@ import kotlinx.serialization.Serializable
  * Log, and (doubling as the image filename base, ADR-0007) the token art asset. It must be unique
  * across the whole catalogue; the catalogue-validation test enforces that.
  *
- * [resistances] is the set of [AttackElement]s this token resists (empty for most green orcs);
- * [abilities] its whole-token specials; per-attack specials live inside each [EnemyAttack].
+ * The whole-token special abilities are split by kind so the two can never be confused (they read
+ * and display differently): [defensiveAbilities] govern how the enemy is attacked, [offensiveAbilities]
+ * modify its own attacks, and [resistances] (the set of [AttackElement]s it resists) are a third,
+ * element-parameterised defensive trait kept separate because an enum entry can't carry an element.
+ * All three are whole-token, applying to *every* one of the enemy's attacks (Lost Legion, "Multiple
+ * Attacks"); only [EnemyAttack.value]/[EnemyAttack.element] are per-attack.
  *
  * `@Serializable` so the whole catalogue decodes straight into `List<EnemyToken>` (ADR-0007).
  */
@@ -28,5 +32,6 @@ data class EnemyToken(
     val fame: Int,
     val attacks: List<EnemyAttack> = emptyList(),
     val resistances: Set<AttackElement> = emptySet(),
-    val abilities: Set<EnemyAbility> = emptySet(),
+    val defensiveAbilities: Set<DefensiveAbility> = emptySet(),
+    val offensiveAbilities: Set<OffensiveAbility> = emptySet(),
 )

@@ -125,17 +125,24 @@ class EnemyPickerSessionTest {
     }
 
     @Test
-    fun `flagging a log entry changes only that entry and no pile`() {
+    fun `a freshly drawn enemy is on the board, not defeated`() {
+        val drawn = EnemyPickerSession.start(catalogue, shuffle = noShuffle).draw(TokenPileId.GREEN, shuffle = noShuffle)
+        // Default lifecycle: revealed onto the board, awaiting a Defeat tap (D2).
+        assertFalse(drawn.drawLog.single().defeated)
+    }
+
+    @Test
+    fun `marking a log entry defeated changes only that entry and no pile`() {
         val drawn = EnemyPickerSession.start(catalogue, shuffle = noShuffle).draw(TokenPileId.GREEN, shuffle = noShuffle)
         val pilesBefore = drawn.piles
 
-        val flagged = drawn.flagStillInPlay(index = 0, stillInPlay = true, note = "keep, NE tile")
+        val defeated = drawn.setDefeated(index = 0, defeated = true, note = "keep, NE tile")
 
-        val entry = flagged.drawLog[0]
-        assertTrue(entry.stillInPlay)
+        val entry = defeated.drawLog[0]
+        assertTrue(entry.defeated)
         assertEquals("keep, NE tile", entry.note)
-        // The load-bearing property (ADR-0006): a flag must not perturb pile state / draw odds.
-        assertEquals(pilesBefore, flagged.piles)
+        // The load-bearing property (ADR-0006): the flag must not perturb pile state / draw odds.
+        assertEquals(pilesBefore, defeated.piles)
     }
 
     @Test

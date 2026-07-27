@@ -14,11 +14,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -77,8 +77,8 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
     var zoom by remember { mutableStateOf<ZoomState?>(null) }
     // A token whose full ability info window ("?") is open.
     var infoToken by remember { mutableStateOf<EnemyToken?>(null) }
-    // The Draw Log index whose "still in play" flag dialog is open, or null.
-    var flagDialogIndex by remember { mutableStateOf<Int?>(null) }
+    // The Draw Log index whose Defeat dialog is open, or null.
+    var defeatDialogIndex by remember { mutableStateOf<Int?>(null) }
     // A pending destructive reset (Reset piles / Apply & Reset), held until the user confirms.
     var pendingReset by remember { mutableStateOf<(() -> Unit)?>(null) }
 
@@ -101,7 +101,7 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
             }
         },
         onOpenToken = { tokenId -> zoom = ZoomState(listOf(tokenId), 0) },
-        onOpenFlagDialog = { index -> flagDialogIndex = index },
+        onOpenDefeatDialog = { index -> defeatDialogIndex = index },
         onRequestReset = { pendingReset = { scope.launch { viewModel.reset() } } },
         onRequestApplyConfig = { tokenSet, replacement ->
             pendingReset = { scope.launch { viewModel.applyConfig(tokenSet, replacement) } }
@@ -123,14 +123,14 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
         TokenInfoDialog(token = token, onDismiss = { infoToken = null })
     }
 
-    flagDialogIndex?.let { index ->
-        FlagDialog(
+    defeatDialogIndex?.let { index ->
+        DefeatDialog(
             entry = session.drawLog[index],
-            onSave = { stillInPlay, note ->
-                scope.launch { viewModel.flag(index, stillInPlay, note) }
-                flagDialogIndex = null
+            onSave = { defeated, note ->
+                scope.launch { viewModel.setDefeated(index, defeated, note) }
+                defeatDialogIndex = null
             },
-            onDismiss = { flagDialogIndex = null },
+            onDismiss = { defeatDialogIndex = null },
         )
     }
 
@@ -162,7 +162,7 @@ private fun EnemyPickerContent(
     isBusy: Boolean,
     onDraw: (TokenPileId, Int) -> Unit,
     onOpenToken: (String) -> Unit,
-    onOpenFlagDialog: (Int) -> Unit,
+    onOpenDefeatDialog: (Int) -> Unit,
     onRequestReset: () -> Unit,
     onRequestApplyConfig: (Set<Expansion>, Boolean) -> Unit,
 ) {
@@ -189,7 +189,7 @@ private fun EnemyPickerContent(
                 DrawLogSection(
                     log = session.drawLog,
                     onOpenToken = onOpenToken,
-                    onOpenFlagDialog = onOpenFlagDialog,
+                    onOpenDefeatDialog = onOpenDefeatDialog,
                 )
             }
 
@@ -273,15 +273,15 @@ private fun QuantityStepper(quantity: Int, onQuantityChange: (Int) -> Unit, max:
 }
 
 /**
- * The Draw Log (see `CONTEXT.md`'s "Draw Log"): newest-first, with entries flagged "still in play"
- * pinned to their own section at the top. Tapping a row re-opens that token zoomed; the flag icon
- * opens the still-in-play dialog.
+ * The Draw Log (see `CONTEXT.md`'s "Draw Log"): newest-first, split into the enemies still **on the
+ * board** (top) and the **defeated** ones (dimmed, below). A freshly drawn enemy starts on the board
+ * (D2); tapping a row re-opens that token zoomed, and the trailing icon opens the Defeat dialog.
  */
 @Composable
 private fun DrawLogSection(
     log: List<DrawLogEntry>,
     onOpenToken: (String) -> Unit,
-    onOpenFlagDialog: (Int) -> Unit,
+    onOpenDefeatDialog: (Int) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Draw Log", style = MaterialTheme.typography.titleLarge)
@@ -290,19 +290,31 @@ private fun DrawLogSection(
             return@Column
         }
 
-        // Keep each entry's original (chronological) index for flagging, then show newest-first.
+        // Keep each entry's original (chronological) index for defeating, then show newest-first.
         val indexed = log.withIndex().toList()
-        val flagged = indexed.filter { it.value.stillInPlay }.asReversed()
-        val rest = indexed.filter { !it.value.stillInPlay }.asReversed()
+        val onBoard = indexed.filter { !it.value.defeated }.asReversed()
+        val defeated = indexed.filter { it.value.defeated }.asReversed()
 
-        if (flagged.isNotEmpty()) {
-            Text("Still in play", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-            flagged.forEach { (index, entry) ->
-                DrawLogRow(index, entry, onOpenToken, onOpenFlagDialog)
+        // Only show the section headers once there's actually a split to label; a fresh log with
+        // nothing defeated yet is just a flat newest-first list.
+        val showHeaders = onBoard.isNotEmpty() && defeated.isNotEmpty()
+
+        if (onBoard.isNotEmpty()) {
+            if (showHeaders) Text("On the board", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            onBoard.forEach { (index, entry) ->
+                DrawLogRow(index, entry, onOpenToken, onOpenDefeatDialog)
             }
         }
-        rest.forEach { (index, entry) ->
-            DrawLogRow(index, entry, onOpenToken, onOpenFlagDialog)
+        if (defeated.isNotEmpty()) {
+            Text(
+                "Defeated",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            defeated.forEach { (index, entry) ->
+                DrawLogRow(index, entry, onOpenToken, onOpenDefeatDialog)
+            }
         }
     }
 }
@@ -312,9 +324,12 @@ private fun DrawLogRow(
     index: Int,
     entry: DrawLogEntry,
     onOpenToken: (String) -> Unit,
-    onOpenFlagDialog: (Int) -> Unit,
+    onOpenDefeatDialog: (Int) -> Unit,
 ) {
     val token = TokenCatalogue.byId(entry.tokenId)
+    // Defeated rows are de-emphasised (dimmed name), since the on-board enemies are what still needs
+    // attention.
+    val nameColor = if (entry.defeated) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -322,7 +337,7 @@ private fun DrawLogRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(token?.name ?: entry.tokenId, style = MaterialTheme.typography.bodyLarge)
+                Text(token?.name ?: entry.tokenId, style = MaterialTheme.typography.bodyLarge, color = nameColor)
                 Text(
                     text = entry.pile.displayName() + (if (entry.note.isNotBlank()) " · ${entry.note}" else ""),
                     style = MaterialTheme.typography.bodySmall,
@@ -330,11 +345,11 @@ private fun DrawLogRow(
                 )
             }
             TextButton(onClick = { onOpenToken(entry.tokenId) }) { Text("View") }
-            IconButton(onClick = { onOpenFlagDialog(index) }) {
+            IconButton(onClick = { onOpenDefeatDialog(index) }) {
                 Icon(
-                    imageVector = if (entry.stillInPlay) Icons.Filled.Flag else Icons.Outlined.Flag,
-                    contentDescription = "Still in play",
-                    tint = if (entry.stillInPlay) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    imageVector = if (entry.defeated) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
+                    contentDescription = if (entry.defeated) "Defeated" else "Mark defeated",
+                    tint = if (entry.defeated) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -432,9 +447,17 @@ private fun TokenZoomDialog(
                             // A summon has no attack value - it draws a replacement from another pile.
                             Text("Summons a ${attack.summons?.summonName() ?: "token"}")
                         } else {
-                            val mods = if (attack.modifiers.isEmpty()) "" else " (" + attack.modifiers.joinToString { it.describe().first } + ")"
-                            Text("Attack ${attack.value} · ${attack.element.displayName()}$mods")
+                            Text("Attack ${attack.value} · ${attack.element.displayName()}")
                         }
+                    }
+                    // Offensive abilities (Brutal, Swift, ...) are whole-token, so they're shown once
+                    // beneath the attack(s) rather than tacked onto each. Full text is in the "?" window.
+                    if (token.offensiveAbilities.isNotEmpty()) {
+                        Text(
+                            token.offensiveAbilities.joinToString { it.describe().first },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
                 if (state.tokenIds.size > 1) {
@@ -456,12 +479,14 @@ private fun TokenZoomDialog(
 /** The "?" info window: every whole-token ability and per-attack modifier, with its rules text. */
 @Composable
 private fun TokenInfoDialog(token: EnemyToken, onDismiss: () -> Unit) {
-    // Gather each distinct ability/modifier/resistance on this token, with its description.
+    // Gather each ability/resistance on this token, with its description. Resistances and defensive
+    // abilities describe how it's attacked; offensive abilities modify its own attacks - all are
+    // whole-token (they apply to every attack), so they're listed once each, not per attack.
     val lines = buildList {
         token.resistances.forEach { add(it.displayName() + " Resistance" to "Attacks of this element are inefficient (halved).") }
-        token.abilities.forEach { add(it.describe()) }
-        token.attacks.flatMap { it.modifiers }.distinct().forEach { add(it.describe()) }
-        // Summon isn't a modifier - it's a whole different kind of attack - so describe it here.
+        token.defensiveAbilities.forEach { add(it.describe()) }
+        token.offensiveAbilities.forEach { add(it.describe()) }
+        // Summon isn't an ability - it's a whole different kind of attack - so describe it here.
         token.attacks.filter { it.isSummon }.forEach {
             add("Summon" to "At the start of the Block phase, draws a ${it.summons?.summonName() ?: "token"} token to fight in its place.")
         }
@@ -487,26 +512,30 @@ private fun TokenInfoDialog(token: EnemyToken, onDismiss: () -> Unit) {
     )
 }
 
-/** The still-in-play flag dialog: a toggle plus a free-text note, saved together. */
+/** The Defeat dialog: a Defeated toggle plus a free-text note (for enemies kept on the board),
+ * saved together. The one-tap Defeat button on the zoom/grid is a follow-up (Issue A); this is the
+ * per-log-row entry point. */
 @Composable
-private fun FlagDialog(entry: DrawLogEntry, onSave: (Boolean, String) -> Unit, onDismiss: () -> Unit) {
-    var stillInPlay by remember { mutableStateOf(entry.stillInPlay) }
+private fun DefeatDialog(entry: DrawLogEntry, onSave: (Boolean, String) -> Unit, onDismiss: () -> Unit) {
+    var defeated by remember { mutableStateOf(entry.defeated) }
     var note by remember { mutableStateOf(entry.note) }
     val token = TokenCatalogue.byId(entry.tokenId)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = { onSave(stillInPlay, note) }) { Text("Save") } },
+        confirmButton = { TextButton(onClick = { onSave(defeated, note) }) { Text("Save") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
         title = { Text(token?.name ?: entry.tokenId) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                LabeledSwitch(label = "Still in play", checked = stillInPlay, onCheckedChange = { stillInPlay = it })
+                LabeledSwitch(label = "Defeated", checked = defeated, onCheckedChange = { defeated = it })
+                // The note is for tracking an enemy still on the board ("keep, NE tile"), so it's
+                // only editable while the enemy is *not* marked defeated.
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
                     label = { Text("Note (e.g. \"keep, NE tile\")") },
-                    enabled = stillInPlay,
+                    enabled = !defeated,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -517,16 +546,12 @@ private fun FlagDialog(entry: DrawLogEntry, onSave: (Boolean, String) -> Unit, o
 /** Largest number of tokens a single stepper draw allows - a sanity cap, well above any real need. */
 private const val MAX_BATCH = 20
 
-/** "Armor 3 · Fame 2 · Attack 4" style stat line for a token (a summoner shows "Summon", no value). */
-private fun EnemyToken.statLine(): String {
-    val attack = attacks.firstOrNull()
-    val attackPart = when {
-        attack == null -> ""
-        attack.isSummon -> " · Summon"
-        else -> " · Attack ${attack.value}"
-    }
-    return "Armor $armor · Fame $fame$attackPart"
-}
+/**
+ * "Armor 3 · Fame 2" summary line for a token. Deliberately *excludes* the attack (D5): the
+ * attack(s) are listed in full just below this line in the zoom, so repeating them here was
+ * redundant.
+ */
+private fun EnemyToken.statLine(): String = "Armor $armor · Fame $fame"
 
 /** Player-facing name of a summoned pile, e.g. "Brown enemy" (used in the zoom's "Summons a …" line). */
 private fun TokenPileId.summonName(): String = when (this) {
