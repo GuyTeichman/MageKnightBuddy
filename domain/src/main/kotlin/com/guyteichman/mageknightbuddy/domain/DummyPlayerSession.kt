@@ -37,7 +37,8 @@ data class DummyPlayerSession private constructor(
     /**
      * Whether the current [round] is a day round - see [isDayRound] for the odd/even derivation
      * from [startsAtNight]. No Dummy Player rule currently reads this; it's tracked for parity
-     * with [ProxyPlayerSession]/[VolkareSession] ahead of a planned day/night indicator.
+     * with [ProxyPlayerSession]/[VolkareSession] and shown by the AI screen's round chip (issue
+     * #180).
      */
     val isDay: Boolean
         get() = isDayRound(round, startsAtNight)

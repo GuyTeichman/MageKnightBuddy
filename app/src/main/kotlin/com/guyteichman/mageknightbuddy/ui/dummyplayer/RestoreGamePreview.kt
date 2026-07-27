@@ -12,12 +12,16 @@ import com.guyteichman.mageknightbuddy.domain.Knight
  * comment). [knight] is `null` for [DummyPlayerMode.VOLKARE] - Volkare has no Knight (see
  * CONTEXT.md's "Volkare" entry). Keeping the actual [Knight] enum (rather than a pre-formatted
  * display string) lets the UI render its shield icon, not just its name.
+ *
+ * [isDay] is the saved session's own `isDay` (issue #180) - each of the 3 session types derives it
+ * from its persisted `startsAtNight` plus [round], so this needs no extra persisted state.
  */
 internal data class RestoreGamePreview(
     val mode: DummyPlayerMode,
     val knight: Knight?,
     val round: Int,
     val turn: Int,
+    val isDay: Boolean,
 )
 
 /**
@@ -49,13 +53,13 @@ internal suspend fun loadRestoreGamePreview(
     // Knight/round/turnInRound, so this can't be collapsed into one shared code path.
     return when (mostRecent.first) {
         DummyPlayerMode.STANDARD -> repository.restore()?.let { session ->
-            RestoreGamePreview(DummyPlayerMode.STANDARD, session.knight, session.round, session.turnInRound)
+            RestoreGamePreview(DummyPlayerMode.STANDARD, session.knight, session.round, session.turnInRound, session.isDay)
         }
         DummyPlayerMode.VOLKARE -> volkareRepository.restore()?.let { session ->
-            RestoreGamePreview(DummyPlayerMode.VOLKARE, knight = null, session.round, session.turnInRound)
+            RestoreGamePreview(DummyPlayerMode.VOLKARE, knight = null, session.round, session.turnInRound, session.isDay)
         }
         DummyPlayerMode.PROXY_PLAYER -> proxyPlayerRepository.restore()?.let { session ->
-            RestoreGamePreview(DummyPlayerMode.PROXY_PLAYER, session.knight, session.round, session.turnInRound)
+            RestoreGamePreview(DummyPlayerMode.PROXY_PLAYER, session.knight, session.round, session.turnInRound, session.isDay)
         }
     }
 }

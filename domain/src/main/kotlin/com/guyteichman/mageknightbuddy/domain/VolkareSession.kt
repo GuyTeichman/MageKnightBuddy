@@ -33,7 +33,8 @@ data class VolkareSession private constructor(
     /**
      * Whether the current [round] is a day round - see [isDayRound] for the odd/even derivation
      * from [startsAtNight]. No rule of Volkare's currently reads this; it's tracked for parity
-     * with [DummyPlayerSession]/[ProxyPlayerSession] ahead of a planned day/night indicator.
+     * with [DummyPlayerSession]/[ProxyPlayerSession] and shown by the AI screen's round chip
+     * (issue #180).
      */
     val isDay: Boolean
         get() = isDayRound(round, startsAtNight)

@@ -8,9 +8,9 @@ package com.guyteichman.mageknightbuddy.domain
  * [VolkareSession] so all three modes derive day/night the same way from just their own `round`
  * and `startsAtNight`, with no per-round state to keep in sync.
  *
- * Currently consumed by [ProxyPlayerSession] (docs/rules/proxy-player.md's "Movement points" -
- * a Gold mana die only counts by day); the other two sessions track `startsAtNight` too, for a
- * planned day/night visual indicator, even though no rule of theirs reads it yet.
+ * Consumed as a rule by [ProxyPlayerSession] only (docs/rules/proxy-player.md's "Movement points" -
+ * a Gold mana die only counts by day); all three sessions additionally expose it as `isDay` for the
+ * AI screens' round chip, which states day/night alongside the round number (issue #180).
  */
 fun isDayRound(round: Int, startsAtNight: Boolean): Boolean {
     val isOddRound = round % 2 == 1

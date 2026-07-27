@@ -27,10 +27,12 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.UnfoldLess
 import androidx.compose.material.icons.filled.UnfoldMore
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -324,8 +326,8 @@ private val DummyPlayerMode.label: String
 /**
  * A compact preview of what "Restore Game" would resume right now (issue #125's 2nd item): the
  * Knight's shield icon (or [VolkareShieldIcon] for Volkare mode, which has no Knight), its name,
- * which of the 3 modes it is, and its round/turn (mirrors the AI screen's own "ROUND N · TURN M"
- * header - issue #125's 1st item). Shown just above the "Restore Game" button so the player can
+ * which of the 3 modes it is, and its round/day-night/turn (mirrors the AI screen's own
+ * "ROUND N · ☀ DAY · TURN M" header - issue #125's 1st item, plus issue #180's day/night). Shown just above the "Restore Game" button so the player can
  * see what they're about to resume before tapping it, rather than only finding out after.
  */
 @Composable
@@ -334,6 +336,7 @@ private fun RestoreGamePreviewRow(preview: RestoreGamePreview) {
     // Kotlin can't smart-cast a nullable property read from a different module across two
     // statements (same cross-module limitation ProxyPlayerScreen.kt's objectiveCard hits).
     val knight = preview.knight
+    val dayOrNight = if (preview.isDay) "Day" else "Night"
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         if (knight != null) KnightShieldIcon(knight = knight, size = 28.dp) else VolkareShieldIcon(size = 28.dp)
         Column {
@@ -346,12 +349,14 @@ private fun RestoreGamePreviewRow(preview: RestoreGamePreview) {
             )
             Text(
                 // Volkare's title line above already says "Volkare", so its subtitle only needs
-                // Round/Turn - Standard/Proxy Player's subtitle also states the mode, since their
-                // title line is the Knight's name instead.
+                // Round/day-night/Turn - Standard/Proxy Player's subtitle also states the mode,
+                // since their title line is the Knight's name instead. Day/night mirrors the AI
+                // screen's own RoundChip (issue #180); spelled out as a word rather than an icon
+                // here, since this is a plain text line with no icon slot.
                 if (preview.mode == DummyPlayerMode.VOLKARE) {
-                    "Round ${preview.round} · Turn ${preview.turn}"
+                    "Round ${preview.round} · $dayOrNight · Turn ${preview.turn}"
                 } else {
-                    "${preview.mode.label} · Round ${preview.round} · Turn ${preview.turn}"
+                    "${preview.mode.label} · Round ${preview.round} · $dayOrNight · Turn ${preview.turn}"
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -506,7 +511,7 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 },
                 actions = {
                     if (session != null) {
-                        RoundChip(round = session.round, turn = session.turnInRound)
+                        RoundChip(round = session.round, turn = session.turnInRound, isDay = session.isDay)
                         Spacer(modifier = Modifier.width(8.dp))
                     }
                 },
@@ -584,24 +589,44 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
 }
 
 /**
- * The pill-shaped "ROUND N · TURN M" indicator in the top bar - [turn] is
+ * The pill-shaped "ROUND N · ☀ DAY · TURN M" indicator in the top bar - [turn] is
  * [DummyPlayerSession.turnInRound]/`ProxyPlayerSession.turnInRound` (issue #125), how many turns
  * have already been played in the current [round], so a player picking the app back up mid-game
- * can immediately see where they left off (e.g. "ROUND 2 · TURN 4").
+ * can immediately see where they left off (e.g. "ROUND 2 · ☀ DAY · TURN 4").
  *
- * `internal`, not `private`: `ProxyPlayerScreen.kt`'s `ProxyPlayerAiScreen` reuses this directly.
+ * [isDay] is the session's own `isDay` (issue #180) - day/night alternates every Round and several
+ * game effects read it, so the chip states it rather than making the player recompute the parity.
+ * The sun/moon icon is decorative (`contentDescription = null`): the adjacent "DAY"/"NIGHT" text
+ * already carries the meaning for a screen reader, so describing the icon too would just read it
+ * out twice.
+ *
+ * `internal`, not `private`: `ProxyPlayerScreen.kt`'s `ProxyPlayerAiScreen` and
+ * `VolkareScreen.kt`'s `VolkareAiScreen` reuse this directly.
  */
 @Composable
-internal fun RoundChip(round: Int, turn: Int) {
+internal fun RoundChip(round: Int, turn: Int, isDay: Boolean) {
     Surface(
         shape = RoundedCornerShape(percent = 50),
         color = MaterialTheme.colorScheme.secondaryContainer,
     ) {
-        Text(
-            "ROUND $round · TURN $turn",
+        Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelMedium,
-        )
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text("ROUND $round ·", style = MaterialTheme.typography.labelMedium)
+            Icon(
+                // Sun by day, moon by night - `if` is an expression in Kotlin, so it yields the
+                // icon to use rather than needing a temporary variable.
+                imageVector = if (isDay) Icons.Filled.WbSunny else Icons.Filled.DarkMode,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+            )
+            Text(
+                "${if (isDay) "DAY" else "NIGHT"} · TURN $turn",
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
     }
 }
 
