@@ -34,8 +34,16 @@ endif
 
 # Android SDK: read from local.properties, the same file Gradle itself reads
 # (`sdk.dir=...`), so there's exactly one place to configure this per machine.
+# Android Studio writes sdk.dir .properties-escaped: every backslash is doubled
+# and the drive colon is backslashed, e.g. `C\:\\Users\\me\\...\\Sdk`. Decode to
+# forward-slash form (`C:/Users/me/.../Sdk`, valid for both sh and the Windows
+# tools) by collapsing each `\\` to `/`, then dropping the `\` before the colon.
+# `[\]` matches one literal backslash without a backslash-escape - which matters
+# because make collapses `\\` in a recipe before the shell sees it (so `s/\\\\/`
+# would misfire), whereas it passes `[\]` through untouched. The old `s/[\]//g`
+# deleted *all* backslashes, mangling the path to `C:UsersmeSdk`.
 ifeq ($(origin ANDROID_SDK),undefined)
-ANDROID_SDK := $(shell sed -n 's/^sdk\.dir=//p' local.properties 2>/dev/null | sed 's/[\]//g')
+ANDROID_SDK := $(shell sed -n 's/^sdk\.dir=//p' local.properties 2>/dev/null | sed -e 's|[\][\]|/|g' -e 's|[\]:|:|g')
 endif
 
 # Which AVD `make emulator` boots. Defaults to the first AVD the SDK knows
@@ -57,7 +65,10 @@ endif
 # the sed conversion below the prepend is a no-op and lookup falls through to
 # whichever shadowing toolchain is next on PATH (this is what broke `make build`
 # for a user with Anaconda installed - its own cygpath got picked up instead).
-GIT_BIN_DIR := $(shell dirname "$(SHELL)" | sed -E 's#^([A-Za-z]):#/\L\1#')
+# Delimiter is `|`, not `#`: in a makefile `#` starts a comment, so `s#...#...#`
+# would be truncated mid-expression, leaving `$(shell` unterminated (a "missing
+# `)'" parse error that broke every target - issue #185).
+GIT_BIN_DIR := $(shell dirname "$(SHELL)" | sed -E 's|^([A-Za-z]):|/\L\1|')
 
 ifeq ($(strip $(JAVA_HOME)),)
 GRADLE := PATH="$(GIT_BIN_DIR):$$PATH" ./gradlew
@@ -77,7 +88,10 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
 
-doctor: ## Check that JAVA_HOME/ANDROID_SDK/AVD were detected correctly on this machine
+doctor: ## Check the toolchain (make/shell) and that JAVA_HOME/ANDROID_SDK/AVD were detected on this machine
+	@echo "make         : $(MAKE_VERSION)$(if $(filter 0 1 2 3,$(firstword $(subst ., ,$(MAKE_VERSION)))), - UNSUPPORTED: need >= 4.0 (GnuWin32 make 3.81 has broken shell-outs, so the probes below fail intermittently). Fix: winget install ezwinports.make, (OK))"
+	@echo "SHELL        : $(SHELL)"
+	@echo "GIT_BIN_DIR  : $(if $(strip $(GIT_BIN_DIR)),$(GIT_BIN_DIR),EMPTY - the sh.exe/PATH probe failed. Put 'C:/Program Files/Git/usr/bin' on PATH and use make >= 4.0, then gradlew's cygpath can't be shadowed)"
 	@echo "JAVA_HOME    : $(if $(strip $(JAVA_HOME)),$(JAVA_HOME),NOT FOUND - set it yourself, e.g. export JAVA_HOME=\"/c/Program Files/Android/Android Studio/jbr\")"
 	@echo "ANDROID_SDK  : $(if $(strip $(ANDROID_SDK)),$(ANDROID_SDK),NOT FOUND - set sdk.dir in local.properties or export ANDROID_SDK)"
 	@[ -d "$(ANDROID_SDK)" ] && echo "  -> exists" || echo "  -> MISSING on disk"
