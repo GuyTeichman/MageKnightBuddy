@@ -71,6 +71,9 @@ explicit one-tap action, because reveal→defeat is the common flow.
 
 ### D3 — Multi-draw grid overview (note 4)
 
+> **Superseded by #203/D18** (2026-07-28): the "Draw Log keeps one row per token" line below turned
+> out not to be the final word - see D18.
+
 - Draw of **N = 1** → opens that enemy's detail (zoom) directly, as today.
 - Draw of **N > 1** → opens a **grid** of all N (art + name + Defeat checkbox per cell); tapping a
   cell opens that enemy's detail with prev/next arrows across the batch; back returns to the grid.
@@ -161,6 +164,11 @@ Flagged for **possible future iteration**, contingent on how #203 (Draw Log batc
 up shaping the log UI: the dismiss gesture might later grow an explicit "save for later" vs.
 "defeat remaining" affordance instead of a bare close. Not building that now — noted so it isn't
 forgotten.
+
+> **Resolved by #203** (2026-07-28): #203 reopens this exact dialog from the Draw Log (D18) but
+> made no change to its dismiss gesture - the "save for later"/"defeat remaining" idea above is
+> still just an idea, not superseded or ruled out, so it stays flagged for whenever it comes up
+> again.
 
 ### D11 — Detail screen Defeat button: style & post-tap behavior
 
@@ -266,4 +274,53 @@ Each pile's stepper keeps its existing `MAX_BATCH = 20` individual cap; no addit
 across all 7 piles) is an accepted edge case rather than something to clamp down on, since the
 grid is already adaptive and internally scrollable (#197's D9/D10) and won't break - it just
 wouldn't be pretty, which is fine for a rare case.
+
+## Follow-up grilling for #203 implementation (2026-07-28)
+
+#203 (Draw Log visual grouping by `batchId`) was filed deliberately deferred - see its own text -
+because D3 above had already decided the log stays one-row-per-token and never actually resolved
+grouping. Grilling it surfaced that a purely *visual* grouping (divider/band/badge, one row still
+per token) wasn't actually what was wanted: the author's answer was to collapse a batch to a
+single row entirely, which **overturns D3** rather than refining it. Decisions below supersede
+D3's "Draw Log keeps one row per token" line; D3's N=1-vs-N>1 draw-time behavior is untouched.
+
+### D18 — Draw Log row = one batch, not one token (supersedes D3)
+
+- **Batch size 1** → tap opens that token's detail (zoom) directly, exactly as D3/D7 already do at
+  draw time - no change to the single-token path.
+- **Batch size > 1** → the whole batch collapses into **one row** ([D20](#d20-batch-row-content));
+  tapping it (or its "View" button) reopens the **same grid overview** a fresh N>1 draw opens -
+  same `GridState`/`TokenGridDialog`, same D7 nested-zoom, D8 checkboxes, D9 adaptive layout, D10
+  dismiss. There is **no separate "read-only history" mode**: reopening a batch from the log later
+  is fully identical to opening it right after drawing, since there's no meaningful difference
+  between "just drew these" and "looking at them again" (the same precedent #191's
+  view-without-redrawing work already set for single tokens, commit a393d5e).
+- Implemented as a pure grouping function (`groupDrawLog`, `DrawLogGrouping.kt`) rather than logic
+  inlined in the Composable, specifically so it's unit-testable per the repo's TDD standard - this
+  is real branching logic (which rows merge, which section they land in), not UI scaffolding.
+
+### D19 — Bucketing: a batch stays "on the board" until every member is defeated
+
+A batch of 3 with 1 defeated and 2 still up stays in **"On the board"** - it moves to "Defeated"
+only once the *last* member clears. Matches the existing per-token rule's spirit ("on the board" =
+still needs attention) and means a batch's row moves **exactly once**, at completion, rather than
+flapping between sections as individual members get defeated one at a time. (Rejected: moving at a
+>50% defeated threshold - arbitrary, no rules-basis, and the row could flip back and forth.)
+
+### D20 — Batch row content
+
+A collapsed batch row (`DrawLogBatchRow`) shows:
+
+- Up to **4** small token-art thumbnails (`BATCH_ROW_THUMBNAIL_CAP`), then a **"+N"** tail for the
+  rest - sized so the common 2-6 batch (D9's estimate) mostly shows every member, and a rare large
+  batch just summarizes instead of squeezing thumbnails illegibly small.
+- Title **"N tokens drawn"** (reusing the phrasing #197's grid title already established).
+- Subtitle: the pile name, **only when every member shares one** (a batch is single-pile today;
+  #192 will eventually make multi-pile batches possible, and D16 already decided per-token pile
+  labels aren't needed once art color conveys it - so the segment is just omitted once a batch
+  spans piles, no new logic needed until #192 actually exists) - followed by
+  **"X on board, Y defeated"** counts.
+- **No Defeat control of its own** - a size>1 row can't represent "defeat this token" for N
+  tokens, so the icon is dropped entirely; defeating a batch member only happens through the
+  grid's own checkboxes (D8), which tapping the row reopens.
 
