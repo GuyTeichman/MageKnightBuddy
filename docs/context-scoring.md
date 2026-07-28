@@ -1,0 +1,53 @@
+# Domain glossary — Scoring / Score Calculator
+
+Terms for the Scoreboard tab, the Score Calculator wizard, and the Scoring Session model that backs both. See `CONTEXT.md` for the other two glossary slices (Dummy Player tab, Enemy Picker).
+
+**Scenario**:
+A named game setup, with its own map/tile configuration, end condition, and scoring rules, defined in the rulebook's Scenario Book (e.g. Solo Conquest, First Reconnaissance).
+_Avoid_: Mission, mode
+
+**Knight**:
+The Hero character a player plays as (e.g. Tovak, Arythea, Wolfhawk). Recorded on every Scoring Session for history/statistics, and consumed directly by some scenarios' scoring rules (e.g. a knight-specific variant of Solo Conquest introduced in the Apocalypse Dragon expansion).
+_Avoid_: Hero, character, player
+
+**Scoring Session**:
+One completed solo play-through of a Scenario by a given Knight, entered into the Score Calculator after the game ends. Holds the raw tallies the player enters (Fame, Spells in deck, Artifacts, etc.), an optional Player name, the computed total, and the computed Outcome. Persisted so it can be shown later on the Scoreboard.
+_Avoid_: Game, run, playthrough
+
+**Player**:
+The optional free-text name of whoever physically played a Scoring Session, entered once per session on the Setup step. Exists so multiple people's histories can eventually be told apart and compared on the Scoreboard. Distinct from Knight: Knight is the in-game Hero character, Player is the real person — the same Player may play different Knights across sessions, and different Players may play the same Knight.
+_Avoid_: User, name (ambiguous with Knight's display name)
+
+**Scoreboard**:
+The tab and screen listing every Scoring Session saved on this device, as a table (Knight / Score / Outcome), most recent first. Tapping a row opens that session's full category breakdown. Distinct from **Global Scoreboard** (stub, below).
+_Avoid_: History, leaderboard (leaderboard is reserved for the future Global Scoreboard)
+
+**Global Scoreboard** (stub):
+A hypothetical future online leaderboard comparing scores across players/devices, distinct from the (device-local) Scoreboard above. Not designed in any concrete way — a "maybe far future" idea, deferred indefinitely.
+
+**Outcome**:
+Whether a Scoring Session was Won or Lost. Always **derived** from the same raw tallies already entered for scoring, per the Scenario's own victory condition (e.g. Solo Conquest: all cities conquered; Volkare's Return: Volkare defeated) — never a separate manual input. Computed once and stored on the Scoring Session so history/stats can filter by it directly.
+_Avoid_: Result, victory (Outcome is the stored Won/Lost value; "victory condition" is the rule that computes it)
+
+**Standard Achievements Scoring**:
+The fixed six scoring categories used by every scenario: Greatest Knowledge, Greatest Leader, Greatest Adventurer, Greatest Loot, Greatest Conqueror, Greatest Beating. Each has its own point formula based on deck/inventory/unit contents. Matches the rulebook's own "STANDARD ACHIEVEMENTS SCORING" heading (p.15) exactly — always in play, no expansions or Settings required. See `docs/rules/solo-scoring-overview.md`.
+_Avoid_: Achievements Scoring (that term is reserved for the umbrella that also includes optional variants; use this term for the fixed six)
+
+**Achievements Scoring**:
+The umbrella for a Scoring Session's full set of scoring categories: Standard Achievements Scoring plus whichever optional variant categories are currently enabled (e.g. Greatest Quester). Which variants are enabled will eventually be driven by Settings; until Settings exists, Greatest Quester is scored unconditionally, on the assumption that Settings' eventual default will be "every expansion enabled."
+_Avoid_: Standard Achievements Scoring (that term is reserved for the fixed six; use this term when variants may also be included)
+
+**Reputation Track Space**:
+One of the 13 spaces a Knight's Shield token can occupy on the Reputation track, modeled as `ReputationTrackSpace`. Each space bundles two numbers that are easy to conflate: its **position** (how many steps from center, e.g. "+2 Reputation" - what the rulebook's Outcome thresholds check) and its **modifier** (the different, usually smaller value actually printed there, e.g. position +2 prints a +1 modifier - what gets added to/subtracted from a score). The two end spaces are marked "X" instead of a modifier. Currently only consumed by **For the Council**'s scoring (`ForTheCouncilScoringInput.reputationTrackSpace`) - the player picks the space their token is on, and both numbers are derived from that one choice rather than entered separately. See `docs/rules/for-the-council.md`'s "Reputation vs. Reputation modifier" section for the full track table.
+_Avoid_: Fame (a separate track entirely, despite sharing a physical board with Reputation); "Reputation" alone (ambiguous between the space's position and its modifier - say which)
+
+**Quest Point**:
+A unit of progress gained by completing a step on a Quest Card (Apocalypse Dragon expansion). Feeds the optional Greatest Quester category of Achievements Scoring (1 Fame per Quest Point). Distinct from Fame itself.
+_Avoid_: Quest score, quest fame
+
+**Title**:
+The bonus (typically +3 Fame) an Achievements Scoring category awards to whichever player scored highest in it, in multiplayer games. **Not awarded in solo play** — with only one player there's nothing to compare against, so each category is just summed directly.
+_Avoid_: Bonus, achievement (Title is the comparison bonus; "Achievement" is the category itself)
+
+**Settings** (stub):
+The eventual place a player chooses which expansions and optional scoring variants (e.g. Greatest Quester) are in effect — answering "which expansions do I *own*", globally and stably. Deliberately **not** the same question as `docs/context-enemy-picker.md`'s **Enemy Picker**'s **Token Set** (which expansions' tokens are in *this game's* piles, a per-game setup choice a scenario can dictate); the two share the word "expansion" and nothing else, so don't collapse them. Not designed yet — deferred to a later phase. Until it exists, the app behaves as if its default will be "every expansion enabled" (see Achievements Scoring) — so Apocalypse Dragon content like Greatest Quester is scored unconditionally rather than gated behind a toggle that doesn't exist yet.

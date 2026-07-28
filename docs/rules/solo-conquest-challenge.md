@@ -2,7 +2,7 @@
 
 Source: `Mage-Knight-The-Apocalypse-Dragon---Rulebook-WEB.pdf`, pages 40–42.
 
-This is the scenario referenced in `CONTEXT.md`'s **Knight** entry: the Apocalypse Dragon expansion's knight-specific variant of Solo Conquest, where the Knight you play changes both the victory condition and several Achievements Scoring formulas. Not a v1 target — captured here as reference for when this scenario gets implemented.
+This is the scenario referenced in `docs/context-scoring.md`'s **Knight** entry: the Apocalypse Dragon expansion's knight-specific variant of Solo Conquest, where the Knight you play changes both the victory condition and several Achievements Scoring formulas. Not a v1 target — captured here as reference for when this scenario gets implemented.
 
 ## Overview
 
@@ -72,4 +72,4 @@ Score as normal Solo Conquest (Fame base + Standard Achievements Scoring, no Tit
 | Braevalar | Greatest Knowledge: **2** Fame per Advanced Action (not 1). **Plus**: score Fame equal to the normal Move cost (at Night) of the space you finish the game on (Mountains = 5, Lakes = 2). |
 | Coral | Greatest Loot: **4** Fame per Artifact (not 2), and **1** Fame per crystal (not per 2). |
 
-This confirms the domain modeling decision in `CONTEXT.md`: scoring must be a function of `(session data, knight)`, not just session data — this scenario is the concrete case where Knight changes the formula, not just the record-keeping metadata.
+This confirms the domain modeling decision in `docs/context-scoring.md`: scoring must be a function of `(session data, knight)`, not just session data — this scenario is the concrete case where Knight changes the formula, not just the record-keeping metadata.

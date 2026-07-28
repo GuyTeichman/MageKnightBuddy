@@ -37,8 +37,8 @@ Your **user** PATH should:
 - **Contain `C:\Program Files\Git\usr\bin`, ahead of any other MSYS-based
   toolchain** (Anaconda/miniconda, MSYS2, Cygwin, Strawberry Perl, …). This makes
   Git's `sh.exe` and `cygpath` win, which is what stops `gradlew`'s classpath from
-  being mangled into a `ClassNotFoundException` (see CLAUDE.md's "Windows `make`
-  gotcha" for the full mechanism).
+  being mangled into a `ClassNotFoundException` (see the `Makefile`'s
+  `GIT_BIN_DIR`/`GRADLE` comments, around line 55, for the full mechanism).
 - **Contain the ezwinports make dir** — winget adds
   `%LOCALAPPDATA%\Microsoft\WinGet\Packages\ezwinports.make_*\bin` automatically.
 - **Not contain a second `make`.** If GnuWin32 is installed, remove
