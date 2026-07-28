@@ -22,9 +22,22 @@ enum class DefensiveAbility {
     /** Only Siege attacks reach it in the Ranged & Siege phase (Quick Reference Sheet, Fortified). */
     FORTIFIED,
 
-    /** Higher Armor value except when all its attacks are blocked (Quick Reference Sheet, Elusive). */
+    /**
+     * Higher Armor value except when all its attacks are blocked (Quick Reference Sheet, Elusive).
+     * The two Armor values live on [EnemyToken]: the printed lower value is [EnemyToken.armor] and
+     * the higher one is [EnemyToken.elusiveArmor], which is non-null exactly when this ability is
+     * present (the catalogue-validation test enforces that pairing).
+     */
     ELUSIVE,
 
     /** Unaffected by any non-Attack/Block effects (Quick Reference Sheet, Arcane Immunity). */
     ARCANE_IMMUNITY,
+
+    /**
+     * Ignores all site fortifications - the enemy never counts as Fortified, even when it's the
+     * garrison of a fortified site or attacked over a wall (The Lost Legion rules, "Unfortified").
+     * The logical opposite of [FORTIFIED], introduced by the Lost Legion so a keep/city defender can
+     * charge out rather than hide behind its walls.
+     */
+    UNFORTIFIED,
 }

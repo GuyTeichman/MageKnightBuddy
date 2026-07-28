@@ -24,6 +24,7 @@ internal fun DefensiveAbility.describe(): Pair<String, String> = when (this) {
     DefensiveAbility.FORTIFIED -> "Fortified" to "Only Siege attacks can be used against it in the Ranged & Siege phase."
     DefensiveAbility.ELUSIVE -> "Elusive" to "Uses the higher Armor value unless all of its attacks are blocked."
     DefensiveAbility.ARCANE_IMMUNITY -> "Arcane Immunity" to "Unaffected by any non-Attack/Block effects."
+    DefensiveAbility.UNFORTIFIED -> "Unfortified" to "Ignores all site fortifications - never counts as Fortified, even as a garrison or over a wall."
 }
 
 /** Title + one-line rules description for a whole-token [OffensiveAbility]. */
