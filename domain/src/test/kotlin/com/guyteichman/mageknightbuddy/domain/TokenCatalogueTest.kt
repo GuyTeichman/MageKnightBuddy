@@ -411,6 +411,23 @@ class TokenCatalogueTest {
     }
 
     @Test
+    fun `only the Lost Legion grey Thugs and Heroes carry a Reputation change on defeat`() {
+        // Printed beside the Fame banner: Thugs raise Reputation, Heroes lower it.
+        assertEquals(1, assertNotNull(TokenCatalogue.byId("grey_thugs")).reputation)
+        listOf("grey_heroes_fortified", "grey_heroes_swift", "grey_heroes_fire", "grey_heroes_ice").forEach { id ->
+            assertEquals(-1, assertNotNull(TokenCatalogue.byId(id)).reputation, "$id should be Reputation -1")
+        }
+        // Shocktroops is the one grey Lost Legion token with no Reputation icon.
+        assertEquals(0, assertNotNull(TokenCatalogue.byId("grey_shocktroops")).reputation)
+        // No other token in the whole catalogue prints a Reputation change - a stray value fails here.
+        val withReputation = TokenCatalogue.tokens.filter { it.reputation != 0 }.map { it.id }.toSet()
+        assertEquals(
+            setOf("grey_thugs", "grey_heroes_fortified", "grey_heroes_swift", "grey_heroes_fire", "grey_heroes_ice"),
+            withReputation,
+        )
+    }
+
+    @Test
     fun `a grey Heroes token mixes a physical and an ice attack`() {
         val heroes = assertNotNull(TokenCatalogue.byId("grey_heroes_ice"))
         assertEquals("Heroes", heroes.name)

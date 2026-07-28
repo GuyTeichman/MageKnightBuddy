@@ -159,10 +159,12 @@ against the physical components**, same caveat as the base piles.
   entries in `EnemyToken.attacks`; per-attack `element` can differ (a "Heroes" token below mixes a
   physical and an elemental attack), while offensive abilities remain whole-token. Note the rulebook
   clarifies Multiple Attacks and Summon are *types of attack*, not offensive abilities.
-- **Reputation as a reward**: several Lost Legion tokens print a Reputation change (+1 for Thugs, −1
-  for Heroes) beside their Fame. Like Fame and combat rewards, this is **not modelled** — the Enemy
-  Picker tracks only pile/draw state, never Fame or rewards (ADR-0006) — so it's noted in the tables
-  as flavour only.
+- **Reputation as a reward** (`EnemyToken.reputation`): five Lost Legion grey tokens print a
+  Reputation change beside their Fame — **+1 for Thugs**, **−1 for each of the four Heroes** —
+  gained/lost when you defeat them (rulebook p.5, "Reputation as a Reward"). Every other token prints
+  none (`reputation` defaults to `0`). It's a printed token attribute, shown in the zoom stat line
+  like Fame ("Armor 5 · Fame 2 · Reputation +1"); the Enemy Picker still keeps no Fame or rewards as
+  *scoring* state (ADR-0006) — this just mirrors what's on the cardboard.
 
 Icon legend used while transcribing: a stone tower = Fortified; a tower with a red **X** =
 Unfortified; two stacked Armor shields (e.g. `3`/faded `6`) = Elusive; element pentagons = the

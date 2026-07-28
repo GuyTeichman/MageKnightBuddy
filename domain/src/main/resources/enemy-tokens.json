@@ -381,7 +381,8 @@
     "armor": 5,
     "fame": 2,
     "attacks": [{ "value": 3 }],
-    "offensiveAbilities": ["BRUTAL"]
+    "offensiveAbilities": ["BRUTAL"],
+    "reputation": 1
   },
   {
     "id": "grey_shocktroops",
@@ -404,7 +405,8 @@
     "armor": 4,
     "fame": 5,
     "attacks": [{ "value": 5 }, { "value": 3 }],
-    "defensiveAbilities": ["FORTIFIED"]
+    "defensiveAbilities": ["FORTIFIED"],
+    "reputation": -1
   },
   {
     "id": "grey_heroes_swift",
@@ -415,7 +417,8 @@
     "armor": 5,
     "fame": 5,
     "attacks": [{ "value": 3 }, { "value": 2 }],
-    "offensiveAbilities": ["SWIFT"]
+    "offensiveAbilities": ["SWIFT"],
+    "reputation": -1
   },
   {
     "id": "grey_heroes_fire",
@@ -426,7 +429,8 @@
     "armor": 4,
     "fame": 5,
     "attacks": [{ "value": 4 }, { "value": 2, "element": "FIRE" }],
-    "resistances": ["FIRE"]
+    "resistances": ["FIRE"],
+    "reputation": -1
   },
   {
     "id": "grey_heroes_ice",
@@ -437,7 +441,8 @@
     "armor": 4,
     "fame": 5,
     "attacks": [{ "value": 3 }, { "value": 3, "element": "ICE" }],
-    "resistances": ["ICE"]
+    "resistances": ["ICE"],
+    "reputation": -1
   },
   {
     "id": "violet_sorcerers",

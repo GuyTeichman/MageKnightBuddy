@@ -25,6 +25,12 @@ import kotlinx.serialization.Serializable
  * [resistances] keeps element off the enum. It is set exactly when [DefensiveAbility.ELUSIVE] is
  * present (and is greater than [armor]) - the catalogue-validation test enforces that pairing.
  *
+ * [reputation] is the Reputation change the player gets for defeating this enemy, printed beside its
+ * Fame (The Lost Legion, "Reputation as a Reward"): positive for Thugs, negative for Heroes, and
+ * `0` (the default) for every other token, which prints no Reputation icon at all. It's a printed
+ * token attribute shown like [fame], not a scoring/game-state field - the Enemy Picker still tracks
+ * no Fame or rewards as state (ADR-0006); it just displays what the cardboard shows.
+ *
  * `@Serializable` so the whole catalogue decodes straight into `List<EnemyToken>` (ADR-0007).
  */
 @Serializable
@@ -41,4 +47,5 @@ data class EnemyToken(
     val defensiveAbilities: Set<DefensiveAbility> = emptySet(),
     val offensiveAbilities: Set<OffensiveAbility> = emptySet(),
     val elusiveArmor: Int? = null,
+    val reputation: Int = 0,
 )

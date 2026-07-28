@@ -1090,10 +1090,14 @@ private const val SUMMON_STACK_GAP = -0.10f
  * redundant. An Elusive token shows both Armor values as "3/6" (lower/higher) - the higher one is
  * what a player faces until they block all its attacks (Lost Legion, "Elusive"), so hiding it would
  * be misleading; the "Elusive" ability entry in the "?" window explains which value applies when.
+ * A token with a printed Reputation change (Lost Legion Thugs/Heroes) appends it as "· Reputation
+ * +1" / "-1"; the common `reputation == 0` case adds nothing.
  */
 private fun EnemyToken.statLine(): String {
     val armorText = if (elusiveArmor != null) "$armor/$elusiveArmor" else "$armor"
-    return "Armor $armorText · Fame $fame"
+    // "%+d" formats with an explicit sign (+1 / -1), matching the token's own +/- Reputation icon.
+    val reputationText = if (reputation != 0) " · Reputation %+d".format(reputation) else ""
+    return "Armor $armorText · Fame $fame$reputationText"
 }
 
 /** Player-facing name of a summoned pile, e.g. "Brown enemy" (used in the zoom's "Summons a …" line). */
