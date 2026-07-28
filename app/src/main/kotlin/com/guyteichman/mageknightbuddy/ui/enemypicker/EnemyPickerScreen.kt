@@ -701,8 +701,9 @@ private fun TokenZoomDialog(
                         // Left side, not the default corner (D-issue #191 follow-up note): that's
                         // where a printed Summon attack shows its pile-color icon, so the current
                         // child's own face standing in that exact spot reads as "this is who's
-                        // actually fighting" rather than a decorative badge.
-                        summonedChild = currentChildren.firstOrNull()?.let { TokenCatalogue.byId(log[it].tokenId) },
+                        // actually fighting" rather than a decorative badge. All current children are
+                        // passed (not just the first) so a double-summoner shows both over its two slots.
+                        summonedChildren = currentChildren.mapNotNull { TokenCatalogue.byId(log[it].tokenId) },
                         alignment = Alignment.CenterStart,
                     )
                     Text(token.statLine(), style = MaterialTheme.typography.titleMedium)
@@ -932,7 +933,9 @@ private fun TokenGridCell(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (token != null) {
-                EnemyTokenFaceWithSummon(token = token, size = 72.dp, summonedChild = summonedChild)
+                // The grid/log cell keeps a single small corner badge even for a double-summoner -
+                // both children are still reachable via the row's "Summoned: …" line and the zoom.
+                EnemyTokenFaceWithSummon(token = token, size = 72.dp, summonedChildren = listOfNotNull(summonedChild))
             }
             Text(
                 text = token?.name ?: entry.tokenId,
@@ -954,28 +957,41 @@ private fun TokenGridCell(
 }
 
 /**
- * [EnemyTokenFace] with a thumbnail of [summonedChild]'s own art superimposed (issue #191) - the
- * same "which token is actually fighting" cue `CONTEXT.md`'s Possessed Enemy pairing uses, applied
- * to a summoner once it has a current Summon Draw child. No overlay when [summonedChild] is null
- * (never summoned, or not a summoner at all). [alignment] defaults to a small corner badge (grid
- * cells, Draw Log row); the zoom dialog instead centers it on the art's left side - where a printed
- * summon token shows its pile-color icon - so it reads as "this is what's standing in" rather than
- * a decorative badge.
+ * [EnemyTokenFace] with each of [summonedChildren]'s own art superimposed (issue #191) - the same
+ * "which token is actually fighting" cue `CONTEXT.md`'s Possessed Enemy pairing uses, applied to a
+ * summoner once it has current Summon Draw children. No overlay when the list is empty (never
+ * summoned, or not a summoner at all). [alignment] defaults to a small corner badge (grid cells,
+ * Draw Log row); the zoom dialog instead pins it to the art's left side - where a printed summon
+ * token shows its pile-color icon - so it reads as "this is what's standing in" rather than a
+ * decorative badge.
+ *
+ * Several children stack in a column along that same edge, so a *double* summoner (the Lost Legion
+ * Dragon Summoner, the only token with two Summon attacks) shows both replacements roughly over its
+ * two printed summon slots rather than hiding one behind the other. A single child is just a
+ * one-item column, identical to the pre-#188 single-badge layout.
  */
 @Composable
 private fun EnemyTokenFaceWithSummon(
     token: EnemyToken,
     size: Dp,
-    summonedChild: EnemyToken?,
+    summonedChildren: List<EnemyToken>,
     alignment: Alignment = Alignment.BottomEnd,
 ) {
     Box {
         EnemyTokenFace(token = token, size = size)
-        if (summonedChild != null) {
-            Box(
-                modifier = Modifier.align(alignment).border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
+        if (summonedChildren.isNotEmpty()) {
+            // A column centered on the aligned edge: with two children it splits into an upper and a
+            // lower badge, which lands them over the summoner's two stacked summon-token slots.
+            Column(
+                modifier = Modifier.align(alignment),
+                verticalArrangement = Arrangement.spacedBy(size * SUMMON_STACK_GAP),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                EnemyTokenFace(token = summonedChild, size = size * SUMMON_BADGE_SCALE)
+                summonedChildren.forEach { child ->
+                    Box(Modifier.border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)) {
+                        EnemyTokenFace(token = child, size = size * SUMMON_BADGE_SCALE)
+                    }
+                }
             }
         }
     }
@@ -1059,6 +1075,9 @@ private val GRID_MAX_HEIGHT = 400.dp
 
 /** Size of a superimposed summoned-child thumbnail (issue #191), relative to the summoner's own art. */
 private const val SUMMON_BADGE_SCALE = 0.45f
+
+/** Vertical gap between stacked summoned-child badges (a two-summon token), relative to the art size. */
+private const val SUMMON_STACK_GAP = 0.05f
 
 /**
  * "Armor 3 · Fame 2" summary line for a token. Deliberately *excludes* the attack (D5): the
