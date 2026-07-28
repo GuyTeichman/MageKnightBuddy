@@ -1076,8 +1076,13 @@ private val GRID_MAX_HEIGHT = 400.dp
 /** Size of a superimposed summoned-child thumbnail (issue #191), relative to the summoner's own art. */
 private const val SUMMON_BADGE_SCALE = 0.45f
 
-/** Vertical gap between stacked summoned-child badges (a two-summon token), relative to the art size. */
-private const val SUMMON_STACK_GAP = 0.05f
+/**
+ * Vertical spacing between stacked summoned-child badges (a two-summon token), relative to the art
+ * size. **Negative on purpose**: the badges slightly overlap (the lower one drawn on top). A
+ * summoned token is narrated only by its attacks/abilities, never its Armor/Fame, so overlapping
+ * those printed numbers costs nothing and keeps the pair reading as one clustered "who's fighting" cue.
+ */
+private const val SUMMON_STACK_GAP = -0.10f
 
 /**
  * "Armor 3 · Fame 2" summary line for a token. Deliberately *excludes* the attack (D5): the
