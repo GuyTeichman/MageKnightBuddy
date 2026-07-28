@@ -240,7 +240,7 @@ private fun EnemyPickerContent(
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // One card per pile that exists in this token set, in a stable enum order, two per row.
             val pileIds = TokenPileId.entries.filter { it in session.piles }
@@ -338,14 +338,17 @@ private fun PileCard(
 
     ElevatedCard(modifier = modifier) {
         Column(
-            Modifier.padding(16.dp),
+            // fillMaxWidth so horizontalAlignment actually centers each child across the card's
+            // full width - without it the Column shrink-wraps to its widest child and everything
+            // ends up flush-left instead of centered.
+            Modifier.fillMaxWidth().padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             // clickable + enabled gates the tap-to-draw-1 shortcut on canDrawOne (busy / pile
             // empty), same conditions the stepper's own max already enforces below.
             Box(modifier = Modifier.clickable(enabled = canDrawOne, onClick = onDrawOne)) {
-                PileBackFace(pileId = pileId, size = 96.dp)
+                PileBackFace(pileId = pileId, size = 72.dp)
             }
             Text(pileId.displayName(), style = MaterialTheme.typography.titleMedium)
             Text(
@@ -562,7 +565,14 @@ private fun TokenZoomDialog(
             }
         },
         text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // fillMaxWidth so horizontalAlignment actually centers each line across the dialog's
+            // full content width - without it the Column shrink-wraps to its widest child and
+            // shorter lines (stat line, attacks) end up flush-left instead of centered.
+            Column(
+                Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 if (token != null) {
                     EnemyTokenFace(token = token, size = 140.dp)
                     Text(token.statLine(), style = MaterialTheme.typography.titleMedium)
