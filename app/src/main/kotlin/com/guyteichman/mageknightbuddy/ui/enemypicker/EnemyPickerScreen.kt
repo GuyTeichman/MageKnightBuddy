@@ -50,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -101,28 +102,33 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
         return
     }
 
+    // Shared by the DrawBar's staged multi-pile draw and #198's per-card tap-to-draw-1 shortcut -
+    // both just fire a `draws` map through the same viewModel.draw() call and open the same
+    // zoom/grid result, so there is exactly one place that decides what a draw's result opens.
+    val onDraw: (Map<TokenPileId, Int>) -> Unit = { draws ->
+        scope.launch {
+            viewModel.draw(draws)
+            // mutate() has published the new session by the time draw() returns, so the last
+            // `total` log entries (draws only ever append) are exactly what was just drawn,
+            // across every pile in `draws` (D12's TokenPileId.entries order).
+            val log = viewModel.session?.drawLog ?: return@launch
+            val total = draws.values.sum()
+            val newIndices = (log.size - total until log.size).toList()
+            // D7: a single draw skips the grid and goes straight to its detail, same as today;
+            // only a batch of more than one - whether from one pile or several (D13) - opens
+            // the grid overview.
+            if (total == 1) {
+                zoom = ZoomState(newIndices, 0)
+            } else {
+                gridState = GridState(newIndices)
+            }
+        }
+    }
+
     EnemyPickerContent(
         session = session,
         isBusy = viewModel.isBusy,
-        onDraw = { draws ->
-            scope.launch {
-                viewModel.draw(draws)
-                // mutate() has published the new session by the time draw() returns, so the last
-                // `total` log entries (draws only ever append) are exactly what was just drawn,
-                // across every pile in `draws` (D12's TokenPileId.entries order).
-                val log = viewModel.session?.drawLog ?: return@launch
-                val total = draws.values.sum()
-                val newIndices = (log.size - total until log.size).toList()
-                // D7: a single draw skips the grid and goes straight to its detail, same as today;
-                // only a batch of more than one - whether from one pile or several (D13) - opens
-                // the grid overview.
-                if (total == 1) {
-                    zoom = ZoomState(newIndices, 0)
-                } else {
-                    gridState = GridState(newIndices)
-                }
-            }
-        },
+        onDraw = onDraw,
         onOpenToken = { index -> zoom = ZoomState(listOf(index), 0) },
         onOpenDefeatDialog = { index -> defeatDialogIndex = index },
         onRequestReset = { pendingReset = { scope.launch { viewModel.reset() } } },
@@ -234,7 +240,7 @@ private fun EnemyPickerContent(
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // One card per pile that exists in this token set, in a stable enum order, two per row.
             val pileIds = TokenPileId.entries.filter { it in session.piles }
@@ -243,13 +249,22 @@ private fun EnemyPickerContent(
                     // Each card gets equal weight, so a full row (2 cards) splits evenly in half and
                     // a trailing lone card (D14 - today, Ruin) fills the whole row's width instead.
                     row.forEach { pileId ->
+                        val pile = session.piles.getValue(pileId)
                         PileCard(
                             modifier = Modifier.weight(1f),
                             pileId = pileId,
-                            pile = session.piles.getValue(pileId),
+                            pile = pile,
                             withReplacement = session.drawWithReplacement,
                             quantity = quantities[pileId] ?: 0,
                             onQuantityChange = { quantities = quantities + (pileId to it) },
+                            // Tap-to-draw-1 (#198): independent of the staged stepper above -
+                            // doesn't read or reset `quantities`, just fires its own one-entry draw.
+                            // Same "anything left to draw" check the stepper's own `max` already
+                            // makes: with replacement a pile never runs out; without, only disabled
+                            // once the pile is entirely empty (draw + discard both zero).
+                            canDrawOne = !isBusy &&
+                                (session.drawWithReplacement || pile.drawPile.size + pile.discardPile.size > 0),
+                            onDrawOne = { onDraw(mapOf(pileId to 1)) },
                         )
                     }
                 }
@@ -301,10 +316,11 @@ private fun DrawBar(total: Int, enabled: Boolean, onDraw: () -> Unit) {
 }
 
 /**
- * One pile: its name, how many tokens are left / drawn, and a 0..N quantity stepper. Fully
- * "controlled" (no local state of its own) - [quantity] and [onQuantityChange] are hoisted to
- * [EnemyPickerContent] so its bottom [DrawBar] can read every card's total and reset them all at
- * once (D13); there is no per-card Draw button any more.
+ * One pile: its face-down back art (#198 - tapping it draws exactly 1, same shortcut as setting
+ * the stepper to 1 and firing "Draw"), name, how many tokens are left / drawn, and a 0..N quantity
+ * stepper. Fully "controlled" (no local state of its own) - [quantity] and [onQuantityChange] are
+ * hoisted to [EnemyPickerContent] so its bottom [DrawBar] can read every card's total and reset
+ * them all at once (D13); there is no per-card Draw button any more, only the art's tap shortcut.
  */
 @Composable
 private fun PileCard(
@@ -314,12 +330,27 @@ private fun PileCard(
     withReplacement: Boolean,
     quantity: Int,
     onQuantityChange: (Int) -> Unit,
+    canDrawOne: Boolean,
+    onDrawOne: () -> Unit,
 ) {
     val remaining = pile.drawPile.size
     val drawn = pile.discardPile.size
 
     ElevatedCard(modifier = modifier) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            // fillMaxWidth so horizontalAlignment actually centers each child across the card's
+            // full width - without it the Column shrink-wraps to its widest child and everything
+            // ends up flush-left instead of centered. Bottom padding trimmed below the stepper
+            // (the last child) - it doesn't need as much breathing room as the top/sides.
+            Modifier.fillMaxWidth().padding(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            // clickable + enabled gates the tap-to-draw-1 shortcut on canDrawOne (busy / pile
+            // empty), same conditions the stepper's own max already enforces below.
+            Box(modifier = Modifier.clickable(enabled = canDrawOne, onClick = onDrawOne)) {
+                PileBackFace(pileId = pileId, size = 72.dp)
+            }
             Text(pileId.displayName(), style = MaterialTheme.typography.titleMedium)
             Text(
                 // With replacement, nothing depletes, so "drawn" would always be 0 - hide it.
@@ -327,6 +358,7 @@ private fun PileCard(
                 else "$remaining in pile · $drawn drawn",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
             )
             QuantityStepper(
                 quantity = quantity,
@@ -342,11 +374,22 @@ private fun PileCard(
 @Composable
 private fun QuantityStepper(quantity: Int, onQuantityChange: (Int) -> Unit, max: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onQuantityChange((quantity - 1).coerceAtLeast(0)) }, enabled = quantity > 0) {
+        // Shrunk below IconButton's default 48.dp touch target - the pile cards are dense,
+        // repeated controls rather than a one-off action, so the extra tap padding just added
+        // unused height to every card.
+        IconButton(
+            onClick = { onQuantityChange((quantity - 1).coerceAtLeast(0)) },
+            enabled = quantity > 0,
+            modifier = Modifier.size(32.dp),
+        ) {
             Icon(Icons.Filled.Remove, contentDescription = "One fewer")
         }
         Text("$quantity", style = MaterialTheme.typography.titleMedium)
-        IconButton(onClick = { onQuantityChange((quantity + 1).coerceAtMost(max)) }, enabled = quantity < max) {
+        IconButton(
+            onClick = { onQuantityChange((quantity + 1).coerceAtMost(max)) },
+            enabled = quantity < max,
+            modifier = Modifier.size(32.dp),
+        ) {
             Icon(Icons.Filled.Add, contentDescription = "One more")
         }
     }
@@ -514,27 +557,36 @@ private fun TokenZoomDialog(
     val token = TokenCatalogue.byId(entry.tokenId)
     AlertDialog(
         onDismissRequest = onDismiss,
-        // D11: Defeat is the primary (filled) action; Close stays a plain text button beside it.
-        // Material3's AlertDialog renders dismissButton to the left of confirmButton, so this
-        // reads Close / Defeat left-to-right without a manual Row.
-        confirmButton = {
-            Button(onClick = { onToggleDefeated(logIndex, true) }, enabled = !entry.defeated) {
-                Text(if (entry.defeated) "Defeated" else "Defeat")
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        // Material3's AlertDialog always end-aligns its confirmButton/dismissButton row, with no
+        // way to center it - so Close/Defeat are built as an ordinary centered Row inside `text`
+        // instead (below), and this slot is left empty to satisfy the required parameter.
+        confirmButton = {},
         title = {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(token?.name ?: entry.tokenId)
+            // Box (not a Row) so the name can be centered across the full width via its own
+            // fillMaxWidth + TextAlign.Center, with the "?" button floated at the end on top of
+            // it - a Row would instead push the name off-center to make room for the button.
+            Box(Modifier.fillMaxWidth()) {
+                Text(
+                    text = token?.name ?: entry.tokenId,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                )
                 if (token != null) {
-                    IconButton(onClick = { onShowInfo(token) }) {
+                    IconButton(onClick = { onShowInfo(token) }, modifier = Modifier.align(Alignment.CenterEnd)) {
                         Icon(Icons.Filled.QuestionMark, contentDescription = "Abilities")
                     }
                 }
             }
         },
         text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // fillMaxWidth so horizontalAlignment actually centers each line across the dialog's
+            // full content width - without it the Column shrink-wraps to its widest child and
+            // shorter lines (stat line, attacks) end up flush-left instead of centered.
+            Column(
+                Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 if (token != null) {
                     EnemyTokenFace(token = token, size = 140.dp)
                     Text(token.statLine(), style = MaterialTheme.typography.titleMedium)
@@ -565,6 +617,15 @@ private fun TokenZoomDialog(
                         IconButton(onClick = { onNavigate(state.index + 1) }, enabled = state.index < state.logIndices.size - 1) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next")
                         }
+                    }
+                }
+                // D11: Defeat is the primary (filled) action; Close stays a plain text button
+                // beside it, in that left-to-right order. Built here instead of in AlertDialog's
+                // confirmButton/dismissButton slots so the pair can be centered as a group.
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = onDismiss) { Text("Close") }
+                    Button(onClick = { onToggleDefeated(logIndex, true) }, enabled = !entry.defeated) {
+                        Text(if (entry.defeated) "Defeated" else "Defeat")
                     }
                 }
             }
@@ -745,7 +806,7 @@ private fun TokenPileId.summonName(): String = when (this) {
 }
 
 /** Player-facing pile name. */
-private fun TokenPileId.displayName(): String = when (this) {
+internal fun TokenPileId.displayName(): String = when (this) {
     TokenPileId.GREEN -> "Green enemies"
     TokenPileId.GREY -> "Grey enemies"
     TokenPileId.VIOLET -> "Violet enemies"

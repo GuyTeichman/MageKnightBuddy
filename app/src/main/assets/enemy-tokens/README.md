@@ -7,6 +7,16 @@ to a text disc (`EnemyTokenFace` in `app/.../ui/enemypicker/EnemyTokenArt.kt`). 
 `res/drawable`, so the set can grow token-by-token keyed by the catalogue's string id — see
 [ADR-0007](../../../../../../docs/adr/0007-token-catalogue-as-json-in-domain-resources.md).
 
+## Pile back art (`backs/`)
+
+Face-down **pile back** art (issue #198), one JPEG per `TokenPileId` named after its lowercase enum
+name (`backs/<pileid>.jpg`, e.g. `backs/green.jpg`) — not the catalogue's per-token id, since a pile
+back is one-per-color rather than one-per-token. `PileBackFace` in `EnemyTokenArt.kt` loads it the
+same way `EnemyTokenFace` loads a token face (clipped to a circle, text-disc fallback if missing) and
+`EnemyPickerScreen.kt`'s `PileCard` shows it as a tap-to-draw-1 shortcut. All 6 base-game piles
+(green/grey/violet/brown/red/white) are present; Ruin has none — it isn't wired into the picker's
+draw flow yet (issue #201).
+
 ## Present so far
 
 All 6 base-game enemy piles (issue #178's green slice plus issue #187's grey/violet/brown/red/white):
@@ -30,6 +40,14 @@ cross-checked against the mod's "Enemy Tokens List" reference sheet before cropp
 two-source method issue #178 used for green. Each image was re-encoded to 512×512 JPEG (quality 85)
 to keep the repo small. Apocalypse Dragon tokens are **not** in that mod (it predates the
 expansion) and will be sourced from the AD rulebook / physical components, as Coral's art was.
+
+The `backs/` pile-back art (issue #198) came from the same mod, one level up: every token object in
+a pile's bag (e.g. "Marauding Orcs" for green) carries a `CustomImage.ImageSecondaryURL` for its
+back face, and every token within one bag shares the exact same value — confirmed by parsing the
+mod's own JSON (`...\Mods\Workshop\1721301081.json`) rather than assumed, since a mismatch would
+mean the physical tokens don't actually share one uniform back per color. Same crop/re-encode
+pipeline as the faces (512×512 JPEG, quality 85); no separate cross-check needed since the mod JSON
+already gives a single unambiguous URL per pile.
 
 ## Licensing
 
