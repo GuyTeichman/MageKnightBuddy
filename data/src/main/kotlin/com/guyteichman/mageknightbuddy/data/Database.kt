@@ -20,8 +20,13 @@ fun createDatabase(context: Context): MageKnightBuddyDatabase =
         // Android platform's built-in SQLite. Using the same driver in production and in
         // JVM unit tests keeps their behavior identical - see ADR-0003 for why tests need this.
         .setDriver(BundledSQLiteDriver())
-        // No migrations are written yet, so a version bump would otherwise crash at runtime.
-        // Instead, wipe and recreate all tables on schema changes - acceptable pre-release,
-        // since there's no user data to preserve yet.
+        // Real, data-preserving migrations for the version jumps a shipped build can take. v10 was
+        // released as v1.0.0, so v10 -> v11 is the upgrade real users actually hit - handling it with
+        // a proper Migration (not a destructive recreate) is what fixes issue #194's crash loop and
+        // keeps their Scoreboard/session data. Every future bump should add its Migration here too.
+        .addMigrations(MIGRATION_10_11)
+        // Fallback for any *other* version gap with no migration written (e.g. a dev install left on
+        // an old pre-release schema): recreate from scratch. Shipped users never reach this, since
+        // their only live upgrade path (v10 -> v11) now has a real migration above.
         .fallbackToDestructiveMigration(dropAllTables = true)
         .build()

@@ -54,6 +54,15 @@ import androidx.room.RoomDatabase
     // offensive/defensive - so any pre-merge v11 test DB should be reinstalled clean rather than
     // carried over. No further bump, since v11 never shipped.)
     version = 11,
+    // Kept false: enabling exportSchema on Room 2.8.4 crashes KSP here with an AbstractMethodError
+    // out of room-migration-bundle's SchemaBundle deserializer, because its serializers were built
+    // against an older kotlinx.serialization than this project resolves - it only triggers once a
+    // schema JSON exists to be read back, so it can't just be turned on. Real migrations are written
+    // by hand instead (see MIGRATION_10_11), and MageKnightBuddyDatabaseMigrationTest validates them
+    // against Room's *runtime* schema check rather than a checked-in JSON. This matters because the
+    // old destructive fallback is what crash-looped a v10->v11 upgrade over an existing install
+    // (issue #194): the drop-all-tables recreate contended with the InvalidationTracker's trigger
+    // sync for the single-writer connection and timed out. See createDatabase().
     exportSchema = false,
 )
 abstract class MageKnightBuddyDatabase : RoomDatabase() {
