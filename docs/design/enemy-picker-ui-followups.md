@@ -115,3 +115,68 @@ v10→v11 bump on this branch rather than two.)*
 Note 3 (summoned tokens re-apply their own offensive abilities, D6) is documented on **#191**
 (the Summon Draw action) rather than being its own issue.
 
+## Follow-up grilling for #197 implementation (2026-07-28)
+
+The original combined issue (then #192) was split, grilling-session style, into three: **#192**
+(multi-pile draw, deferred), **#197** (this doc's D2-UI + D3, now the active focus), and **#203**
+(Draw Log visual grouping by `batchId`, deferred — D3 explicitly keeps the log at one row per
+token, and grouping the persisted log rows was never actually resolved by D3 despite being in the
+original issue text). Decisions below are for #197's implementation specifically.
+
+### D7 — Grid/detail navigation model
+
+New `GridState` (batch's token IDs) wraps the existing `ZoomState`/`TokenZoomDialog` unchanged:
+`EnemyPickerTab` holds `gridState: GridState?`, and, nested inside an open grid, an optional
+`ZoomState?` for "drilled into a cell." Opening a detail from a grid cell sets the nested
+`ZoomState`; back on that detail clears it back to the grid; dismissing the grid clears both.
+Draw of **N = 1** skips the grid entirely and sets a top-level `ZoomState` directly, same as
+today — including the Draw Log row tap-in case, which always opens detail directly with no grid
+regardless of the row's original batch size.
+
+### D8 — Grid checkbox default & write-through
+
+Grid cell Defeat checkboxes default to **unchecked** (on-the-board), matching persisted
+`DrawLogEntry.defeated` — this supersedes the *raw* note 6 text ("reflect reveal→defeat as the
+default"), which was superseded by D2's actual resolution (`defeated = false` by default, Defeat
+is an explicit one-tap action). Toggling a checkbox calls `viewModel.setDefeated(...)`
+**immediately** — no staged/pending state, same as the existing `DefeatDialog` flow; the grid is a
+thin view over session state, not a second source of truth.
+
+### D9 — Grid layout
+
+`LazyVerticalGrid` with `GridCells.Adaptive(minSize = ...)` (not a fixed column count) — the
+common case is a **2-6 token batch** (author's estimate), with counts up to `MAX_BATCH = 20`
+being rare; size the adaptive `minSize` so 2-6 renders as a comfortably large grid, and let it
+naturally pack more/smaller columns for the rare large batch rather than tuning for the 20-case.
+
+### D10 — Grid dialog sizing & dismissal
+
+Dialog sizes **to content** (not fixed near-fullscreen), with a max-height cap so it scrolls
+internally once a batch is large enough to exceed it — keeps the common 2-6 case compact instead
+of mostly-empty fullscreen. Dismissal matches whatever convention `TokenZoomDialog` already uses
+(system back / tap-outside-scrim) — no separate "Done" button, since D8's immediate write-through
+means there's no pending state to confirm on close.
+
+Flagged for **possible future iteration**, contingent on how #203 (Draw Log batch grouping) ends
+up shaping the log UI: the dismiss gesture might later grow an explicit "save for later" vs.
+"defeat remaining" affordance instead of a bare close. Not building that now — noted so it isn't
+forgotten.
+
+### D11 — Detail screen Defeat button: style & post-tap behavior
+
+Decided by author deferring to assistant's recommendation, **alternatives recorded for later
+iteration**:
+
+- **Style (chosen):** Defeat as the large filled/primary button; Close as a plain text/outline
+  button beside or below it (typical Material primary/secondary pairing).
+  - *Alternative not taken:* Defeat as a large primary action with Close demoted to a small
+    icon/back-arrow in a top bar instead of a peer button.
+- **Post-tap behavior (chosen):** tapping Defeat marks the entry defeated and the user **stays**
+  on that detail screen (button/state updates in place, e.g. becomes a "Defeated" indicator) —
+  does *not* auto-navigate back to the grid.
+  - *Alternative not taken:* auto-return to the grid after Defeat, so the user flows
+    reveal→defeat→next-cell without an extra manual back-tap. Rejected for now because it would
+    fight the prev/next arrows for a user who wants to keep flipping through details without
+    bouncing back to the grid each time — but worth revisiting if in-practice usage shows the
+    auto-return flow is what people actually want.
+
