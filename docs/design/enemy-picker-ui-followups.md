@@ -180,3 +180,88 @@ iteration**:
     bouncing back to the grid each time — but worth revisiting if in-practice usage shows the
     auto-return flow is what people actually want.
 
+## Follow-up grilling for #192 implementation (2026-07-28)
+
+#192 (multi-pile simultaneous draw, deferred until #197 landed — see that issue's text) is now
+the active focus. Decisions below are for #192's implementation specifically; they build directly
+on #197's D7-D11 (the grid this issue now feeds multi-pile batches into).
+
+### D12 — Domain: consolidate onto one map-based `draw()`
+
+`EnemyPickerSession.draw(pileId, count, batchId, shuffle)` is deleted outright (confirmed unused
+outside the app's own call sites once the UI is unified per D13, and unlikely to be needed again)
+and replaced by a single **`draw(draws: Map<TokenPileId, Int>, batchId = System.currentTimeMillis(),
+shuffle = { it.shuffled() })`** — there is no separate single-pile entry point; a single-pile draw
+is just a one-entry map.
+
+- Internally loops piles in **`TokenPileId.entries` order** (GREEN, GREY, VIOLET, BROWN, RED,
+  WHITE, RUIN — already the rulebook's difficulty order, author-confirmed 2026-07-28), not
+  whatever order the caller's `Map` happens to iterate in, so `DrawLogEntry` insertion order (and
+  therefore Draw Log display order for a batch) is deterministic regardless of UI selection order.
+- Reuses the exact same per-pile draw/replenish logic the old `draw()` had (extracted into a
+  private helper) — one implementation of "how a pile gets drawn from," not two.
+- Validates `require(draws.isNotEmpty())` and `require(draws.values.all { it >= 1 })`, mirroring
+  the old function's own `require(count >= 1)` rather than silently tolerating a malformed call.
+- No DB/schema migration: `DrawLogEntry` already carries `pile` and a shared `batchId` per entry
+  (its doc comment already anticipated "later - a multi-pile draw"), so persisting a multi-pile
+  batch needs no new fields.
+- Existing domain/data tests calling the old `draw(pileId, count)` are rewritten to
+  `draw(mapOf(pileId to count))`.
+
+### D13 — UI: unify single- and multi-pile draw into one stepper-driven action
+
+Replaces the per-`PileCard` "Draw" button entirely, rather than adding a separate multi-select
+mode alongside it (author's idea, 2026-07-28):
+
+- Every pile's quantity stepper now **defaults to 0** (was 1) and its minimum is **0** (was 1) -
+  0 means "not part of this draw."
+- The per-card "Draw" button is removed. **One global "Draw"/"Draw N" button** (N = sum of every
+  pile's nonzero stepper) replaces all of them, calling `draw()` with a map of every pile whose
+  stepper is > 0.
+- Firing it resets every stepper back to 0.
+- This is the *only* draw path now - there is no separate single-pile UI flow. Setting one pile's
+  stepper > 0 and leaving the rest at 0 degenerates to a one-entry map (D12), so N=1 still opens
+  the token detail directly and N>1 still opens the grid overview, unchanged from #197's D7.
+- Independent of #198 (tap a pile's back-art to quick-draw 1) - that issue is a separate shortcut
+  interaction, not blocked by or dependent on this redesign.
+
+### D14 — UI: pile card layout - two per row, odd one out goes full-width
+
+Removing the per-card Draw button frees up enough width to fit two `PileCard`s per row (author's
+suggestion, 2026-07-28):
+
+- Implemented by chunking `pileIds` into pairs and emitting each pair as one `Row` `item` inside
+  the existing single `LazyColumn` (Draw Log and Config section stay on the same scroll) - not a
+  nested `LazyVerticalGrid`, to avoid nested-scrollable handling.
+- A trailing odd card (today: RUIN, since it's last in `TokenPileId.entries` and the base set has
+  7 piles) renders **full-width** rather than half-width-with-a-spacer - deliberately, since Ruin
+  isn't a real enemy pile and plays by different rules (see `CONTEXT.md`'s "Ruin Token"), so it
+  reading visually distinct is fitting rather than an inconsistency to hide.
+
+### D15 — UI: global "Draw" button placement and disabled state
+
+- Lives in a **`Scaffold` bottom bar**, always visible regardless of scroll position (not a FAB,
+  not inline in the list) - the standard Material pattern for one primary action over a set of
+  selectable items above it.
+- **Always rendered, disabled when the total is 0** (not hidden/shown based on state) - avoids the
+  bottom bar popping in and out as steppers change.
+
+### D16 — UI: grid dialog adaptation for multi-pile batches
+
+`TokenGridDialog` (#197) assumed one pile per batch for its title and had no per-cell pile label.
+Now that a batch can span piles:
+
+- **Title** becomes the generic **"N tokens drawn"** for any batch of size > 1, single-pile or
+  multi-pile alike - replaces the old `"${count} ${pile.displayName()} drawn"`.
+- **No per-cell pile label added** - the token art's own color already makes the source pile
+  obvious at a glance (author's call, 2026-07-28), so cells stay exactly as #197 built them (art +
+  name + Defeat checkbox).
+
+### D17 — No combined cross-pile cap
+
+Each pile's stepper keeps its existing `MAX_BATCH = 20` individual cap; no additional cap on the
+*combined* total across every selected pile. A very large combined batch (worst case ~140 tokens
+across all 7 piles) is an accepted edge case rather than something to clamp down on, since the
+grid is already adaptive and internally scrollable (#197's D9/D10) and won't break - it just
+wouldn't be pretty, which is fine for a rare case.
+
