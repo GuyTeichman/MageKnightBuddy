@@ -14,17 +14,40 @@ import kotlin.test.assertTrue
  */
 class TokenCatalogueTest {
 
-    // Expected physical token count per pile (copies summed). Grows as each pile is transcribed;
-    // green/grey/violet/brown/red/white are the *base game's* six enemy piles (see the rules doc).
-    // None of these totals include the Lost Legion expansion's own additions to each pile (issue
-    // #188), which will raise these numbers when they're added.
+    // Expected *total* physical token count per pile (copies summed across all expansions). These
+    // are base game + Lost Legion (issue #188): Lost Legion tokens share the base tokens' backs and
+    // shuffle into the same six colour piles, so e.g. GREEN is 12 base + 8 Lost Legion = 20. The
+    // per-expansion breakdown that adds up to these is asserted separately below, so a token added
+    // to the wrong pile or tagged the wrong expansion is caught, not just a wrong grand total.
     private val expectedPileCounts = mapOf(
+        TokenPileId.GREEN to 20,
+        TokenPileId.GREY to 18,
+        TokenPileId.VIOLET to 14,
+        TokenPileId.BROWN to 16,
+        TokenPileId.RED to 14,
+        TokenPileId.WHITE to 16,
+    )
+
+    // Base game's own contribution to each pile (the pre-#188 counts).
+    private val expectedBasePileCounts = mapOf(
         TokenPileId.GREEN to 12,
         TokenPileId.GREY to 10,
         TokenPileId.VIOLET to 10,
         TokenPileId.BROWN to 10,
         TokenPileId.RED to 8,
         TokenPileId.WHITE to 10,
+    )
+
+    // Lost Legion's own additions to each pile (issue #188), sourced by counting the individual
+    // token faces in each pile's Lost Legion bag in the TTS mod, cross-checked against the mod's
+    // "Enemy Tokens List" reference sheet (see docs/rules/enemy-tokens.md's Lost Legion section).
+    private val expectedLostLegionPileCounts = mapOf(
+        TokenPileId.GREEN to 8,
+        TokenPileId.GREY to 8,
+        TokenPileId.VIOLET to 4,
+        TokenPileId.BROWN to 6,
+        TokenPileId.RED to 6,
+        TokenPileId.WHITE to 6,
     )
 
     @Test
@@ -74,45 +97,126 @@ class TokenCatalogueTest {
     }
 
     @Test
-    fun `green pile has the six Marauding Orc types`() {
-        val greenNames = TokenCatalogue.tokens.filter { it.pile == TokenPileId.GREEN }.map { it.name }.toSet()
+    fun `each pile's base and Lost Legion contributions match separately`() {
+        expectedBasePileCounts.forEach { (pile, expected) ->
+            val actual = TokenCatalogue.tokens
+                .filter { it.pile == pile && it.expansion == Expansion.BASE }
+                .sumOf { it.copies }
+            assertEquals(expected, actual, "pile $pile has $actual BASE tokens, expected $expected")
+        }
+        expectedLostLegionPileCounts.forEach { (pile, expected) ->
+            val actual = TokenCatalogue.tokens
+                .filter { it.pile == pile && it.expansion == Expansion.LOST_LEGION }
+                .sumOf { it.copies }
+            assertEquals(expected, actual, "pile $pile has $actual LOST_LEGION tokens, expected $expected")
+        }
+        // Only BASE and LOST_LEGION are transcribed so far (Shades of Tezla / Apocalypse Dragon come
+        // later) - a token tagged with any other expansion should fail loudly, not slip in silently.
+        val expansionsPresent = TokenCatalogue.tokens.map { it.expansion }.toSet()
+        assertEquals(setOf(Expansion.BASE, Expansion.LOST_LEGION), expansionsPresent)
+    }
+
+    @Test
+    fun `elusiveArmor is set exactly when Elusive and is higher than the printed armor`() {
+        TokenCatalogue.tokens.forEach { token ->
+            val isElusive = DefensiveAbility.ELUSIVE in token.defensiveAbilities
+            assertEquals(
+                isElusive,
+                token.elusiveArmor != null,
+                "${token.id}: elusiveArmor must be set iff the token is Elusive",
+            )
+            token.elusiveArmor?.let {
+                assertTrue(it > token.armor, "${token.id}: elusive Armor $it must exceed printed Armor ${token.armor}")
+            }
+        }
+    }
+
+    // The pile-name tests below filter to `expansion == BASE`: since #188, Lost Legion tokens also
+    // live in these same six piles (they share the base tokens' backs), so an unfiltered name set
+    // would no longer equal the base game's own roster. Lost Legion's own rosters are asserted
+    // separately further down.
+    private fun baseNamesIn(pile: TokenPileId): Set<String> =
+        TokenCatalogue.tokens.filter { it.pile == pile && it.expansion == Expansion.BASE }.map { it.name }.toSet()
+
+    private fun lostLegionNamesIn(pile: TokenPileId): List<String> =
+        TokenCatalogue.tokens.filter { it.pile == pile && it.expansion == Expansion.LOST_LEGION }.map { it.name }
+
+    @Test
+    fun `green pile has the six base Marauding Orc types`() {
         assertEquals(
             setOf("Prowlers", "Diggers", "Cursed Hags", "Wolf Riders", "Ironclads", "Orc Summoners"),
-            greenNames,
+            baseNamesIn(TokenPileId.GREEN),
         )
     }
 
     @Test
-    fun `grey pile has the four Keep Guardian types`() {
-        val greyNames = TokenCatalogue.tokens.filter { it.pile == TokenPileId.GREY }.map { it.name }.toSet()
-        assertEquals(setOf("Crossbowmen", "Guardsmen", "Swordsmen", "Golems"), greyNames)
+    fun `grey pile has the four base Keep Guardian types`() {
+        assertEquals(setOf("Crossbowmen", "Guardsmen", "Swordsmen", "Golems"), baseNamesIn(TokenPileId.GREY))
     }
 
     @Test
-    fun `violet pile has the six Mage Tower Guardian types`() {
-        val violetNames = TokenCatalogue.tokens.filter { it.pile == TokenPileId.VIOLET }.map { it.name }.toSet()
+    fun `violet pile has the six base Mage Tower Guardian types`() {
         assertEquals(
             setOf("Monks", "Illusionists", "Ice Mages", "Ice Golems", "Fire Mages", "Fire Golems"),
-            violetNames,
+            baseNamesIn(TokenPileId.VIOLET),
         )
     }
 
     @Test
-    fun `red pile has the four Draconum types`() {
-        val redNames = TokenCatalogue.tokens.filter { it.pile == TokenPileId.RED }.map { it.name }.toSet()
-        assertEquals(setOf("Swamp Dragon", "Fire Dragon", "Ice Dragon", "High Dragon"), redNames)
+    fun `red pile has the four base Draconum types`() {
+        assertEquals(setOf("Swamp Dragon", "Fire Dragon", "Ice Dragon", "High Dragon"), baseNamesIn(TokenPileId.RED))
     }
 
     @Test
-    fun `brown pile has the five Dungeon Monster types`() {
-        val brownNames = TokenCatalogue.tokens.filter { it.pile == TokenPileId.BROWN }.map { it.name }.toSet()
-        assertEquals(setOf("Minotaur", "Gargoyle", "Medusa", "Crypt Worm", "Werewolf"), brownNames)
+    fun `brown pile has the five base Dungeon Monster types`() {
+        assertEquals(setOf("Minotaur", "Gargoyle", "Medusa", "Crypt Worm", "Werewolf"), baseNamesIn(TokenPileId.BROWN))
     }
 
     @Test
-    fun `white pile has the four City Garrison types`() {
-        val whiteNames = TokenCatalogue.tokens.filter { it.pile == TokenPileId.WHITE }.map { it.name }.toSet()
-        assertEquals(setOf("Freezers", "Gunners", "Altem Guardsmen", "Altem Mages"), whiteNames)
+    fun `white pile has the four base City Garrison types`() {
+        assertEquals(setOf("Freezers", "Gunners", "Altem Guardsmen", "Altem Mages"), baseNamesIn(TokenPileId.WHITE))
+    }
+
+    // --- Lost Legion rosters (issue #188). The grey pile has four distinct "Heroes" tokens (each a
+    // single copy) that share one printed name, so it's asserted as a list-with-counts rather than a
+    // set, which would collapse them.
+
+    @Test
+    fun `green pile has the four Lost Legion Marauding Orc types`() {
+        assertEquals(
+            setOf("Orc Skirmishers", "Orc Trackers", "Orc War Beasts", "Orc Stonethrower"),
+            lostLegionNamesIn(TokenPileId.GREEN).toSet(),
+        )
+    }
+
+    @Test
+    fun `grey pile's Lost Legion tokens are Thugs, Shocktroops and four Heroes`() {
+        val names = lostLegionNamesIn(TokenPileId.GREY)
+        assertEquals(4, names.count { it == "Heroes" }, "expected four distinct grey Heroes tokens")
+        assertEquals(setOf("Thugs", "Shocktroops", "Heroes"), names.toSet())
+    }
+
+    @Test
+    fun `violet pile has the two Lost Legion Mage Tower types`() {
+        assertEquals(setOf("Sorcerers", "Magic Familiars"), lostLegionNamesIn(TokenPileId.VIOLET).toSet())
+    }
+
+    @Test
+    fun `brown pile has the three Lost Legion Dungeon Monster types`() {
+        assertEquals(setOf("Manticore", "Hydra", "Shadow"), lostLegionNamesIn(TokenPileId.BROWN).toSet())
+    }
+
+    @Test
+    fun `red pile has the three Lost Legion Draconum types`() {
+        assertEquals(setOf("Lava Dragon", "Dragon Summoner", "Storm Dragon"), lostLegionNamesIn(TokenPileId.RED).toSet())
+    }
+
+    @Test
+    fun `white pile has the four Lost Legion City Garrison types`() {
+        assertEquals(
+            setOf("Fire Catapult", "Ice Catapult", "Delphana Masters", "Grim Legionnaires"),
+            lostLegionNamesIn(TokenPileId.WHITE).toSet(),
+        )
     }
 
     // The spot-checks below use values derived by hand from docs/rules/enemy-tokens.md's table.
@@ -259,6 +363,121 @@ class TokenCatalogueTest {
         assertEquals(
             setOf(AttackElement.FIRE, AttackElement.ICE, AttackElement.PHYSICAL),
             altemGuardsmen.resistances,
+        )
+    }
+
+    // --- Lost Legion spot-checks (issue #188). Values derived by hand from the docs/rules/enemy-tokens.md
+    // Lost Legion tables, which transcribe the token faces cross-checked against the reference sheet.
+
+    @Test
+    fun `Orc Skirmishers makes two separate physical attacks`() {
+        val skirmishers = assertNotNull(TokenCatalogue.byId("green_orc_skirmishers"))
+        assertEquals(4, skirmishers.armor)
+        assertEquals(2, skirmishers.fame)
+        // Multiple Attacks: two distinct value-1 attacks, blocked/assigned separately.
+        assertEquals(listOf(1, 1), skirmishers.attacks.map { it.value })
+        assertTrue(skirmishers.attacks.all { it.element == AttackElement.PHYSICAL })
+    }
+
+    @Test
+    fun `Orc Trackers is an Elusive assassin with armor 3 rising to 6`() {
+        val trackers = assertNotNull(TokenCatalogue.byId("green_orc_trackers"))
+        assertEquals(3, trackers.armor)
+        assertEquals(6, trackers.elusiveArmor)
+        assertTrue(DefensiveAbility.ELUSIVE in trackers.defensiveAbilities)
+        assertEquals(setOf(OffensiveAbility.ASSASSINATION), trackers.offensiveAbilities)
+        assertEquals(4, trackers.attacks.single().value)
+    }
+
+    @Test
+    fun `Orc War Beasts is Unfortified, Brutal and resists both Fire and Ice`() {
+        val warBeasts = assertNotNull(TokenCatalogue.byId("green_orc_war_beasts"))
+        assertEquals(5, warBeasts.armor)
+        assertEquals(null, warBeasts.elusiveArmor)
+        assertTrue(DefensiveAbility.UNFORTIFIED in warBeasts.defensiveAbilities)
+        assertEquals(setOf(OffensiveAbility.BRUTAL), warBeasts.offensiveAbilities)
+        assertEquals(setOf(AttackElement.FIRE, AttackElement.ICE), warBeasts.resistances)
+    }
+
+    @Test
+    fun `Shocktroops is both Unfortified and Elusive`() {
+        val shocktroops = assertNotNull(TokenCatalogue.byId("grey_shocktroops"))
+        assertEquals(3, shocktroops.armor)
+        assertEquals(6, shocktroops.elusiveArmor)
+        assertEquals(
+            setOf(DefensiveAbility.UNFORTIFIED, DefensiveAbility.ELUSIVE),
+            shocktroops.defensiveAbilities,
+        )
+    }
+
+    @Test
+    fun `a grey Heroes token mixes a physical and an ice attack`() {
+        val heroes = assertNotNull(TokenCatalogue.byId("grey_heroes_ice"))
+        assertEquals("Heroes", heroes.name)
+        assertEquals(4, heroes.armor)
+        assertEquals(setOf(AttackElement.ICE), heroes.resistances)
+        // Per-attack element genuinely differs within one token: one physical, one ice.
+        assertEquals(
+            listOf(AttackElement.PHYSICAL to 3, AttackElement.ICE to 3),
+            heroes.attacks.map { it.element to it.value },
+        )
+    }
+
+    @Test
+    fun `Manticore is Swift, Assassinating and Poisonous`() {
+        val manticore = assertNotNull(TokenCatalogue.byId("brown_manticore"))
+        assertEquals(6, manticore.armor)
+        assertEquals(setOf(AttackElement.FIRE), manticore.resistances)
+        assertEquals(
+            setOf(OffensiveAbility.SWIFT, OffensiveAbility.ASSASSINATION, OffensiveAbility.POISON),
+            manticore.offensiveAbilities,
+        )
+    }
+
+    @Test
+    fun `Hydra makes three separate physical attacks`() {
+        val hydra = assertNotNull(TokenCatalogue.byId("brown_hydra"))
+        assertEquals(listOf(2, 2, 2), hydra.attacks.map { it.value })
+        assertEquals(setOf(AttackElement.ICE), hydra.resistances)
+    }
+
+    @Test
+    fun `Dragon Summoner summons two brown tokens instead of attacking`() {
+        val summoner = assertNotNull(TokenCatalogue.byId("red_dragon_summoner"))
+        assertEquals(2, summoner.attacks.size)
+        assertTrue(summoner.attacks.all { it.isSummon && it.summons == TokenPileId.BROWN })
+        assertTrue(summoner.attacks.all { it.value == null })
+        assertTrue(DefensiveAbility.ARCANE_IMMUNITY in summoner.defensiveAbilities)
+    }
+
+    @Test
+    fun `Storm Dragon is Elusive with armor 7 rising to 14`() {
+        val stormDragon = assertNotNull(TokenCatalogue.byId("red_storm_dragon"))
+        assertEquals(7, stormDragon.armor)
+        assertEquals(14, stormDragon.elusiveArmor)
+        assertEquals(setOf(OffensiveAbility.SWIFT), stormDragon.offensiveAbilities)
+        assertEquals(AttackElement.ICE, stormDragon.attacks.single().element)
+    }
+
+    @Test
+    fun `Grim Legionnaires is an Unfortified, arcane-immune brute`() {
+        val legionnaires = assertNotNull(TokenCatalogue.byId("white_grim_legionnaires"))
+        assertEquals(10, legionnaires.armor)
+        assertEquals(11, legionnaires.attacks.single().value)
+        assertEquals(
+            setOf(DefensiveAbility.UNFORTIFIED, DefensiveAbility.ARCANE_IMMUNITY),
+            legionnaires.defensiveAbilities,
+        )
+    }
+
+    @Test
+    fun `Delphana Masters has a Cold Fire attack and is Assassinating and Paralyzing`() {
+        val delphana = assertNotNull(TokenCatalogue.byId("white_delphana_masters"))
+        assertEquals(AttackElement.COLD_FIRE, delphana.attacks.single().element)
+        assertEquals(setOf(AttackElement.FIRE, AttackElement.ICE), delphana.resistances)
+        assertEquals(
+            setOf(OffensiveAbility.ASSASSINATION, OffensiveAbility.PARALYZE),
+            delphana.offensiveAbilities,
         )
     }
 }

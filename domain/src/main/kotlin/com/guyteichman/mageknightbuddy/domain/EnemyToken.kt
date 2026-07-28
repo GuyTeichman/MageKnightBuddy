@@ -19,6 +19,12 @@ import kotlinx.serialization.Serializable
  * All three are whole-token, applying to *every* one of the enemy's attacks (Lost Legion, "Multiple
  * Attacks"); only [EnemyAttack.value]/[EnemyAttack.element] are per-attack.
  *
+ * [elusiveArmor] is the second, higher Armor value an [DefensiveAbility.ELUSIVE] enemy uses until
+ * all of its attacks are blocked (The Lost Legion, "Elusive"). It's a nullable number here rather
+ * than folded into [DefensiveAbility] because the enum entry can't carry the value, mirroring how
+ * [resistances] keeps element off the enum. It is set exactly when [DefensiveAbility.ELUSIVE] is
+ * present (and is greater than [armor]) - the catalogue-validation test enforces that pairing.
+ *
  * `@Serializable` so the whole catalogue decodes straight into `List<EnemyToken>` (ADR-0007).
  */
 @Serializable
@@ -34,4 +40,5 @@ data class EnemyToken(
     val resistances: Set<AttackElement> = emptySet(),
     val defensiveAbilities: Set<DefensiveAbility> = emptySet(),
     val offensiveAbilities: Set<OffensiveAbility> = emptySet(),
+    val elusiveArmor: Int? = null,
 )

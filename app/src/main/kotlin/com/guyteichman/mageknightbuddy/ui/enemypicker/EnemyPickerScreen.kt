@@ -1063,9 +1063,14 @@ private const val SUMMON_BADGE_SCALE = 0.45f
 /**
  * "Armor 3 · Fame 2" summary line for a token. Deliberately *excludes* the attack (D5): the
  * attack(s) are listed in full just below this line in the zoom, so repeating them here was
- * redundant.
+ * redundant. An Elusive token shows both Armor values as "3/6" (lower/higher) - the higher one is
+ * what a player faces until they block all its attacks (Lost Legion, "Elusive"), so hiding it would
+ * be misleading; the "Elusive" ability entry in the "?" window explains which value applies when.
  */
-private fun EnemyToken.statLine(): String = "Armor $armor · Fame $fame"
+private fun EnemyToken.statLine(): String {
+    val armorText = if (elusiveArmor != null) "$armor/$elusiveArmor" else "$armor"
+    return "Armor $armorText · Fame $fame"
+}
 
 /** Player-facing name of a summoned pile, e.g. "Brown enemy" (used in the zoom's "Summons a …" line). */
 private fun TokenPileId.summonName(): String = when (this) {
