@@ -224,10 +224,16 @@ class ScoreCalculatorViewModel(
     // Only runs when this instance started with a genuinely empty SavedStateHandle (see
     // [startedWithoutSavedState]) - a normal tab switch or config change already has the correct
     // values in memory and shouldn't have an older Room draft overlaid on top of them.
+    //
+    // `runCatching` because a draft's `fieldsJson` is arbitrary previously-persisted data: a
+    // future rename/reshape of a field (this app has a documented history of that - see
+    // MageKnightBuddyDatabase.kt's version-bump comments) could leave it un-decodable. Silently
+    // dropping an unreadable draft and falling back to defaults is strictly better than crashing
+    // the wizard on launch, which would be a worse failure than the data loss issue #174 fixes.
     init {
         if (startedWithoutSavedState) {
             viewModelScope.launch {
-                draftRepository.restore()?.let { restoreDraft(it) }
+                runCatching { draftRepository.restore() }.getOrNull()?.let { restoreDraft(it) }
             }
         }
     }
@@ -240,6 +246,11 @@ class ScoreCalculatorViewModel(
      * still has somewhere durable to restore from. `viewModelScope.launch` because
      * [ScoreCalculatorDraftRepository.save][com.guyteichman.mageknightbuddy.data.SingleSlotAutosaveRepository.save]
      * goes through Room off the main thread.
+     *
+     * Runs on every field write, not just wizard-page (Next/Previous) transitions - deliberately
+     * finer-grained than issue #174's literal "every step" wording, so a kill mid-page doesn't
+     * lose that page's typing either. Each call is one small single-row Room upsert, so even a
+     * fast typist triggering several of these per second is cheap on real hardware.
      */
     private fun autosaveDraft() {
         viewModelScope.launch { draftRepository.save(fields.associate { it.key to it.toStringValue() }) }
@@ -501,17 +512,25 @@ private class FieldEntry<T : Any>(
     /** The field's current value, stringified for Room storage - an enum's `.name`, everything else's `.toString()`. */
     fun toStringValue(): String = get().let { if (it is Enum<*>) it.name else it.toString() }
 
-    /** Parses [value] back into this field's type (inferred from [default]) and writes it via [set]. */
+    /**
+     * Parses [value] back into this field's type (inferred from [default]) and writes it via
+     * [set] - a no-op (keeping the field at its current value) if [value] doesn't actually parse
+     * as that type, e.g. a stale/foreign draft restored after a field was renamed or reshaped
+     * (see the `init` block's [runCatching] for the analogous case of the whole draft being
+     * undecodable). A field's *type* not being one of the branches below is a real programming
+     * error instead (a new field type added to [ScoreCalculatorViewModel] without extending this
+     * function), so that still fails loudly via [error].
+     */
     fun setFromString(value: String) {
         @Suppress("UNCHECKED_CAST")
         val typed = when (default) {
-            is Boolean -> value.toBoolean() as T
-            is Int -> value.toInt() as T
-            is String -> value as T
-            is Enum<*> -> default.javaClass.enumConstants!!.first { (it as Enum<*>).name == value } as T
+            is Boolean -> value.toBooleanStrictOrNull() as T?
+            is Int -> value.toIntOrNull() as T?
+            is String -> value as T?
+            is Enum<*> -> default.javaClass.enumConstants!!.firstOrNull { (it as Enum<*>).name == value } as T?
             else -> error("Unsupported ScoreCalculatorViewModel field type: ${default.javaClass}")
         }
-        set(typed)
+        if (typed != null) set(typed)
     }
 }
 

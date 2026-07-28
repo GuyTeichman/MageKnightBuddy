@@ -1,9 +1,11 @@
 package com.guyteichman.mageknightbuddy.ui.scorecalculator
 
 import androidx.lifecycle.SavedStateHandle
+import com.guyteichman.mageknightbuddy.data.ScoreCalculatorDraftEntity
 import com.guyteichman.mageknightbuddy.data.ScoreCalculatorDraftRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.data.toDomain
+import com.guyteichman.mageknightbuddy.data.toEntity
 import com.guyteichman.mageknightbuddy.domain.AgainstTheApocalypseScoringInput
 import com.guyteichman.mageknightbuddy.domain.AgainstTheDragonScoringInput
 import com.guyteichman.mageknightbuddy.domain.AgainstTheHorsemenScoringInput
@@ -668,5 +670,31 @@ class ScoreCalculatorViewModelTest {
 
         assertNull(draftDao.saved)
         assertEquals("0", viewModel.fame)
+    }
+
+    @Test
+    fun `restoring a draft with an unrecognized enum value leaves that field at its default instead of crashing`() = runTest {
+        val draftDao = FakeScoreCalculatorDraftDao()
+        // Simulates a stale draft saved by an older build whose Knight enum constant was since
+        // renamed/removed - the field should just fall back to its default, not throw.
+        draftDao.saved = mapOf("knight" to "NOT_A_REAL_KNIGHT", "fame" to "77").toEntity()
+
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(FakeScoringSessionDao()), ScoreCalculatorDraftRepository(draftDao))
+        advanceUntilIdle()
+
+        assertEquals(Knight.entries.first(), viewModel.knight)
+        assertEquals("77", viewModel.fame)
+    }
+
+    @Test
+    fun `restoring an undecodable draft leaves every field at its default instead of crashing`() = runTest {
+        val draftDao = FakeScoreCalculatorDraftDao()
+        draftDao.saved = ScoreCalculatorDraftEntity(fieldsJson = "not valid json", updatedAt = 0L)
+
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(FakeScoringSessionDao()), ScoreCalculatorDraftRepository(draftDao))
+        advanceUntilIdle()
+
+        assertEquals("0", viewModel.fame)
+        assertEquals(Knight.entries.first(), viewModel.knight)
     }
 }
