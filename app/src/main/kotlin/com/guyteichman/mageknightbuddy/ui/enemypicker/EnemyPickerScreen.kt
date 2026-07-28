@@ -50,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -101,28 +102,33 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
         return
     }
 
+    // Shared by the DrawBar's staged multi-pile draw and #198's per-card tap-to-draw-1 shortcut -
+    // both just fire a `draws` map through the same viewModel.draw() call and open the same
+    // zoom/grid result, so there is exactly one place that decides what a draw's result opens.
+    val onDraw: (Map<TokenPileId, Int>) -> Unit = { draws ->
+        scope.launch {
+            viewModel.draw(draws)
+            // mutate() has published the new session by the time draw() returns, so the last
+            // `total` log entries (draws only ever append) are exactly what was just drawn,
+            // across every pile in `draws` (D12's TokenPileId.entries order).
+            val log = viewModel.session?.drawLog ?: return@launch
+            val total = draws.values.sum()
+            val newIndices = (log.size - total until log.size).toList()
+            // D7: a single draw skips the grid and goes straight to its detail, same as today;
+            // only a batch of more than one - whether from one pile or several (D13) - opens
+            // the grid overview.
+            if (total == 1) {
+                zoom = ZoomState(newIndices, 0)
+            } else {
+                gridState = GridState(newIndices)
+            }
+        }
+    }
+
     EnemyPickerContent(
         session = session,
         isBusy = viewModel.isBusy,
-        onDraw = { draws ->
-            scope.launch {
-                viewModel.draw(draws)
-                // mutate() has published the new session by the time draw() returns, so the last
-                // `total` log entries (draws only ever append) are exactly what was just drawn,
-                // across every pile in `draws` (D12's TokenPileId.entries order).
-                val log = viewModel.session?.drawLog ?: return@launch
-                val total = draws.values.sum()
-                val newIndices = (log.size - total until log.size).toList()
-                // D7: a single draw skips the grid and goes straight to its detail, same as today;
-                // only a batch of more than one - whether from one pile or several (D13) - opens
-                // the grid overview.
-                if (total == 1) {
-                    zoom = ZoomState(newIndices, 0)
-                } else {
-                    gridState = GridState(newIndices)
-                }
-            }
-        },
+        onDraw = onDraw,
         onOpenToken = { index -> zoom = ZoomState(listOf(index), 0) },
         onOpenDefeatDialog = { index -> defeatDialogIndex = index },
         onRequestReset = { pendingReset = { scope.launch { viewModel.reset() } } },
@@ -243,13 +249,22 @@ private fun EnemyPickerContent(
                     // Each card gets equal weight, so a full row (2 cards) splits evenly in half and
                     // a trailing lone card (D14 - today, Ruin) fills the whole row's width instead.
                     row.forEach { pileId ->
+                        val pile = session.piles.getValue(pileId)
                         PileCard(
                             modifier = Modifier.weight(1f),
                             pileId = pileId,
-                            pile = session.piles.getValue(pileId),
+                            pile = pile,
                             withReplacement = session.drawWithReplacement,
                             quantity = quantities[pileId] ?: 0,
                             onQuantityChange = { quantities = quantities + (pileId to it) },
+                            // Tap-to-draw-1 (#198): independent of the staged stepper above -
+                            // doesn't read or reset `quantities`, just fires its own one-entry draw.
+                            // Same "anything left to draw" check the stepper's own `max` already
+                            // makes: with replacement a pile never runs out; without, only disabled
+                            // once the pile is entirely empty (draw + discard both zero).
+                            canDrawOne = !isBusy &&
+                                (session.drawWithReplacement || pile.drawPile.size + pile.discardPile.size > 0),
+                            onDrawOne = { onDraw(mapOf(pileId to 1)) },
                         )
                     }
                 }
@@ -301,10 +316,11 @@ private fun DrawBar(total: Int, enabled: Boolean, onDraw: () -> Unit) {
 }
 
 /**
- * One pile: its name, how many tokens are left / drawn, and a 0..N quantity stepper. Fully
- * "controlled" (no local state of its own) - [quantity] and [onQuantityChange] are hoisted to
- * [EnemyPickerContent] so its bottom [DrawBar] can read every card's total and reset them all at
- * once (D13); there is no per-card Draw button any more.
+ * One pile: its face-down back art (#198 - tapping it draws exactly 1, same shortcut as setting
+ * the stepper to 1 and firing "Draw"), name, how many tokens are left / drawn, and a 0..N quantity
+ * stepper. Fully "controlled" (no local state of its own) - [quantity] and [onQuantityChange] are
+ * hoisted to [EnemyPickerContent] so its bottom [DrawBar] can read every card's total and reset
+ * them all at once (D13); there is no per-card Draw button any more, only the art's tap shortcut.
  */
 @Composable
 private fun PileCard(
@@ -314,12 +330,23 @@ private fun PileCard(
     withReplacement: Boolean,
     quantity: Int,
     onQuantityChange: (Int) -> Unit,
+    canDrawOne: Boolean,
+    onDrawOne: () -> Unit,
 ) {
     val remaining = pile.drawPile.size
     val drawn = pile.discardPile.size
 
     ElevatedCard(modifier = modifier) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // clickable + enabled gates the tap-to-draw-1 shortcut on canDrawOne (busy / pile
+            // empty), same conditions the stepper's own max already enforces below.
+            Box(modifier = Modifier.clickable(enabled = canDrawOne, onClick = onDrawOne)) {
+                PileBackFace(pileId = pileId, size = 96.dp)
+            }
             Text(pileId.displayName(), style = MaterialTheme.typography.titleMedium)
             Text(
                 // With replacement, nothing depletes, so "drawn" would always be 0 - hide it.
@@ -327,6 +354,7 @@ private fun PileCard(
                 else "$remaining in pile · $drawn drawn",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
             )
             QuantityStepper(
                 quantity = quantity,
@@ -745,7 +773,7 @@ private fun TokenPileId.summonName(): String = when (this) {
 }
 
 /** Player-facing pile name. */
-private fun TokenPileId.displayName(): String = when (this) {
+internal fun TokenPileId.displayName(): String = when (this) {
     TokenPileId.GREEN -> "Green enemies"
     TokenPileId.GREY -> "Grey enemies"
     TokenPileId.VIOLET -> "Violet enemies"

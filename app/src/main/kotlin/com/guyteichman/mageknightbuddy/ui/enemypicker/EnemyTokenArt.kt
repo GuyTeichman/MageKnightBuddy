@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.guyteichman.mageknightbuddy.domain.EnemyToken
+import com.guyteichman.mageknightbuddy.domain.TokenPileId
 
 /**
  * Renders an [EnemyToken]'s round token face at [size]. If the token's art has been bundled (an
@@ -60,6 +61,51 @@ internal fun EnemyTokenFace(token: EnemyToken, size: Dp = 96.dp) {
 private fun loadTokenBitmap(context: Context, id: String): ImageBitmap? = try {
     // assets.open throws if the file is absent - that's the "no art yet" signal, caught below.
     context.assets.open("enemy-tokens/$id.jpg").use { stream ->
+        BitmapFactory.decodeStream(stream)?.asImageBitmap()
+    }
+} catch (_: Exception) {
+    null
+}
+
+/**
+ * Renders a [TokenPileId]'s face-down back art at [size] (issue #198), clipped to a circle same as
+ * [EnemyTokenFace] - the source crop is a circle centered on a square, so clipping just trims the
+ * square's corners rather than losing any of the circle. Falls back to a colored disc with the
+ * pile's name if that pile's back art isn't bundled yet, the same graceful-degradation pattern as
+ * [EnemyTokenFace]'s [TokenTextFallback].
+ */
+@Composable
+internal fun PileBackFace(pileId: TokenPileId, size: Dp = 96.dp) {
+    val context = LocalContext.current
+    val bitmap = remember(pileId) { loadPileBackBitmap(context, pileId) }
+
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap,
+            contentDescription = pileId.displayName(),
+            modifier = Modifier.size(size).clip(CircleShape),
+        )
+    } else {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = pileId.displayName(),
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(6.dp),
+            )
+        }
+    }
+}
+
+/** Loads `enemy-tokens/backs/<pileid>.jpg` from assets, or null if that pile's back art isn't bundled yet. */
+private fun loadPileBackBitmap(context: Context, pileId: TokenPileId): ImageBitmap? = try {
+    context.assets.open("enemy-tokens/backs/${pileId.name.lowercase()}.jpg").use { stream ->
         BitmapFactory.decodeStream(stream)?.asImageBitmap()
     }
 } catch (_: Exception) {
