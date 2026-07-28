@@ -498,7 +498,10 @@ private fun DrawLogSection(
         }
 
         // Keep each entry's original (chronological) index for defeating, then show newest-first.
-        val indexed = log.withIndex().toList()
+        // Summon Draw children (parentIndex != null) are excluded here - they're never independently
+        // defeated or navigated to as their own top-level entry (issue #191); they're only reachable
+        // via the summoner's own row/zoom, which is also where their thumbnail badge is shown.
+        val indexed = log.withIndex().filter { it.value.parentIndex == null }
         val onBoard = indexed.filter { !it.value.defeated }.asReversed()
         val defeated = indexed.filter { it.value.defeated }.asReversed()
 

@@ -62,11 +62,11 @@ class EnemyPickerViewModel(
      * its Summon attacks name, then autosaves. A no-op if the entry's token has no Summon attack
      * (shouldn't happen - the UI only shows the Summon action when it does) or can't be resolved.
      */
-    suspend fun summon(parentIndex: Int) = mutate { session ->
-        val entry = session.drawLog.getOrNull(parentIndex) ?: return@mutate session
-        val token = catalogue.find { it.id == entry.tokenId } ?: return@mutate session
+    suspend fun summon(parentIndex: Int) = mutate { current ->
+        val entry = current.drawLog.getOrNull(parentIndex) ?: return@mutate current
+        val token = catalogue.find { it.id == entry.tokenId } ?: return@mutate current
         val pileIds = token.attacks.filter { it.isSummon }.mapNotNull { it.summons }
-        if (pileIds.isEmpty()) session else session.summon(parentIndex, pileIds)
+        if (pileIds.isEmpty()) current else current.summon(parentIndex, pileIds)
     }
 
     /** Rebuilds every pile and clears the Draw Log, keeping the current config, then autosaves. */
