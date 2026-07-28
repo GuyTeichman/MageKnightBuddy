@@ -56,6 +56,19 @@ class EnemyPickerViewModel(
     suspend fun setDefeated(index: Int, defeated: Boolean, note: String = "") =
         mutate { it.setDefeated(index, defeated, note) }
 
+    /**
+     * The Summon Draw action (issue #191, `CONTEXT.md`'s "Summon Draw"): resolves the Draw Log
+     * entry at [parentIndex] to its [EnemyToken] in [catalogue] and draws one token from every pile
+     * its Summon attacks name, then autosaves. A no-op if the entry's token has no Summon attack
+     * (shouldn't happen - the UI only shows the Summon action when it does) or can't be resolved.
+     */
+    suspend fun summon(parentIndex: Int) = mutate { session ->
+        val entry = session.drawLog.getOrNull(parentIndex) ?: return@mutate session
+        val token = catalogue.find { it.id == entry.tokenId } ?: return@mutate session
+        val pileIds = token.attacks.filter { it.isSummon }.mapNotNull { it.summons }
+        if (pileIds.isEmpty()) session else session.summon(parentIndex, pileIds)
+    }
+
     /** Rebuilds every pile and clears the Draw Log, keeping the current config, then autosaves. */
     suspend fun reset() = mutate { it.reset(catalogue) }
 

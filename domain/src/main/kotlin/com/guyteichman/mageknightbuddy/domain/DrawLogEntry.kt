@@ -17,6 +17,13 @@ package com.guyteichman.mageknightbuddy.domain
  * a [TokenPile] (a defeated enemy was already discarded the instant it was drawn), so draw odds are
  * identical whichever way this is set (ADR-0006). Kept as a plain domain data class (no
  * serialization annotations) per ADR-0001; the data layer has its own DTO mirror.
+ *
+ * [parentIndex] is set only for a **Summon Draw** child (see `CONTEXT.md`'s "Summon Draw"): the
+ * chronological [EnemyPickerSession.drawLog] index of the summoner entry this token was drawn for.
+ * A summoner can be re-engaged and re-summon a fresh child; every summon appends a new entry rather
+ * than overwriting the old one (the log is append-only), so several entries can share one
+ * [parentIndex] - [EnemyPickerSession.currentChildrenOf] resolves which of them is current (the
+ * most recent shared [batchId]) rather than this field alone.
  */
 data class DrawLogEntry(
     val tokenId: String,
@@ -24,4 +31,5 @@ data class DrawLogEntry(
     val batchId: Long,
     val defeated: Boolean = false,
     val note: String = "",
+    val parentIndex: Int? = null,
 )

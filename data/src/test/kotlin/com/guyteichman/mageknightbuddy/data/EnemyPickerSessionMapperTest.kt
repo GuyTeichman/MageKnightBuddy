@@ -68,6 +68,32 @@ class EnemyPickerSessionMapperTest {
     }
 
     @Test
+    fun `toEntity then toDomain round-trips a Summon Draw child's parentIndex`() {
+        // Realistic state via the session's own methods: draw a parent, then summon a child from it.
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+            .draw(mapOf(TokenPileId.GREEN to 1), batchId = 1L, shuffle = noShuffle) // parent at index 0
+            .summon(parentIndex = 0, pileIds = listOf(TokenPileId.GREEN), batchId = 2L, shuffle = noShuffle)
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+
+        // Independent ground truth (not read off `session`, per CLAUDE.md's round-trip-test
+        // guidance): green is [orc_a, orc_a, orc_b] under identity shuffle, so the parent draws the
+        // first "orc_a" and the summon draws the second.
+        assertEquals(
+            listOf(
+                DrawLogEntry(tokenId = "orc_a", pile = TokenPileId.GREEN, batchId = 1L),
+                DrawLogEntry(tokenId = "orc_a", pile = TokenPileId.GREEN, batchId = 2L, parentIndex = 0),
+            ),
+            roundTripped.drawLog,
+        )
+        // The child's parentIndex specifically, called out on its own since it's the new field.
+        assertEquals(0, roundTripped.drawLog[1].parentIndex)
+        assertEquals(null, roundTripped.drawLog[0].parentIndex)
+    }
+
+    @Test
     fun `toEntity stamps the given updatedAt onto the entity`() {
         val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
 

@@ -1,5 +1,6 @@
 package com.guyteichman.mageknightbuddy.ui.enemypicker
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -51,7 +53,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.EnemyPickerSessionRepository
@@ -89,6 +93,14 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
     // The grid overview for a multi-token draw (N > 1, D3/D7); zoom above nests inside it when a
     // cell is tapped, so dismissing zoom alone falls back to the grid instead of closing everything.
     var gridState by remember { mutableStateOf<GridState?>(null) }
+    // Summon Draw (issue #191): the result of tapping Summon/Re-summon on whichever entry `zoom` is
+    // currently showing - always nested one (or two) layers under that `zoom`, never under the
+    // top-level `gridState` directly. `summonGrid` holds 2+ children (a token with several Summon
+    // attacks, drawn together); `summonZoom` is either the lone child (1-child case) or a cell
+    // drilled into from `summonGrid`. Both are reset whenever `zoom` itself changes or closes, since
+    // they only make sense relative to whichever entry `zoom` is currently on.
+    var summonGrid by remember { mutableStateOf<GridState?>(null) }
+    var summonZoom by remember { mutableStateOf<ZoomState?>(null) }
     // A token whose full ability info window ("?") is open.
     var infoToken by remember { mutableStateOf<EnemyToken?>(null) }
     // The Draw Log index whose Defeat dialog is open, or null.
@@ -125,12 +137,47 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
         }
     }
 
+    // Where a Summon Draw's children open, nested under whichever `zoom` entry they belong to - a
+    // single child goes straight to `summonZoom`; 2+ children (a token with several Summon attacks,
+    // drawn together) open `summonGrid` first (Option B), same "N > 1 opens a grid" convention
+    // `onDraw` already follows. Shared by [onSummon] (after drawing a fresh set) and [onViewSummoned]
+    // (re-opening the *current* set without drawing again).
+    val openSummonResult: (List<Int>) -> Unit = { children ->
+        if (children.size > 1) {
+            summonZoom = null
+            summonGrid = GridState(children)
+        } else {
+            summonGrid = null
+            summonZoom = children.singleOrNull()?.let { ZoomState(children, 0) }
+        }
+    }
+    val onSummon: (Int) -> Unit = { parentIndex ->
+        scope.launch {
+            viewModel.summon(parentIndex)
+            val children = viewModel.session?.currentChildrenOf(parentIndex) ?: return@launch
+            openSummonResult(children)
+        }
+    }
+    // Re-opens the already-summoned child(ren) of whichever entry `zoom` is on, without drawing
+    // again - the "Summoned: X" line's own tap target, distinct from the Summon/Re-summon button
+    // (which always draws a fresh set). A no-op if there's nothing to view (shouldn't happen - the
+    // line and its tap target only render once `currentChildrenOf` is non-empty).
+    val onViewSummoned: (List<Int>) -> Unit = { children -> openSummonResult(children) }
+
+    // The current summoned child of a summoner entry (first one, if a token ever has several
+    // Summon attacks) - used to superimpose a small thumbnail of it wherever that summoner is shown
+    // at a glance (issue #191). Null for an entry that was never summoned from.
+    val currentChildOf: (Int) -> DrawLogEntry? = { index ->
+        session.currentChildrenOf(index).firstOrNull()?.let { session.drawLog[it] }
+    }
+
     EnemyPickerContent(
         session = session,
         isBusy = viewModel.isBusy,
         onDraw = onDraw,
-        onOpenToken = { index -> zoom = ZoomState(listOf(index), 0) },
+        onOpenToken = { index -> zoom = ZoomState(listOf(index), 0); summonGrid = null; summonZoom = null },
         onOpenDefeatDialog = { index -> defeatDialogIndex = index },
+        currentChildOf = currentChildOf,
         onRequestReset = { pendingReset = { scope.launch { viewModel.reset() } } },
         onRequestApplyConfig = { tokenSet, replacement ->
             pendingReset = { scope.launch { viewModel.applyConfig(tokenSet, replacement) } }
@@ -145,9 +192,12 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
         TokenGridDialog(
             state = grid,
             log = session.drawLog,
-            onOpenDetail = { position -> zoom = ZoomState(grid.logIndices, position) },
+            title = "${grid.logIndices.size} tokens drawn",
+            showDefeatToggle = true,
+            currentChildOf = currentChildOf,
+            onOpenDetail = { position -> zoom = ZoomState(grid.logIndices, position); summonGrid = null; summonZoom = null },
             onToggleDefeated = { index, defeated -> scope.launch { viewModel.setDefeated(index, defeated) } },
-            onDismiss = { gridState = null; zoom = null },
+            onDismiss = { gridState = null; zoom = null; summonGrid = null; summonZoom = null },
         )
     }
 
@@ -155,12 +205,43 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
         TokenZoomDialog(
             state = state,
             log = session.drawLog,
-            onNavigate = { newIndex -> zoom = state.copy(index = newIndex) },
+            onNavigate = { newIndex -> zoom = state.copy(index = newIndex); summonGrid = null; summonZoom = null },
             onShowInfo = { token -> infoToken = token },
             onToggleDefeated = { index, defeated -> scope.launch { viewModel.setDefeated(index, defeated) } },
+            onSummon = onSummon,
+            onViewSummoned = onViewSummoned,
+            currentChildrenOf = { index -> session.currentChildrenOf(index) },
             // Only clears the detail dialog - if it was opened from the grid, the grid (still set
-            // above) reappears underneath; a top-level zoom (gridState null) just closes.
-            onDismiss = { zoom = null },
+            // above) reappears underneath; a top-level zoom (gridState null) just closes. Also
+            // clears any Summon Draw nested under this entry - it only makes sense while this
+            // entry's own zoom is open.
+            onDismiss = { zoom = null; summonGrid = null; summonZoom = null },
+        )
+    }
+
+    // Summon Draw result (nested under `zoom` above, not under `gridState`) - same before/after
+    // composition-order trick as the top-level grid/zoom pair, so window stacking is correct.
+    summonGrid?.let { grid ->
+        TokenGridDialog(
+            state = grid,
+            log = session.drawLog,
+            title = "${grid.logIndices.size} tokens summoned",
+            // A Summon Draw child is never independently marked defeated - the summoner's own
+            // Defeat flag resolves the whole encounter (see `CONTEXT.md`'s "Summon Draw").
+            showDefeatToggle = false,
+            onOpenDetail = { position -> summonZoom = ZoomState(grid.logIndices, position) },
+            onToggleDefeated = { _, _ -> },
+            onDismiss = { summonGrid = null; summonZoom = null },
+        )
+    }
+
+    summonZoom?.let { state ->
+        SummonedChildZoomDialog(
+            state = state,
+            log = session.drawLog,
+            onNavigate = { newIndex -> summonZoom = state.copy(index = newIndex) },
+            onShowInfo = { token -> infoToken = token },
+            onDismiss = { summonZoom = null },
         )
     }
 
@@ -215,6 +296,7 @@ private fun EnemyPickerContent(
     onDraw: (Map<TokenPileId, Int>) -> Unit,
     onOpenToken: (Int) -> Unit,
     onOpenDefeatDialog: (Int) -> Unit,
+    currentChildOf: (Int) -> DrawLogEntry?,
     onRequestReset: () -> Unit,
     onRequestApplyConfig: (Set<Expansion>, Boolean) -> Unit,
 ) {
@@ -275,6 +357,7 @@ private fun EnemyPickerContent(
                     log = session.drawLog,
                     onOpenToken = onOpenToken,
                     onOpenDefeatDialog = onOpenDefeatDialog,
+                    currentChildOf = currentChildOf,
                 )
             }
 
@@ -405,6 +488,7 @@ private fun DrawLogSection(
     log: List<DrawLogEntry>,
     onOpenToken: (Int) -> Unit,
     onOpenDefeatDialog: (Int) -> Unit,
+    currentChildOf: (Int) -> DrawLogEntry?,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Draw Log", style = MaterialTheme.typography.titleLarge)
@@ -425,7 +509,7 @@ private fun DrawLogSection(
         if (onBoard.isNotEmpty()) {
             if (showHeaders) Text("On the board", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             onBoard.forEach { (index, entry) ->
-                DrawLogRow(index, entry, onOpenToken, onOpenDefeatDialog)
+                DrawLogRow(index, entry, onOpenToken, onOpenDefeatDialog, currentChildOf(index))
             }
         }
         if (defeated.isNotEmpty()) {
@@ -436,20 +520,27 @@ private fun DrawLogSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             defeated.forEach { (index, entry) ->
-                DrawLogRow(index, entry, onOpenToken, onOpenDefeatDialog)
+                DrawLogRow(index, entry, onOpenToken, onOpenDefeatDialog, currentChildOf(index))
             }
         }
     }
 }
 
+/**
+ * One Draw Log row. [summonedChild] (issue #191) is the entry's current Summon Draw child, if any -
+ * shown as a small circular thumbnail of its own art before the name, the row's lightweight version
+ * of the grid cell's superimposed badge (the row has no full-size art of its own to superimpose onto).
+ */
 @Composable
 private fun DrawLogRow(
     index: Int,
     entry: DrawLogEntry,
     onOpenToken: (Int) -> Unit,
     onOpenDefeatDialog: (Int) -> Unit,
+    summonedChild: DrawLogEntry?,
 ) {
     val token = TokenCatalogue.byId(entry.tokenId)
+    val summonedChildToken = summonedChild?.let { TokenCatalogue.byId(it.tokenId) }
     // Defeated rows are de-emphasised (dimmed name), since the on-board enemies are what still needs
     // attention.
     val nameColor = if (entry.defeated) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
@@ -459,7 +550,10 @@ private fun DrawLogRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(Modifier.weight(1f)) {
+            if (summonedChildToken != null) {
+                EnemyTokenFace(token = summonedChildToken, size = 32.dp)
+            }
+            Column(Modifier.weight(1f).padding(start = if (summonedChildToken != null) 8.dp else 0.dp)) {
                 Text(token?.name ?: entry.tokenId, style = MaterialTheme.typography.bodyLarge, color = nameColor)
                 Text(
                     text = entry.pile.displayName() + (if (entry.note.isNotBlank()) " · ${entry.note}" else ""),
@@ -537,11 +631,16 @@ private fun ConfigSection(
 /**
  * Zoomed view of a drawn token (or a tapped log entry): its art (or text fallback), name, stat line
  * and attacks, a "?" to open the full ability info window, prev/next with an "x of y" counter when a
- * whole batch was drawn at once, and a Defeat button (D2/D11).
+ * whole batch was drawn at once, a Summon/Re-summon button when the token has a Summon attack
+ * (issue #191), and a Defeat button (D2/D11).
  *
  * [log] is the whole Draw Log so [state]'s indices can be resolved to entries; that lookup also
  * drives the Defeat button's own state (whether *this* entry is already defeated), since the same
  * dialog instance stays open across [onNavigate] calls as the user flips through a batch.
+ * [currentChildrenOf] resolves a Summon Draw's current children (see `EnemyPickerSession`), used
+ * both to label the button ("Summon" vs "Re-summon") and to list what's currently summoned - tapping
+ * that list ([onViewSummoned]) re-opens the existing child(ren) without drawing again, distinct from
+ * [onSummon] which always draws a fresh set.
  */
 @Composable
 private fun TokenZoomDialog(
@@ -550,11 +649,16 @@ private fun TokenZoomDialog(
     onNavigate: (Int) -> Unit,
     onShowInfo: (EnemyToken) -> Unit,
     onToggleDefeated: (Int, Boolean) -> Unit,
+    onSummon: (Int) -> Unit,
+    onViewSummoned: (List<Int>) -> Unit,
+    currentChildrenOf: (Int) -> List<Int>,
     onDismiss: () -> Unit,
 ) {
     val logIndex = state.logIndices[state.index]
     val entry = log[logIndex]
     val token = TokenCatalogue.byId(entry.tokenId)
+    val summonPiles = token?.attacks?.filter { it.isSummon } ?: emptyList()
+    val currentChildren = if (summonPiles.isEmpty()) emptyList() else currentChildrenOf(logIndex)
     AlertDialog(
         onDismissRequest = onDismiss,
         // Material3's AlertDialog always end-aligns its confirmButton/dismissButton row, with no
@@ -588,7 +692,16 @@ private fun TokenZoomDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (token != null) {
-                    EnemyTokenFace(token = token, size = 140.dp)
+                    EnemyTokenFaceWithSummon(
+                        token = token,
+                        size = 140.dp,
+                        // Left side, not the default corner (D-issue #191 follow-up note): that's
+                        // where a printed Summon attack shows its pile-color icon, so the current
+                        // child's own face standing in that exact spot reads as "this is who's
+                        // actually fighting" rather than a decorative badge.
+                        summonedChild = currentChildren.firstOrNull()?.let { TokenCatalogue.byId(log[it].tokenId) },
+                        alignment = Alignment.CenterStart,
+                    )
                     Text(token.statLine(), style = MaterialTheme.typography.titleMedium)
                     token.attacks.forEach { attack ->
                         if (attack.isSummon) {
@@ -606,6 +719,23 @@ private fun TokenZoomDialog(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                }
+                if (summonPiles.isNotEmpty()) {
+                    if (currentChildren.isNotEmpty()) {
+                        val names = currentChildren.joinToString { TokenCatalogue.byId(log[it].tokenId)?.name ?: log[it].tokenId }
+                        // Tapping re-opens the existing child(ren) (their own zoom, read-only) without
+                        // drawing again - underlined + primary-colored so it reads as tappable, distinct
+                        // from the Summon/Re-summon button below which always draws a fresh set.
+                        Text(
+                            "Summoned: $names",
+                            style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.Underline),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable { onViewSummoned(currentChildren) },
+                        )
+                    }
+                    Button(onClick = { onSummon(logIndex) }, enabled = !entry.defeated) {
+                        Text(if (currentChildren.isEmpty()) "Summon" else "Re-summon")
                     }
                 }
                 if (state.logIndices.size > 1) {
@@ -634,27 +764,110 @@ private fun TokenZoomDialog(
 }
 
 /**
+ * A Summon Draw child's own zoomed view (issue #191): art, attacks and offensive abilities,
+ * Close-only - narrower than [TokenZoomDialog] in two ways. First, no Armor/Fame/resistances/
+ * defensive abilities: a child is narrated by what it *does* to you (attacks, offensive abilities),
+ * not what it withstands - that fuller reference is still one "?" tap away via [TokenInfoDialog].
+ * Second, no Defeat or Summon actions - a child is never independently marked Defeated (the
+ * summoner's own Defeat flag resolves the whole encounter) and never itself offers a Summon action -
+ * so this is a deliberately simpler sibling rather than [TokenZoomDialog] with flags threaded
+ * through it for a case that only ever reads, never acts.
+ */
+@Composable
+private fun SummonedChildZoomDialog(
+    state: ZoomState,
+    log: List<DrawLogEntry>,
+    onNavigate: (Int) -> Unit,
+    onShowInfo: (EnemyToken) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val entry = log[state.logIndices[state.index]]
+    val token = TokenCatalogue.byId(entry.tokenId)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {},
+        title = {
+            Box(Modifier.fillMaxWidth()) {
+                Text(text = token?.name ?: entry.tokenId, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                if (token != null) {
+                    IconButton(onClick = { onShowInfo(token) }, modifier = Modifier.align(Alignment.CenterEnd)) {
+                        Icon(Icons.Filled.QuestionMark, contentDescription = "Abilities")
+                    }
+                }
+            }
+        },
+        text = {
+            Column(
+                Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (token != null) {
+                    EnemyTokenFace(token = token, size = 140.dp)
+                    // Deliberately no statLine() here (Armor/Fame) and no resistances/defensive
+                    // abilities, unlike the summoner's own zoom - a child is narrated by what it
+                    // *does* (its attacks, its offensive abilities), not what it withstands; the
+                    // full reference (including Armor/Fame/resistances) is still one "?" tap away
+                    // via TokenInfoDialog for whoever wants it.
+                    token.attacks.forEach { attack ->
+                        if (attack.isSummon) {
+                            Text("Summons a ${attack.summons?.summonName() ?: "token"}")
+                        } else {
+                            Text("Attack ${attack.value} · ${attack.element.displayName()}")
+                        }
+                    }
+                    if (token.offensiveAbilities.isNotEmpty()) {
+                        Text(
+                            token.offensiveAbilities.joinToString { it.describe().first },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (state.logIndices.size > 1) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { onNavigate(state.index - 1) }, enabled = state.index > 0) {
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous")
+                        }
+                        Text("${state.index + 1} of ${state.logIndices.size}")
+                        IconButton(onClick = { onNavigate(state.index + 1) }, enabled = state.index < state.logIndices.size - 1) {
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next")
+                        }
+                    }
+                }
+                TextButton(onClick = onDismiss) { Text("Close") }
+            }
+        },
+    )
+}
+
+/**
  * Grid overview of a multi-token draw batch (D3/D7), possibly spanning several piles at once
- * (D16): one cell per drawn token with art, name and a Defeat toggle; tapping a cell opens
- * [TokenZoomDialog] for that token with prev/next across the same batch. Sized to content with a
- * max height (D10) so a rare large batch scrolls internally instead of pushing the dialog
- * off-screen, rather than always reserving full-screen space for the common small batch. The title
- * is deliberately pile-agnostic ("N tokens drawn") rather than naming the pile(s) involved, since a
- * batch drawn from #192's multi-pile action no longer has just one - each cell's own art color
- * already makes its pile obvious without a per-cell label.
+ * (D16): one cell per drawn token with art, name and (when [showDefeatToggle]) a Defeat toggle;
+ * tapping a cell opens that token's own zoomed detail with prev/next across the same batch. Sized
+ * to content with a max height (D10) so a rare large batch scrolls internally instead of pushing
+ * the dialog off-screen, rather than always reserving full-screen space for the common small batch.
+ *
+ * Reused for a Summon Draw's own multi-child result (issue #191) with [showDefeatToggle] = false -
+ * a summoned child is never independently marked Defeated (`CONTEXT.md`'s "Summon Draw") - and a
+ * caller-supplied [title], since that case reads "N tokens summoned" rather than "drawn". Left at
+ * its default [currentChildOf] for that same call, since a child cell never has children of its own.
  */
 @Composable
 private fun TokenGridDialog(
     state: GridState,
     log: List<DrawLogEntry>,
+    title: String,
+    showDefeatToggle: Boolean,
     onOpenDetail: (Int) -> Unit,
     onToggleDefeated: (Int, Boolean) -> Unit,
     onDismiss: () -> Unit,
+    currentChildOf: (Int) -> DrawLogEntry? = { null },
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
-        title = { Text("${state.logIndices.size} tokens drawn") },
+        title = { Text(title) },
         text = {
             // Adaptive columns (not a fixed count) so 2-6 tokens - the common case - render as a
             // comfortably large grid, while a rare large batch just packs more/smaller columns
@@ -670,6 +883,8 @@ private fun TokenGridDialog(
                 itemsIndexed(state.logIndices) { position, logIndex ->
                     TokenGridCell(
                         entry = log[logIndex],
+                        showDefeatToggle = showDefeatToggle,
+                        summonedChild = currentChildOf(logIndex)?.let { TokenCatalogue.byId(it.tokenId) },
                         onOpen = { onOpenDetail(position) },
                         onToggleDefeated = { defeated -> onToggleDefeated(logIndex, defeated) },
                     )
@@ -679,12 +894,21 @@ private fun TokenGridDialog(
     )
 }
 
-/** One grid cell: art + name (dimmed once defeated, matching the Draw Log's own treatment) and a
- * Defeat toggle icon matching [DrawLogRow]'s. The cell's own [Modifier.clickable] opens the detail
- * view; it sits underneath the toggle's own clickable, which intercepts taps on itself first, so
- * tapping the icon toggles Defeat instead of also opening the detail. */
+/** One grid cell: art + name (dimmed once defeated, matching the Draw Log's own treatment) and,
+ * when [showDefeatToggle], a Defeat toggle icon matching [DrawLogRow]'s. A non-null [summonedChild]
+ * (issue #191) superimposes a small thumbnail of it on the art's corner, the same "which token is
+ * actually fighting" cue `CONTEXT.md`'s Possessed Enemy pairing uses. The cell's own
+ * [Modifier.clickable] opens the detail view; it sits underneath the toggle's own clickable, which
+ * intercepts taps on itself first, so tapping the icon toggles Defeat instead of also opening the
+ * detail. */
 @Composable
-private fun TokenGridCell(entry: DrawLogEntry, onOpen: () -> Unit, onToggleDefeated: (Boolean) -> Unit) {
+private fun TokenGridCell(
+    entry: DrawLogEntry,
+    showDefeatToggle: Boolean,
+    summonedChild: EnemyToken?,
+    onOpen: () -> Unit,
+    onToggleDefeated: (Boolean) -> Unit,
+) {
     val token = TokenCatalogue.byId(entry.tokenId)
     Column(
         // fillMaxWidth (not a fixed width) so the cell matches whatever slot width Adaptive chose
@@ -697,7 +921,7 @@ private fun TokenGridCell(entry: DrawLogEntry, onOpen: () -> Unit, onToggleDefea
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (token != null) {
-                EnemyTokenFace(token = token, size = 72.dp)
+                EnemyTokenFaceWithSummon(token = token, size = 72.dp, summonedChild = summonedChild)
             }
             Text(
                 text = token?.name ?: entry.tokenId,
@@ -706,12 +930,42 @@ private fun TokenGridCell(entry: DrawLogEntry, onOpen: () -> Unit, onToggleDefea
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        IconButton(onClick = { onToggleDefeated(!entry.defeated) }) {
-            Icon(
-                imageVector = if (entry.defeated) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
-                contentDescription = if (entry.defeated) "Defeated" else "Mark defeated",
-                tint = if (entry.defeated) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        if (showDefeatToggle) {
+            IconButton(onClick = { onToggleDefeated(!entry.defeated) }) {
+                Icon(
+                    imageVector = if (entry.defeated) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
+                    contentDescription = if (entry.defeated) "Defeated" else "Mark defeated",
+                    tint = if (entry.defeated) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * [EnemyTokenFace] with a thumbnail of [summonedChild]'s own art superimposed (issue #191) - the
+ * same "which token is actually fighting" cue `CONTEXT.md`'s Possessed Enemy pairing uses, applied
+ * to a summoner once it has a current Summon Draw child. No overlay when [summonedChild] is null
+ * (never summoned, or not a summoner at all). [alignment] defaults to a small corner badge (grid
+ * cells, Draw Log row); the zoom dialog instead centers it on the art's left side - where a printed
+ * summon token shows its pile-color icon - so it reads as "this is what's standing in" rather than
+ * a decorative badge.
+ */
+@Composable
+private fun EnemyTokenFaceWithSummon(
+    token: EnemyToken,
+    size: Dp,
+    summonedChild: EnemyToken?,
+    alignment: Alignment = Alignment.BottomEnd,
+) {
+    Box {
+        EnemyTokenFace(token = token, size = size)
+        if (summonedChild != null) {
+            Box(
+                modifier = Modifier.align(alignment).border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
+            ) {
+                EnemyTokenFace(token = summonedChild, size = size * SUMMON_BADGE_SCALE)
+            }
         }
     }
 }
@@ -791,6 +1045,9 @@ private val GRID_CELL_MIN_SIZE = 96.dp
 
 /** Grid dialog max height (D10): a batch taller than this scrolls internally instead of growing the dialog. */
 private val GRID_MAX_HEIGHT = 400.dp
+
+/** Size of a superimposed summoned-child thumbnail (issue #191), relative to the summoner's own art. */
+private const val SUMMON_BADGE_SCALE = 0.45f
 
 /**
  * "Armor 3 · Fame 2" summary line for a token. Deliberately *excludes* the attack (D5): the
