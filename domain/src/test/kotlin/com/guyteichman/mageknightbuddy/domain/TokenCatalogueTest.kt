@@ -15,11 +15,16 @@ import kotlin.test.assertTrue
 class TokenCatalogueTest {
 
     // Expected physical token count per pile (copies summed). Grows as each pile is transcribed;
-    // for now only the *base game's* green Marauding Orcs are in - 6 types x 2 copies = 12 (see the
-    // rules doc). Green isn't finished: the Lost Legion's own green Marauding Orcs come later, and
-    // will raise this number when they're added.
+    // green/grey/violet/brown/red/white are the *base game's* six enemy piles (see the rules doc).
+    // None of these totals include the Lost Legion expansion's own additions to each pile (issue
+    // #188), which will raise these numbers when they're added.
     private val expectedPileCounts = mapOf(
         TokenPileId.GREEN to 12,
+        TokenPileId.GREY to 10,
+        TokenPileId.VIOLET to 10,
+        TokenPileId.BROWN to 10,
+        TokenPileId.RED to 8,
+        TokenPileId.WHITE to 10,
     )
 
     @Test
@@ -77,6 +82,39 @@ class TokenCatalogueTest {
         )
     }
 
+    @Test
+    fun `grey pile has the four Keep Guardian types`() {
+        val greyNames = TokenCatalogue.tokens.filter { it.pile == TokenPileId.GREY }.map { it.name }.toSet()
+        assertEquals(setOf("Crossbowmen", "Guardsmen", "Swordsmen", "Golems"), greyNames)
+    }
+
+    @Test
+    fun `violet pile has the six Mage Tower Guardian types`() {
+        val violetNames = TokenCatalogue.tokens.filter { it.pile == TokenPileId.VIOLET }.map { it.name }.toSet()
+        assertEquals(
+            setOf("Monks", "Illusionists", "Ice Mages", "Ice Golems", "Fire Mages", "Fire Golems"),
+            violetNames,
+        )
+    }
+
+    @Test
+    fun `red pile has the four Draconum types`() {
+        val redNames = TokenCatalogue.tokens.filter { it.pile == TokenPileId.RED }.map { it.name }.toSet()
+        assertEquals(setOf("Swamp Dragon", "Fire Dragon", "Ice Dragon", "High Dragon"), redNames)
+    }
+
+    @Test
+    fun `brown pile has the five Dungeon Monster types`() {
+        val brownNames = TokenCatalogue.tokens.filter { it.pile == TokenPileId.BROWN }.map { it.name }.toSet()
+        assertEquals(setOf("Minotaur", "Gargoyle", "Medusa", "Crypt Worm", "Werewolf"), brownNames)
+    }
+
+    @Test
+    fun `white pile has the four City Garrison types`() {
+        val whiteNames = TokenCatalogue.tokens.filter { it.pile == TokenPileId.WHITE }.map { it.name }.toSet()
+        assertEquals(setOf("Freezers", "Gunners", "Altem Guardsmen", "Altem Mages"), whiteNames)
+    }
+
     // The spot-checks below use values derived by hand from docs/rules/enemy-tokens.md's table.
 
     @Test
@@ -114,5 +152,113 @@ class TokenCatalogueTest {
         assertTrue(attack.isSummon)
         assertEquals(TokenPileId.BROWN, attack.summons)
         assertEquals(null, attack.value)
+    }
+
+    @Test
+    fun `Guardsmen is fortified`() {
+        val guardsmen = assertNotNull(TokenCatalogue.byId("grey_guardsmen"))
+        assertEquals(7, guardsmen.armor)
+        assertTrue(DefensiveAbility.FORTIFIED in guardsmen.defensiveAbilities)
+    }
+
+    @Test
+    fun `Crossbowmen is a swift attacker`() {
+        val crossbowmen = assertNotNull(TokenCatalogue.byId("grey_crossbowmen"))
+        assertEquals(setOf(OffensiveAbility.SWIFT), crossbowmen.offensiveAbilities)
+        assertEquals(4, crossbowmen.attacks.single().value)
+    }
+
+    @Test
+    fun `Illusionists summons a brown token instead of attacking`() {
+        val illusionists = assertNotNull(TokenCatalogue.byId("violet_illusionists"))
+        assertEquals(setOf(AttackElement.PHYSICAL), illusionists.resistances)
+        val attack = illusionists.attacks.single()
+        assertTrue(attack.isSummon)
+        assertEquals(TokenPileId.BROWN, attack.summons)
+        assertEquals(null, attack.value)
+    }
+
+    @Test
+    fun `Ice Golems resist both ice and physical damage and are Paralyzing`() {
+        val iceGolems = assertNotNull(TokenCatalogue.byId("violet_ice_golems"))
+        assertEquals(1, iceGolems.copies)
+        assertEquals(setOf(AttackElement.ICE, AttackElement.PHYSICAL), iceGolems.resistances)
+        assertEquals(setOf(OffensiveAbility.PARALYZE), iceGolems.offensiveAbilities)
+        assertEquals(AttackElement.ICE, iceGolems.attacks.single().element)
+    }
+
+    @Test
+    fun `Fire Golems resist both fire and physical damage and are Brutal`() {
+        val fireGolems = assertNotNull(TokenCatalogue.byId("violet_fire_golems"))
+        assertEquals(1, fireGolems.copies)
+        assertEquals(setOf(AttackElement.FIRE, AttackElement.PHYSICAL), fireGolems.resistances)
+        assertEquals(setOf(OffensiveAbility.BRUTAL), fireGolems.offensiveAbilities)
+        assertEquals(AttackElement.FIRE, fireGolems.attacks.single().element)
+    }
+
+    @Test
+    fun `High Dragon has a Cold Fire attack and is Brutal`() {
+        val highDragon = assertNotNull(TokenCatalogue.byId("red_high_dragon"))
+        assertEquals(9, highDragon.armor)
+        assertEquals(9, highDragon.fame)
+        assertEquals(setOf(AttackElement.FIRE, AttackElement.ICE), highDragon.resistances)
+        assertEquals(setOf(OffensiveAbility.BRUTAL), highDragon.offensiveAbilities)
+        assertEquals(AttackElement.COLD_FIRE, highDragon.attacks.single().element)
+    }
+
+    @Test
+    fun `Ice Dragon resists ice and physical damage and is Paralyzing`() {
+        val iceDragon = assertNotNull(TokenCatalogue.byId("red_ice_dragon"))
+        assertEquals(7, iceDragon.armor)
+        assertEquals(setOf(AttackElement.ICE, AttackElement.PHYSICAL), iceDragon.resistances)
+        assertEquals(setOf(OffensiveAbility.PARALYZE), iceDragon.offensiveAbilities)
+        assertEquals(AttackElement.ICE, iceDragon.attacks.single().element)
+    }
+
+    @Test
+    fun `Minotaur is a brutal attacker`() {
+        val minotaur = assertNotNull(TokenCatalogue.byId("brown_minotaur"))
+        assertEquals(setOf(OffensiveAbility.BRUTAL), minotaur.offensiveAbilities)
+        assertEquals(5, minotaur.attacks.single().value)
+    }
+
+    @Test
+    fun `Medusa is a paralyzing attacker`() {
+        val medusa = assertNotNull(TokenCatalogue.byId("brown_medusa"))
+        assertEquals(setOf(OffensiveAbility.PARALYZE), medusa.offensiveAbilities)
+        assertEquals(6, medusa.attacks.single().value)
+    }
+
+    @Test
+    fun `Werewolf is a swift attacker`() {
+        val werewolf = assertNotNull(TokenCatalogue.byId("brown_werewolf"))
+        assertEquals(setOf(OffensiveAbility.SWIFT), werewolf.offensiveAbilities)
+        assertEquals(7, werewolf.attacks.single().value)
+    }
+
+    @Test
+    fun `Freezers is a swift, paralyzing attacker`() {
+        val freezers = assertNotNull(TokenCatalogue.byId("white_freezers"))
+        assertEquals(setOf(OffensiveAbility.SWIFT, OffensiveAbility.PARALYZE), freezers.offensiveAbilities)
+        assertEquals(setOf(AttackElement.FIRE), freezers.resistances)
+        assertEquals(AttackElement.ICE, freezers.attacks.single().element)
+    }
+
+    @Test
+    fun `Gunners is a brutal attacker`() {
+        val gunners = assertNotNull(TokenCatalogue.byId("white_gunners"))
+        assertEquals(setOf(OffensiveAbility.BRUTAL), gunners.offensiveAbilities)
+        assertEquals(setOf(AttackElement.ICE), gunners.resistances)
+        assertEquals(AttackElement.FIRE, gunners.attacks.single().element)
+    }
+
+    @Test
+    fun `Altem Guardsmen is fortified and resists all three elements plus physical`() {
+        val altemGuardsmen = assertNotNull(TokenCatalogue.byId("white_altem_guardsmen"))
+        assertTrue(DefensiveAbility.FORTIFIED in altemGuardsmen.defensiveAbilities)
+        assertEquals(
+            setOf(AttackElement.FIRE, AttackElement.ICE, AttackElement.PHYSICAL),
+            altemGuardsmen.resistances,
+        )
     }
 }

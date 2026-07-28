@@ -115,6 +115,20 @@ _Avoid_: Enemy browser, token reference (it owns real pile state; browsing abili
 One face-down stack of same-backed tokens the **Enemy Picker** draws from — the 6 enemy colors (green/grey/violet/brown/red/white), ruin tokens, possessed enemies, and one per faction. Each has its own Discard Pile, matching the rulebook's "sort the enemy (round) and ruin (hexagonal) tokens by the reverse side, and stack them in seven face down piles. Next to each pile, there is a space for discarded tokens" (p.3). Which piles exist at all depends on the active expansion selection.
 _Avoid_: Deck (reserved for the Dummy Player's/Volkare's/Proxy Player's card decks — a Token Pile holds cardboard tokens and has entirely different draw rules); Enemy Pile (3 of the piles hold non-enemies)
 
+**Ruin Token**:
+One of the RUIN **Token Pile**'s 12 base-game hexagonal tokens (rulebook "Revealing Ruins" /
+Ultimate Edition Walkthrough), modeled as `RuinToken` - a sibling type to **Enemy Token**, not a
+variant of it, since a Ruin token prints no Armor/Attack/Fame block. Two kinds: an **Ancient Altar**
+(pay three mana of one printed color for 7 Fame immediately, no combat) or an **Enemies With
+Treasure** draw (draw one token each from the two named **Token Pile**s - the same pile can be
+named twice - fight both, and claim the printed reward if you defeat them both). The reward isn't
+modeled: like the rest of the **Enemy Picker**, `RuinToken` tracks only which pile(s) to draw from,
+never Fame or rewards ([ADR-0006](docs/adr/0006-enemy-picker-owns-pile-state-but-models-no-map.md)).
+Not yet wired into the picker's draw flow or UI, and has no art yet either (issue #201) - only the
+catalogue is transcribed so far.
+_Avoid_: Enemy Token (different shape entirely - no armor/attack/fame, and an Ancient Altar isn't
+combat at all)
+
 **Replenish**:
 What happens when a **Token Pile** is drawn empty: its Discard Pile is shuffled and becomes the new pile (rulebook p.3, "If you run out of tokens, reshuffle the discarded ones and create a new face down pile"; the Apocalypse Dragon rulebook repeats it verbatim for possessed enemies and faction tokens). Mandatory and automatic — never a setting.
 _Avoid_: Reshuffle (that term is taken, and means the Dummy/Proxy Player deck+discard merge — see its own entry; keeping the two words apart is deliberate)

@@ -1,0 +1,58 @@
+[
+  {
+    "id": "ruin_altar_green",
+    "altarColor": "GREEN"
+  },
+  {
+    "id": "ruin_altar_blue",
+    "altarColor": "BLUE"
+  },
+  {
+    "id": "ruin_altar_white",
+    "altarColor": "WHITE"
+  },
+  {
+    "id": "ruin_altar_red",
+    "altarColor": "RED"
+  },
+  {
+    "id": "ruin_red_brown",
+    "firstPile": "RED",
+    "secondPile": "BROWN"
+  },
+  {
+    "id": "ruin_green_brown",
+    "firstPile": "GREEN",
+    "secondPile": "BROWN"
+  },
+  {
+    "id": "ruin_grey_white",
+    "firstPile": "GREY",
+    "secondPile": "WHITE"
+  },
+  {
+    "id": "ruin_grey_red",
+    "firstPile": "GREY",
+    "secondPile": "RED"
+  },
+  {
+    "id": "ruin_grey_violet",
+    "firstPile": "GREY",
+    "secondPile": "VIOLET"
+  },
+  {
+    "id": "ruin_green_red",
+    "firstPile": "GREEN",
+    "secondPile": "RED"
+  },
+  {
+    "id": "ruin_green_green",
+    "firstPile": "GREEN",
+    "secondPile": "GREEN"
+  },
+  {
+    "id": "ruin_red_violet",
+    "firstPile": "RED",
+    "secondPile": "VIOLET"
+  }
+]
