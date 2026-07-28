@@ -15,7 +15,6 @@ import com.guyteichman.mageknightbuddy.domain.VolkareCard
 import com.guyteichman.mageknightbuddy.domain.VolkareEvent
 import com.guyteichman.mageknightbuddy.domain.VolkareSession
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 // Maps each domain VolkareCard variant to its VolkareCardDto counterpart. `VolkareCard.Wound` is
 // a `data object` (a singleton), so its branch matches on the object itself rather than an
@@ -37,11 +36,11 @@ private fun VolkareCardDto.toDomain(): VolkareCard = when (this) {
 // method to the existing `List<VolkareCard>` type without subclassing or wrapping it. `private`
 // keeps it usable only within this file. Each card is first mapped to its DTO mirror so the whole
 // list can be serialized polymorphically (see VolkareCardDto's @SerialName discriminators).
-private fun List<VolkareCard>.toJson(): String = Json.encodeToString(map { it.toDto() })
+private fun List<VolkareCard>.toJson(): String = PersistenceJson.encodeToString(map { it.toDto() })
 
 // The reverse: decode a JSON string back into a List<VolkareCardDto>, then convert each DTO to
 // its domain card.
-private fun String.toVolkareCardList(): List<VolkareCard> = Json.decodeFromString<List<VolkareCardDto>>(this).map { it.toDomain() }
+private fun String.toVolkareCardList(): List<VolkareCard> = PersistenceJson.decodeFromString<List<VolkareCardDto>>(this).map { it.toDomain() }
 
 // Maps each domain VolkareEvent variant to its VolkareEventDto counterpart. The `when` here is
 // exhaustive over the sealed interface's variants - the compiler enforces every subtype is
@@ -86,7 +85,7 @@ fun VolkareSession.toEntity(updatedAt: Long = System.currentTimeMillis()): Volka
     lost = lost,
     // log.map { it.toDto() } converts each domain event to its DTO mirror before the whole list
     // is serialized to a single JSON string for the logJson column.
-    logJson = Json.encodeToString(log.map { it.toDto() }),
+    logJson = PersistenceJson.encodeToString(log.map { it.toDto() }),
     updatedAt = updatedAt,
     startsAtNight = startsAtNight,
 )
@@ -106,6 +105,6 @@ fun VolkareSessionEntity.toDomain(): VolkareSession = VolkareSession.restore(
     // Json.decodeFromString<List<VolkareEventDto>>(...) parses the JSON column back into DTOs
     // (kotlinx.serialization uses the @SerialName discriminators from VolkareEventDto to pick the
     // right subtype for each list entry), then each DTO is converted to its domain event.
-    log = Json.decodeFromString<List<VolkareEventDto>>(logJson).map { it.toDomain() },
+    log = PersistenceJson.decodeFromString<List<VolkareEventDto>>(logJson).map { it.toDomain() },
     startsAtNight = startsAtNight,
 )

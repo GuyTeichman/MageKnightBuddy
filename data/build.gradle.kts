@@ -23,6 +23,15 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    testOptions {
+        unitTests {
+            // Let calls into the stubbed android.jar (e.g. android.util.Log in
+            // SingleSlotAutosaveRepository.restore) return defaults in JVM unit tests instead of
+            // throwing "Method ... not mocked", so those code paths stay testable off-device.
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 // Room's BundledSQLiteDriver lets DAO tests run on plain JVM (see docs/adr/0003-room-tests-via-bundled-sqlite-driver.md).

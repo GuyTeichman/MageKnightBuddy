@@ -12,7 +12,6 @@ import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 // Maps a domain CardIdentity to its DTO mirror.
 private fun CardIdentity.toDto(): CardIdentityDto = when (this) {
@@ -31,12 +30,12 @@ private fun CardIdentityDto.toDomain(): CardIdentity = when (this) {
 // subclassing or wrapping it. `private` keeps it usable only within this file.
 // `Json.encodeToString` (kotlinx.serialization) serializes the given value to a JSON string; here
 // each CardIdentity is first mapped to its DTO mirror so the JSON only ever contains DTO types.
-private fun List<CardIdentity>.toJson(): String = Json.encodeToString(map { it.toDto() })
+private fun List<CardIdentity>.toJson(): String = PersistenceJson.encodeToString(map { it.toDto() })
 
 // The reverse: decode a JSON string back into a List<CardIdentityDto> (kotlinx.serialization uses
 // each entry's @SerialName discriminator to pick single- vs. dual-color), then convert each DTO
 // back to its domain CardIdentity.
-private fun String.toCardIdentityList(): List<CardIdentity> = Json.decodeFromString<List<CardIdentityDto>>(this).map { it.toDomain() }
+private fun String.toCardIdentityList(): List<CardIdentity> = PersistenceJson.decodeFromString<List<CardIdentityDto>>(this).map { it.toDomain() }
 
 // Maps each domain DummyPlayerEvent variant to its DummyPlayerEventDto counterpart. The `when`
 // here is exhaustive over the sealed interface's variants (RoundStarted, TurnPlayed, ...) - the
@@ -98,7 +97,7 @@ fun DummyPlayerSession.toEntity(updatedAt: Long = System.currentTimeMillis()): D
     roundEnded = roundEnded,
     // log.map { it.toDto() } converts each domain event to its DTO mirror before the whole list
     // is serialized to a single JSON string for the logJson column.
-    logJson = Json.encodeToString(log.map { it.toDto() }),
+    logJson = PersistenceJson.encodeToString(log.map { it.toDto() }),
     updatedAt = updatedAt,
     startsAtNight = startsAtNight,
 )
@@ -124,6 +123,6 @@ fun DummyPlayerSessionEntity.toDomain(): DummyPlayerSession = DummyPlayerSession
     // Json.decodeFromString<List<DummyPlayerEventDto>>(...) parses the JSON column back into DTOs
     // (kotlinx.serialization uses the @SerialName discriminators from DummyPlayerEventDto to pick
     // the right subtype for each list entry), then each DTO is converted to its domain event.
-    log = Json.decodeFromString<List<DummyPlayerEventDto>>(logJson).map { it.toDomain() },
+    log = PersistenceJson.decodeFromString<List<DummyPlayerEventDto>>(logJson).map { it.toDomain() },
     startsAtNight = startsAtNight,
 )

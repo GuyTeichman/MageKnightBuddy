@@ -13,7 +13,6 @@ import com.guyteichman.mageknightbuddy.domain.ProxyPlayerCard
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 // Maps each domain ProxyPlayerCard variant to its DTO counterpart. The AdvancedAction case reuses
 // CardIdentity's own toDto()/toDomain() shape (declared privately in DummyPlayerSessionMapper.kt
@@ -41,13 +40,13 @@ private fun ProxyPlayerCardDto.toDomain(): ProxyPlayerCard = when (this) {
     is ProxyPlayerCardDto.AdvancedAction -> ProxyPlayerCard.AdvancedAction(identity.toDomain())
 }
 
-private fun List<ProxyPlayerCard>.toJson(): String = Json.encodeToString(map { it.toDto() })
-private fun String.toProxyPlayerCardList(): List<ProxyPlayerCard> = Json.decodeFromString<List<ProxyPlayerCardDto>>(this).map { it.toDomain() }
+private fun List<ProxyPlayerCard>.toJson(): String = PersistenceJson.encodeToString(map { it.toDto() })
+private fun String.toProxyPlayerCardList(): List<ProxyPlayerCard> = PersistenceJson.decodeFromString<List<ProxyPlayerCardDto>>(this).map { it.toDomain() }
 
 // Nullable Objective Card: null <-> null, otherwise a single-element JSON round-trip via the same
 // DTO conversion as the deck/discard lists.
-private fun ProxyPlayerCard?.toJsonOrNull(): String? = this?.let { Json.encodeToString(it.toDto()) }
-private fun String?.toProxyPlayerCardOrNull(): ProxyPlayerCard? = this?.let { Json.decodeFromString<ProxyPlayerCardDto>(it).toDomain() }
+private fun ProxyPlayerCard?.toJsonOrNull(): String? = this?.let { PersistenceJson.encodeToString(it.toDto()) }
+private fun String?.toProxyPlayerCardOrNull(): ProxyPlayerCard? = this?.let { PersistenceJson.decodeFromString<ProxyPlayerCardDto>(it).toDomain() }
 
 private fun ProxyPlayerEvent.toDto(): ProxyPlayerEventDto = when (this) {
     is ProxyPlayerEvent.RoundStarted -> ProxyPlayerEventDto.RoundStarted(round)
@@ -85,7 +84,7 @@ fun ProxyPlayerSession.toEntity(updatedAt: Long = System.currentTimeMillis()): P
     roundEnded = roundEnded,
     objectiveCardJson = objectiveCard.toJsonOrNull(),
     objectiveShields = objectiveShields,
-    logJson = Json.encodeToString(log.map { it.toDto() }),
+    logJson = PersistenceJson.encodeToString(log.map { it.toDto() }),
     updatedAt = updatedAt,
     startsAtNight = startsAtNight,
 )
@@ -106,6 +105,6 @@ fun ProxyPlayerSessionEntity.toDomain(): ProxyPlayerSession = ProxyPlayerSession
     roundEnded = roundEnded,
     objectiveCard = objectiveCardJson.toProxyPlayerCardOrNull(),
     objectiveShields = objectiveShields,
-    log = Json.decodeFromString<List<ProxyPlayerEventDto>>(logJson).map { it.toDomain() },
+    log = PersistenceJson.decodeFromString<List<ProxyPlayerEventDto>>(logJson).map { it.toDomain() },
     startsAtNight = startsAtNight,
 )

@@ -68,6 +68,29 @@ class EnemyPickerSessionMapperTest {
     }
 
     @Test
+    fun `toDomain ignores an unknown key left by an older schema (regression for the stillInPlay crash)`() {
+        // A drawLogJson written by an earlier build of this branch carried a field, "stillInPlay",
+        // that was later renamed to "defeated" without a DB version bump - so the stale row survived
+        // fallbackToDestructiveMigration and crashed the app on decode, because strict Json rejects
+        // unknown keys (issue #178 follow-up). toDomain must now tolerate it: the unknown key is
+        // dropped and the renamed field falls back to its default.
+        val entity = EnemyPickerSessionEntity(
+            drawWithReplacement = false,
+            tokenSetJson = """["BASE"]""",
+            pilesJson = """{"GREEN":{"drawPile":["orc_b"],"discardPile":["orc_a"]}}""",
+            drawLogJson = """[{"tokenId":"orc_a","pile":"GREEN","batchId":42,"stillInPlay":true}]""",
+            updatedAt = 0L,
+        )
+
+        val session = entity.toDomain()
+
+        assertEquals(
+            listOf(DrawLogEntry(tokenId = "orc_a", pile = TokenPileId.GREEN, batchId = 42L, defeated = false, note = "")),
+            session.drawLog,
+        )
+    }
+
+    @Test
     fun `toEntity stamps the given updatedAt onto the entity`() {
         val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
 

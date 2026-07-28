@@ -11,7 +11,6 @@ import com.guyteichman.mageknightbuddy.domain.Expansion
 import com.guyteichman.mageknightbuddy.domain.TokenPile
 import com.guyteichman.mageknightbuddy.domain.TokenPileId
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 private fun TokenPile.toDto(): TokenPileDto = TokenPileDto(drawPile = drawPile, discardPile = discardPile)
 private fun TokenPileDto.toDomain(): TokenPile = TokenPile(drawPile = drawPile, discardPile = discardPile)
@@ -25,10 +24,10 @@ private fun DrawLogEntryDto.toDomain(): DrawLogEntry =
 // The pile map is keyed by the TokenPileId enum in the domain; JSON needs String keys, so the map
 // is serialized with each key's enum name and re-keyed back on the way in.
 private fun Map<TokenPileId, TokenPile>.toJson(): String =
-    Json.encodeToString(entries.associate { (id, pile) -> id.name to pile.toDto() })
+    PersistenceJson.encodeToString(entries.associate { (id, pile) -> id.name to pile.toDto() })
 
 private fun String.toPileMap(): Map<TokenPileId, TokenPile> =
-    Json.decodeFromString<Map<String, TokenPileDto>>(this)
+    PersistenceJson.decodeFromString<Map<String, TokenPileDto>>(this)
         .entries.associate { (name, dto) -> TokenPileId.valueOf(name) to dto.toDomain() }
 
 /**
@@ -40,9 +39,9 @@ private fun String.toPileMap(): Map<TokenPileId, TokenPile> =
 fun EnemyPickerSession.toEntity(updatedAt: Long = System.currentTimeMillis()): EnemyPickerSessionEntity = EnemyPickerSessionEntity(
     drawWithReplacement = drawWithReplacement,
     // Store the expansion set as a JSON array of enum names.
-    tokenSetJson = Json.encodeToString(tokenSet.map { it.name }),
+    tokenSetJson = PersistenceJson.encodeToString(tokenSet.map { it.name }),
     pilesJson = piles.toJson(),
-    drawLogJson = Json.encodeToString(drawLog.map { it.toDto() }),
+    drawLogJson = PersistenceJson.encodeToString(drawLog.map { it.toDto() }),
     updatedAt = updatedAt,
 )
 
@@ -51,8 +50,8 @@ fun EnemyPickerSession.toEntity(updatedAt: Long = System.currentTimeMillis()): E
  * reverse of [toEntity] above; used after [EnemyPickerSessionDao.get] loads a saved row).
  */
 fun EnemyPickerSessionEntity.toDomain(): EnemyPickerSession = EnemyPickerSession.restore(
-    tokenSet = Json.decodeFromString<List<String>>(tokenSetJson).map { Expansion.valueOf(it) }.toSet(),
+    tokenSet = PersistenceJson.decodeFromString<List<String>>(tokenSetJson).map { Expansion.valueOf(it) }.toSet(),
     drawWithReplacement = drawWithReplacement,
     piles = pilesJson.toPileMap(),
-    drawLog = Json.decodeFromString<List<DrawLogEntryDto>>(drawLogJson).map { it.toDomain() },
+    drawLog = PersistenceJson.decodeFromString<List<DrawLogEntryDto>>(drawLogJson).map { it.toDomain() },
 )
