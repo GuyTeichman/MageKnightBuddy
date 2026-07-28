@@ -54,7 +54,7 @@ class EnemyPickerSessionTest {
     fun `drawing without replacement moves the top token to the discard and logs it`() {
         val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
 
-        val after = session.draw(TokenPileId.GREEN, batchId = 7L, shuffle = noShuffle)
+        val after = session.draw(mapOf(TokenPileId.GREEN to 1), batchId = 7L, shuffle = noShuffle)
 
         val green = after.piles.getValue(TokenPileId.GREEN)
         // Top ("orc_a") is gone from the draw pile and now sits in the discard.
@@ -66,10 +66,10 @@ class EnemyPickerSessionTest {
     }
 
     @Test
-    fun `a batch draw of several shares one batch id`() {
+    fun `a batch draw of several from one pile shares one batch id`() {
         val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
 
-        val after = session.draw(TokenPileId.GREEN, count = 2, batchId = 99L, shuffle = noShuffle)
+        val after = session.draw(mapOf(TokenPileId.GREEN to 2), batchId = 99L, shuffle = noShuffle)
 
         // First two of greenOrder are both "orc_a".
         assertEquals(listOf("orc_a", "orc_a"), after.drawLog.map { it.tokenId })
@@ -80,11 +80,11 @@ class EnemyPickerSessionTest {
     }
 
     @Test
-    fun `draw only touches the pile drawn from`() {
+    fun `draw only touches the piles requested`() {
         val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
         val brownBefore = session.piles.getValue(TokenPileId.BROWN)
 
-        val after = session.draw(TokenPileId.GREEN, shuffle = noShuffle)
+        val after = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
 
         assertEquals(brownBefore, after.piles.getValue(TokenPileId.BROWN))
     }
@@ -93,7 +93,7 @@ class EnemyPickerSessionTest {
     fun `an emptied draw pile replenishes from its shuffled discard`() {
         // Build the emptied state via the class's own draw() calls (per CLAUDE.md), not by hand.
         var session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
-        repeat(4) { session = session.draw(TokenPileId.GREEN, shuffle = noShuffle) }
+        repeat(4) { session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle) }
 
         val emptied = session.piles.getValue(TokenPileId.GREEN)
         assertEquals(emptyList(), emptied.drawPile)
@@ -101,7 +101,7 @@ class EnemyPickerSessionTest {
 
         // The 5th draw must replenish: discard (identity-shuffled to greenOrder) becomes the new
         // draw pile, then its top ("orc_a") is drawn.
-        session = session.draw(TokenPileId.GREEN, shuffle = noShuffle)
+        session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
         val replenished = session.piles.getValue(TokenPileId.GREEN)
         assertEquals(listOf("orc_a", "orc_b", "orc_c"), replenished.drawPile)
         assertEquals(listOf("orc_a"), replenished.discardPile)
@@ -113,7 +113,7 @@ class EnemyPickerSessionTest {
         val session = EnemyPickerSession.start(catalogue, drawWithReplacement = true, shuffle = noShuffle)
 
         var after = session
-        repeat(10) { after = after.draw(TokenPileId.GREEN, shuffle = noShuffle) }
+        repeat(10) { after = after.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle) }
 
         val green = after.piles.getValue(TokenPileId.GREEN)
         // Pile is exactly as built: nothing removed, nothing discarded, even after 10 draws.
@@ -126,14 +126,14 @@ class EnemyPickerSessionTest {
 
     @Test
     fun `a freshly drawn enemy is on the board, not defeated`() {
-        val drawn = EnemyPickerSession.start(catalogue, shuffle = noShuffle).draw(TokenPileId.GREEN, shuffle = noShuffle)
+        val drawn = EnemyPickerSession.start(catalogue, shuffle = noShuffle).draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
         // Default lifecycle: revealed onto the board, awaiting a Defeat tap (D2).
         assertFalse(drawn.drawLog.single().defeated)
     }
 
     @Test
     fun `marking a log entry defeated changes only that entry and no pile`() {
-        val drawn = EnemyPickerSession.start(catalogue, shuffle = noShuffle).draw(TokenPileId.GREEN, shuffle = noShuffle)
+        val drawn = EnemyPickerSession.start(catalogue, shuffle = noShuffle).draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
         val pilesBefore = drawn.piles
 
         val defeated = drawn.setDefeated(index = 0, defeated = true, note = "keep, NE tile")
@@ -148,7 +148,7 @@ class EnemyPickerSessionTest {
     @Test
     fun `reset rebuilds every pile and clears the log while keeping config`() {
         var session = EnemyPickerSession.start(catalogue, tokenSet = setOf(Expansion.BASE), drawWithReplacement = false, shuffle = noShuffle)
-        repeat(3) { session = session.draw(TokenPileId.GREEN, shuffle = noShuffle) }
+        repeat(3) { session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle) }
 
         val reset = session.reset(catalogue, shuffle = noShuffle)
 
@@ -161,8 +161,66 @@ class EnemyPickerSessionTest {
     }
 
     @Test
-    fun `draw rejects a non-positive count`() {
+    fun `draw rejects an empty pile map`() {
         val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
-        assertFailsWith<IllegalArgumentException> { session.draw(TokenPileId.GREEN, count = 0) }
+        assertFailsWith<IllegalArgumentException> { session.draw(emptyMap()) }
+    }
+
+    @Test
+    fun `draw rejects a non-positive count for any requested pile`() {
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+        assertFailsWith<IllegalArgumentException> { session.draw(mapOf(TokenPileId.GREEN to 0)) }
+        assertFailsWith<IllegalArgumentException> {
+            session.draw(mapOf(TokenPileId.GREEN to 1, TokenPileId.BROWN to -1))
+        }
+    }
+
+    @Test
+    fun `a multi-pile draw shares one batch id across every pile's entries`() {
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+
+        val after = session.draw(mapOf(TokenPileId.GREEN to 2, TokenPileId.BROWN to 1), batchId = 42L, shuffle = noShuffle)
+
+        assertEquals(3, after.drawLog.size)
+        assertTrue(after.drawLog.all { it.batchId == 42L })
+    }
+
+    @Test
+    fun `a multi-pile draw orders log entries by TokenPileId enum order, not map insertion order`() {
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+
+        // BROWN listed first in the map, but GREEN precedes BROWN in TokenPileId.entries.
+        val after = session.draw(mapOf(TokenPileId.BROWN to 1, TokenPileId.GREEN to 1), batchId = 1L, shuffle = noShuffle)
+
+        assertEquals(listOf(TokenPileId.GREEN, TokenPileId.BROWN), after.drawLog.map { it.pile })
+        assertEquals(listOf("orc_a", "brown_x"), after.drawLog.map { it.tokenId })
+    }
+
+    @Test
+    fun `a multi-pile draw replenishes an individual pile independently within the same batch`() {
+        // Drain green to its last token (3 single-pile draws leave 1 remaining, 3 in discard).
+        var session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+        repeat(3) { session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle) }
+        assertEquals(listOf("orc_c"), session.piles.getValue(TokenPileId.GREEN).drawPile)
+
+        // One multi-pile batch: green needs 2 (only 1 left, so it must replenish mid-batch), brown needs 1.
+        val after = session.draw(mapOf(TokenPileId.GREEN to 2, TokenPileId.BROWN to 1), batchId = 5L, shuffle = noShuffle)
+
+        // Green: draws its last card ("orc_c"), empties, replenishes (discard "orc_a","orc_a","orc_b",
+        // "orc_c" identity-shuffled back to that same order), then draws its new top ("orc_a"). Only
+        // this batch's entries are checked - the log already carries the 3 prior single draws.
+        val thisBatch = after.drawLog.takeLast(3)
+        val greenEntries = thisBatch.filter { it.pile == TokenPileId.GREEN }
+        assertEquals(listOf("orc_c", "orc_a"), greenEntries.map { it.tokenId })
+        val green = after.piles.getValue(TokenPileId.GREEN)
+        assertEquals(listOf("orc_a", "orc_b", "orc_c"), green.drawPile)
+        assertEquals(listOf("orc_a"), green.discardPile)
+
+        // Brown drew its only token, independent of green's replenish.
+        val brownEntries = thisBatch.filter { it.pile == TokenPileId.BROWN }
+        assertEquals(listOf("brown_x"), brownEntries.map { it.tokenId })
+
+        assertEquals(6, after.drawLog.size)
+        assertTrue(thisBatch.all { it.batchId == 5L })
     }
 }

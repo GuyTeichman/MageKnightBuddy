@@ -49,8 +49,8 @@ class EnemyPickerViewModel(
         }
     }
 
-    /** Draws [count] tokens from [pileId] as one batch and autosaves. */
-    suspend fun draw(pileId: TokenPileId, count: Int = 1) = mutate { it.draw(pileId, count) }
+    /** Draws from every pile in [draws] (mapped to how many tokens to take from it) as one batch and autosaves. */
+    suspend fun draw(draws: Map<TokenPileId, Int>) = mutate { it.draw(draws) }
 
     /** Sets the defeated flag / [note] on the Draw Log entry at [index] and autosaves. */
     suspend fun setDefeated(index: Int, defeated: Boolean, note: String = "") =

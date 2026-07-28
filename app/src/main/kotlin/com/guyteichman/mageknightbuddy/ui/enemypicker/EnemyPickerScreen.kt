@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,7 +45,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +59,7 @@ import com.guyteichman.mageknightbuddy.domain.EnemyPickerSession
 import com.guyteichman.mageknightbuddy.domain.EnemyToken
 import com.guyteichman.mageknightbuddy.domain.Expansion
 import com.guyteichman.mageknightbuddy.domain.TokenCatalogue
+import com.guyteichman.mageknightbuddy.domain.TokenPile
 import com.guyteichman.mageknightbuddy.domain.TokenPileId
 import com.guyteichman.mageknightbuddy.ui.components.LabeledCheckbox
 import com.guyteichman.mageknightbuddy.ui.components.LabeledSwitch
@@ -103,16 +104,19 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
     EnemyPickerContent(
         session = session,
         isBusy = viewModel.isBusy,
-        onDraw = { pileId, count ->
+        onDraw = { draws ->
             scope.launch {
-                viewModel.draw(pileId, count)
+                viewModel.draw(draws)
                 // mutate() has published the new session by the time draw() returns, so the last
-                // `count` log entries (draws only ever append) are exactly what was just drawn.
+                // `total` log entries (draws only ever append) are exactly what was just drawn,
+                // across every pile in `draws` (D12's TokenPileId.entries order).
                 val log = viewModel.session?.drawLog ?: return@launch
-                val newIndices = (log.size - count until log.size).toList()
+                val total = draws.values.sum()
+                val newIndices = (log.size - total until log.size).toList()
                 // D7: a single draw skips the grid and goes straight to its detail, same as today;
-                // only a batch of more than one opens the grid overview.
-                if (count == 1) {
+                // only a batch of more than one - whether from one pile or several (D13) - opens
+                // the grid overview.
+                if (total == 1) {
                     zoom = ZoomState(newIndices, 0)
                 } else {
                     gridState = GridState(newIndices)
@@ -193,38 +197,62 @@ private data class ZoomState(val logIndices: List<Int>, val index: Int)
 private data class GridState(val logIndices: List<Int>)
 
 /**
- * The scrollable body of the Enemy Picker: a card per [TokenPile][TokenPileId] with a quantity
- * stepper and Draw button, the Draw Log, and the staged config section. Stateless apart from
- * per-card draw quantity and the staged config edits, which it owns because they don't belong in
- * the persisted session.
+ * The scrollable body of the Enemy Picker: a card per [TokenPile], two per row (D14), the Draw
+ * Log, and the staged config section - plus a bottom [DrawBar] that fires a draw across every pile
+ * with a nonzero stepper (D13). Stateless apart from the staged per-pile quantities and the staged
+ * config edits, which it owns because neither belongs in the persisted session.
  */
 @Composable
 private fun EnemyPickerContent(
     session: EnemyPickerSession,
     isBusy: Boolean,
-    onDraw: (TokenPileId, Int) -> Unit,
+    onDraw: (Map<TokenPileId, Int>) -> Unit,
     onOpenToken: (Int) -> Unit,
     onOpenDefeatDialog: (Int) -> Unit,
     onRequestReset: () -> Unit,
     onRequestApplyConfig: (Set<Expansion>, Boolean) -> Unit,
 ) {
+    // Staged draw quantities, keyed by pile (D13): 0/absent means "not part of the next draw."
+    // Lives here rather than inside each PileCard so the bottom DrawBar can see every pile's total
+    // and reset them all at once after firing - a plain `remember`, like ConfigSection's staging
+    // below, since losing this on rotation is a minor inconvenience, not lost game state.
+    var quantities by remember { mutableStateOf<Map<TokenPileId, Int>>(emptyMap()) }
+    val totalQuantity = quantities.values.sum()
+
     Scaffold(
         topBar = { EnemyPickerTopBar() },
+        bottomBar = {
+            DrawBar(
+                total = totalQuantity,
+                enabled = !isBusy && totalQuantity > 0,
+                onDraw = {
+                    onDraw(quantities.filterValues { it > 0 })
+                    quantities = emptyMap()
+                },
+            )
+        },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // One card per pile that exists in this token set, in a stable enum order.
+            // One card per pile that exists in this token set, in a stable enum order, two per row.
             val pileIds = TokenPileId.entries.filter { it in session.piles }
-            items(pileIds, key = { it.name }) { pileId ->
-                PileCard(
-                    pileId = pileId,
-                    pile = session.piles.getValue(pileId),
-                    withReplacement = session.drawWithReplacement,
-                    isBusy = isBusy,
-                    onDraw = { count -> onDraw(pileId, count) },
-                )
+            items(pileIds.chunked(2), key = { row -> row.first().name }) { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Each card gets equal weight, so a full row (2 cards) splits evenly in half and
+                    // a trailing lone card (D14 - today, Ruin) fills the whole row's width instead.
+                    row.forEach { pileId ->
+                        PileCard(
+                            modifier = Modifier.weight(1f),
+                            pileId = pileId,
+                            pile = session.piles.getValue(pileId),
+                            withReplacement = session.drawWithReplacement,
+                            quantity = quantities[pileId] ?: 0,
+                            onQuantityChange = { quantities = quantities + (pileId to it) },
+                        )
+                    }
+                }
             }
 
             item(key = "draw-log") {
@@ -255,23 +283,42 @@ private fun EnemyPickerTopBar() {
 }
 
 /**
- * One pile: its name, how many tokens are left / drawn, a 1..N quantity stepper, and a Draw button.
- * The quantity is card-local UI state (it's not part of the game), reset to 1 on each draw isn't
- * necessary - a player often draws the same number repeatedly.
+ * The bottom bar's single global draw action (D13/D15): always visible, disabled while nothing is
+ * staged (`total == 0`) rather than hidden, so the bar's presence never jumps around as steppers
+ * change.
+ */
+@Composable
+private fun DrawBar(total: Int, enabled: Boolean, onDraw: () -> Unit) {
+    BottomAppBar {
+        Button(
+            onClick = onDraw,
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        ) {
+            Text(if (total == 0) "Draw" else "Draw $total")
+        }
+    }
+}
+
+/**
+ * One pile: its name, how many tokens are left / drawn, and a 0..N quantity stepper. Fully
+ * "controlled" (no local state of its own) - [quantity] and [onQuantityChange] are hoisted to
+ * [EnemyPickerContent] so its bottom [DrawBar] can read every card's total and reset them all at
+ * once (D13); there is no per-card Draw button any more.
  */
 @Composable
 private fun PileCard(
+    modifier: Modifier = Modifier,
     pileId: TokenPileId,
-    pile: com.guyteichman.mageknightbuddy.domain.TokenPile,
+    pile: TokenPile,
     withReplacement: Boolean,
-    isBusy: Boolean,
-    onDraw: (Int) -> Unit,
+    quantity: Int,
+    onQuantityChange: (Int) -> Unit,
 ) {
-    var quantity by rememberSaveable(pileId.name) { mutableStateOf(1) }
     val remaining = pile.drawPile.size
     val drawn = pile.discardPile.size
 
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+    ElevatedCard(modifier = modifier) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(pileId.displayName(), style = MaterialTheme.typography.titleMedium)
             Text(
@@ -281,30 +328,21 @@ private fun PileCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                QuantityStepper(
-                    quantity = quantity,
-                    onQuantityChange = { quantity = it },
-                    // Without replacement, can't draw more than the whole pile (draw + discard) at once.
-                    max = if (withReplacement) MAX_BATCH else (remaining + drawn).coerceAtMost(MAX_BATCH),
-                )
-                Button(onClick = { onDraw(quantity) }, enabled = !isBusy) {
-                    Text(if (quantity == 1) "Draw" else "Draw $quantity")
-                }
-            }
+            QuantityStepper(
+                quantity = quantity,
+                onQuantityChange = onQuantityChange,
+                // Without replacement, can't draw more than the whole pile (draw + discard) at once.
+                max = if (withReplacement) MAX_BATCH else (remaining + drawn).coerceAtMost(MAX_BATCH),
+            )
         }
     }
 }
 
-/** A compact "− N +" stepper clamped to 1..[max]. */
+/** A compact "− N +" stepper clamped to 0..[max] (D13 - 0 means "not part of the next draw"). */
 @Composable
 private fun QuantityStepper(quantity: Int, onQuantityChange: (Int) -> Unit, max: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onQuantityChange((quantity - 1).coerceAtLeast(1)) }, enabled = quantity > 1) {
+        IconButton(onClick = { onQuantityChange((quantity - 1).coerceAtLeast(0)) }, enabled = quantity > 0) {
             Icon(Icons.Filled.Remove, contentDescription = "One fewer")
         }
         Text("$quantity", style = MaterialTheme.typography.titleMedium)
@@ -535,11 +573,14 @@ private fun TokenZoomDialog(
 }
 
 /**
- * Grid overview of a multi-token draw batch (D3/D7): one cell per drawn token with art, name and a
- * Defeat toggle; tapping a cell opens [TokenZoomDialog] for that token with prev/next across the
- * same batch. Sized to content with a max height (D10) so a rare large batch scrolls internally
- * instead of pushing the dialog off-screen, rather than always reserving full-screen space for the
- * common small batch.
+ * Grid overview of a multi-token draw batch (D3/D7), possibly spanning several piles at once
+ * (D16): one cell per drawn token with art, name and a Defeat toggle; tapping a cell opens
+ * [TokenZoomDialog] for that token with prev/next across the same batch. Sized to content with a
+ * max height (D10) so a rare large batch scrolls internally instead of pushing the dialog
+ * off-screen, rather than always reserving full-screen space for the common small batch. The title
+ * is deliberately pile-agnostic ("N tokens drawn") rather than naming the pile(s) involved, since a
+ * batch drawn from #192's multi-pile action no longer has just one - each cell's own art color
+ * already makes its pile obvious without a per-cell label.
  */
 @Composable
 private fun TokenGridDialog(
@@ -549,11 +590,10 @@ private fun TokenGridDialog(
     onToggleDefeated: (Int, Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val pile = log[state.logIndices.first()].pile
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
-        title = { Text("${state.logIndices.size} ${pile.displayName()} drawn") },
+        title = { Text("${state.logIndices.size} tokens drawn") },
         text = {
             // Adaptive columns (not a fixed count) so 2-6 tokens - the common case - render as a
             // comfortably large grid, while a rare large batch just packs more/smaller columns

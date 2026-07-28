@@ -19,54 +19,70 @@ data class EnemyPickerSession private constructor(
     val drawLog: List<DrawLogEntry>,
 ) {
     /**
-     * Draws [count] tokens from [pileId] in a single action, returning a new session with the
-     * pile(s) and [drawLog] updated. All [count] new [DrawLogEntry]s share [batchId] so the UI can
-     * group a stepper draw as one entry.
+     * Draws from one or more piles in a single action - [draws] maps each requested
+     * [TokenPileId] to how many tokens to take from it - returning a new session with every
+     * touched pile and [drawLog] updated. Every new [DrawLogEntry] across every pile shares one
+     * [batchId], so the UI can group a whole multi-pile (or multi-count single-pile) draw as one
+     * batch. A single-pile draw is just the degenerate case of a one-entry [draws] map.
      *
-     * Without replacement (the rules-correct default): each draw takes the top of the draw pile and
-     * moves it to that pile's discard; if the draw pile is empty when a token is needed, the pile
+     * Piles are drawn from in [TokenPileId.entries] order (not [draws]' own iteration order) so
+     * [drawLog] insertion order - and therefore display order - is deterministic regardless of how
+     * the caller built the map; that enum order is itself the rulebook's enemy difficulty order.
+     *
+     * Without replacement (the rules-correct default): each draw takes the top of that pile's draw
+     * pile and moves it to its discard; if the draw pile is empty when a token is needed, the pile
      * **Replenishes** first (its discard is `shuffle`d into a new draw pile - see `CONTEXT.md`).
      * With replacement: each draw picks a `shuffle`-randomised token but leaves the pile untouched,
-     * so piles never deplete and no discard accumulates.
+     * so piles never deplete and no discard accumulates. Both rules apply independently per pile,
+     * even within one multi-pile batch - one pile replenishing has no effect on any other.
      *
      * [shuffle] is the injected randomness (default: a real shuffle); it is used both to Replenish
-     * and to pick under replacement. Draws never touch any pile other than [pileId], and never
-     * touch existing [drawLog] entries' flags.
+     * and to pick under replacement. Draws never touch a pile absent from [draws], and never touch
+     * existing [drawLog] entries' flags.
      */
     fun draw(
-        pileId: TokenPileId,
-        count: Int = 1,
+        draws: Map<TokenPileId, Int>,
         batchId: Long = System.currentTimeMillis(),
         shuffle: (List<String>) -> List<String> = { it.shuffled() },
     ): EnemyPickerSession {
-        require(count >= 1) { "count must be >= 1, was $count" }
-        // `getValue` throws a clear error if the pile id isn't one this session was built with,
-        // rather than silently returning null.
-        var pile = piles.getValue(pileId)
-        val newEntries = ArrayList<DrawLogEntry>(count)
+        require(draws.isNotEmpty()) { "draws must not be empty" }
+        require(draws.values.all { it >= 1 }) { "every requested count must be >= 1, was $draws" }
 
-        repeat(count) {
-            val drawnId: String
-            if (drawWithReplacement) {
-                // With replacement: sample one token and leave the pile exactly as it was.
-                require(pile.drawPile.isNotEmpty()) { "pile $pileId has no tokens to draw" }
-                drawnId = shuffle(pile.drawPile).first()
-            } else {
-                // Replenish if the draw pile ran out: the discard becomes the new, shuffled pile.
-                if (pile.drawPile.isEmpty()) {
-                    require(pile.discardPile.isNotEmpty()) { "pile $pileId is completely empty" }
-                    pile = TokenPile(drawPile = shuffle(pile.discardPile), discardPile = emptyList())
+        var updatedPiles = piles
+        val newEntries = ArrayList<DrawLogEntry>()
+
+        // TokenPileId.entries (not draws.keys) fixes the order - see the KDoc above.
+        for (pileId in TokenPileId.entries) {
+            val count = draws[pileId] ?: continue
+            // `getValue` throws a clear error if the pile id isn't one this session was built with,
+            // rather than silently returning null.
+            var pile = updatedPiles.getValue(pileId)
+
+            repeat(count) {
+                val drawnId: String
+                if (drawWithReplacement) {
+                    // With replacement: sample one token and leave the pile exactly as it was.
+                    require(pile.drawPile.isNotEmpty()) { "pile $pileId has no tokens to draw" }
+                    drawnId = shuffle(pile.drawPile).first()
+                } else {
+                    // Replenish if the draw pile ran out: the discard becomes the new, shuffled pile.
+                    if (pile.drawPile.isEmpty()) {
+                        require(pile.discardPile.isNotEmpty()) { "pile $pileId is completely empty" }
+                        pile = TokenPile(drawPile = shuffle(pile.discardPile), discardPile = emptyList())
+                    }
+                    drawnId = pile.drawPile.first()
+                    // Drawn token leaves the draw pile and lands in the discard immediately (ADR-0006).
+                    pile = TokenPile(drawPile = pile.drawPile.drop(1), discardPile = pile.discardPile + drawnId)
                 }
-                drawnId = pile.drawPile.first()
-                // Drawn token leaves the draw pile and lands in the discard immediately (ADR-0006).
-                pile = TokenPile(drawPile = pile.drawPile.drop(1), discardPile = pile.discardPile + drawnId)
+                newEntries += DrawLogEntry(tokenId = drawnId, pile = pileId, batchId = batchId)
             }
-            newEntries += DrawLogEntry(tokenId = drawnId, pile = pileId, batchId = batchId)
+
+            // `updatedPiles + (pileId to pile)` returns a new map with just this pile replaced -
+            // every other pile (including ones already updated earlier in this loop) is kept.
+            updatedPiles = updatedPiles + (pileId to pile)
         }
 
-        // `piles + (pileId to pile)` returns a new map with just this pile replaced - every other
-        // pile is carried over unchanged.
-        return copy(piles = piles + (pileId to pile), drawLog = drawLog + newEntries)
+        return copy(piles = updatedPiles, drawLog = drawLog + newEntries)
     }
 
     /**

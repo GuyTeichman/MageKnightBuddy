@@ -24,7 +24,7 @@ class EnemyPickerSessionMapperTest {
         // Build realistic state via the session's own methods, not by hand-constructing it (per
         // CLAUDE.md): start, draw two (one batch), then mark the first entry defeated.
         val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
-            .draw(TokenPileId.GREEN, count = 2, batchId = 42L, shuffle = noShuffle)
+            .draw(mapOf(TokenPileId.GREEN to 2), batchId = 42L, shuffle = noShuffle)
             .setDefeated(index = 0, defeated = true, note = "keep, NE tile")
 
         val roundTripped = session.toEntity().toDomain()
