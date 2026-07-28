@@ -340,8 +340,9 @@ private fun PileCard(
         Column(
             // fillMaxWidth so horizontalAlignment actually centers each child across the card's
             // full width - without it the Column shrink-wraps to its widest child and everything
-            // ends up flush-left instead of centered.
-            Modifier.fillMaxWidth().padding(12.dp),
+            // ends up flush-left instead of centered. Bottom padding trimmed below the stepper
+            // (the last child) - it doesn't need as much breathing room as the top/sides.
+            Modifier.fillMaxWidth().padding(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -373,11 +374,22 @@ private fun PileCard(
 @Composable
 private fun QuantityStepper(quantity: Int, onQuantityChange: (Int) -> Unit, max: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onQuantityChange((quantity - 1).coerceAtLeast(0)) }, enabled = quantity > 0) {
+        // Shrunk below IconButton's default 48.dp touch target - the pile cards are dense,
+        // repeated controls rather than a one-off action, so the extra tap padding just added
+        // unused height to every card.
+        IconButton(
+            onClick = { onQuantityChange((quantity - 1).coerceAtLeast(0)) },
+            enabled = quantity > 0,
+            modifier = Modifier.size(32.dp),
+        ) {
             Icon(Icons.Filled.Remove, contentDescription = "One fewer")
         }
         Text("$quantity", style = MaterialTheme.typography.titleMedium)
-        IconButton(onClick = { onQuantityChange((quantity + 1).coerceAtMost(max)) }, enabled = quantity < max) {
+        IconButton(
+            onClick = { onQuantityChange((quantity + 1).coerceAtMost(max)) },
+            enabled = quantity < max,
+            modifier = Modifier.size(32.dp),
+        ) {
             Icon(Icons.Filled.Add, contentDescription = "One more")
         }
     }
@@ -545,20 +557,22 @@ private fun TokenZoomDialog(
     val token = TokenCatalogue.byId(entry.tokenId)
     AlertDialog(
         onDismissRequest = onDismiss,
-        // D11: Defeat is the primary (filled) action; Close stays a plain text button beside it.
-        // Material3's AlertDialog renders dismissButton to the left of confirmButton, so this
-        // reads Close / Defeat left-to-right without a manual Row.
-        confirmButton = {
-            Button(onClick = { onToggleDefeated(logIndex, true) }, enabled = !entry.defeated) {
-                Text(if (entry.defeated) "Defeated" else "Defeat")
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        // Material3's AlertDialog always end-aligns its confirmButton/dismissButton row, with no
+        // way to center it - so Close/Defeat are built as an ordinary centered Row inside `text`
+        // instead (below), and this slot is left empty to satisfy the required parameter.
+        confirmButton = {},
         title = {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(token?.name ?: entry.tokenId)
+            // Box (not a Row) so the name can be centered across the full width via its own
+            // fillMaxWidth + TextAlign.Center, with the "?" button floated at the end on top of
+            // it - a Row would instead push the name off-center to make room for the button.
+            Box(Modifier.fillMaxWidth()) {
+                Text(
+                    text = token?.name ?: entry.tokenId,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                )
                 if (token != null) {
-                    IconButton(onClick = { onShowInfo(token) }) {
+                    IconButton(onClick = { onShowInfo(token) }, modifier = Modifier.align(Alignment.CenterEnd)) {
                         Icon(Icons.Filled.QuestionMark, contentDescription = "Abilities")
                     }
                 }
@@ -603,6 +617,15 @@ private fun TokenZoomDialog(
                         IconButton(onClick = { onNavigate(state.index + 1) }, enabled = state.index < state.logIndices.size - 1) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next")
                         }
+                    }
+                }
+                // D11: Defeat is the primary (filled) action; Close stays a plain text button
+                // beside it, in that left-to-right order. Built here instead of in AlertDialog's
+                // confirmButton/dismissButton slots so the pair can be centered as a group.
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = onDismiss) { Text("Close") }
+                    Button(onClick = { onToggleDefeated(logIndex, true) }, enabled = !entry.defeated) {
+                        Text(if (entry.defeated) "Defeated" else "Defeat")
                     }
                 }
             }
