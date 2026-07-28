@@ -1,15 +1,20 @@
 package com.guyteichman.mageknightbuddy.ui.enemypicker
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -43,7 +48,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.EnemyPickerSessionRepository
@@ -72,9 +79,14 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
     val scope = rememberCoroutineScope()
 
     val session = viewModel.session
-    // Tokens currently shown zoomed (a whole draw batch, or one tapped log entry), plus which index
-    // of the batch is on screen for the "x of y" swipe.
+    // Tokens currently shown zoomed (a whole draw batch, one grid cell, or one tapped log entry),
+    // plus which index of the batch is on screen for the "x of y" swipe. Holds Draw Log indices
+    // (not token ids) so the zoom dialog's Defeat button can call setDefeated on the right entry -
+    // token id alone can't disambiguate two copies of the same token drawn in one batch.
     var zoom by remember { mutableStateOf<ZoomState?>(null) }
+    // The grid overview for a multi-token draw (N > 1, D3/D7); zoom above nests inside it when a
+    // cell is tapped, so dismissing zoom alone falls back to the grid instead of closing everything.
+    var gridState by remember { mutableStateOf<GridState?>(null) }
     // A token whose full ability info window ("?") is open.
     var infoToken by remember { mutableStateOf<EnemyToken?>(null) }
     // The Draw Log index whose Defeat dialog is open, or null.
@@ -95,12 +107,19 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
             scope.launch {
                 viewModel.draw(pileId, count)
                 // mutate() has published the new session by the time draw() returns, so the last
-                // `count` log entries are exactly what was just drawn - open them zoomed.
+                // `count` log entries (draws only ever append) are exactly what was just drawn.
                 val log = viewModel.session?.drawLog ?: return@launch
-                zoom = ZoomState(log.takeLast(count).map { it.tokenId }, 0)
+                val newIndices = (log.size - count until log.size).toList()
+                // D7: a single draw skips the grid and goes straight to its detail, same as today;
+                // only a batch of more than one opens the grid overview.
+                if (count == 1) {
+                    zoom = ZoomState(newIndices, 0)
+                } else {
+                    gridState = GridState(newIndices)
+                }
             }
         },
-        onOpenToken = { tokenId -> zoom = ZoomState(listOf(tokenId), 0) },
+        onOpenToken = { index -> zoom = ZoomState(listOf(index), 0) },
         onOpenDefeatDialog = { index -> defeatDialogIndex = index },
         onRequestReset = { pendingReset = { scope.launch { viewModel.reset() } } },
         onRequestApplyConfig = { tokenSet, replacement ->
@@ -110,11 +129,27 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
 
     // --- Dialogs, driven by the state above ---
 
+    // Composed before `zoom` below so, when a grid cell opens a detail, the zoom dialog's window
+    // is added after the grid's and stacks on top of it.
+    gridState?.let { grid ->
+        TokenGridDialog(
+            state = grid,
+            log = session.drawLog,
+            onOpenDetail = { position -> zoom = ZoomState(grid.logIndices, position) },
+            onToggleDefeated = { index, defeated -> scope.launch { viewModel.setDefeated(index, defeated) } },
+            onDismiss = { gridState = null; zoom = null },
+        )
+    }
+
     zoom?.let { state ->
         TokenZoomDialog(
             state = state,
+            log = session.drawLog,
             onNavigate = { newIndex -> zoom = state.copy(index = newIndex) },
             onShowInfo = { token -> infoToken = token },
+            onToggleDefeated = { index, defeated -> scope.launch { viewModel.setDefeated(index, defeated) } },
+            // Only clears the detail dialog - if it was opened from the grid, the grid (still set
+            // above) reappears underneath; a top-level zoom (gridState null) just closes.
             onDismiss = { zoom = null },
         )
     }
@@ -147,8 +182,15 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
     }
 }
 
-/** Immutable UI state for the zoom dialog: the batch of token ids being viewed and the current index. */
-private data class ZoomState(val tokenIds: List<String>, val index: Int)
+/**
+ * Immutable UI state for the zoom dialog: the Draw Log indices of the batch being viewed (chronological
+ * indices into [EnemyPickerSession.drawLog], not token ids - two entries can share a token id) and
+ * which position in that batch is on screen for the "x of y" swipe.
+ */
+private data class ZoomState(val logIndices: List<Int>, val index: Int)
+
+/** Immutable UI state for the multi-draw grid overview (D3): the Draw Log indices of one batch. */
+private data class GridState(val logIndices: List<Int>)
 
 /**
  * The scrollable body of the Enemy Picker: a card per [TokenPile][TokenPileId] with a quantity
@@ -161,7 +203,7 @@ private fun EnemyPickerContent(
     session: EnemyPickerSession,
     isBusy: Boolean,
     onDraw: (TokenPileId, Int) -> Unit,
-    onOpenToken: (String) -> Unit,
+    onOpenToken: (Int) -> Unit,
     onOpenDefeatDialog: (Int) -> Unit,
     onRequestReset: () -> Unit,
     onRequestApplyConfig: (Set<Expansion>, Boolean) -> Unit,
@@ -280,7 +322,7 @@ private fun QuantityStepper(quantity: Int, onQuantityChange: (Int) -> Unit, max:
 @Composable
 private fun DrawLogSection(
     log: List<DrawLogEntry>,
-    onOpenToken: (String) -> Unit,
+    onOpenToken: (Int) -> Unit,
     onOpenDefeatDialog: (Int) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -323,7 +365,7 @@ private fun DrawLogSection(
 private fun DrawLogRow(
     index: Int,
     entry: DrawLogEntry,
-    onOpenToken: (String) -> Unit,
+    onOpenToken: (Int) -> Unit,
     onOpenDefeatDialog: (Int) -> Unit,
 ) {
     val token = TokenCatalogue.byId(entry.tokenId)
@@ -344,7 +386,7 @@ private fun DrawLogRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            TextButton(onClick = { onOpenToken(entry.tokenId) }) { Text("View") }
+            TextButton(onClick = { onOpenToken(index) }) { Text("View") }
             IconButton(onClick = { onOpenDefeatDialog(index) }) {
                 Icon(
                     imageVector = if (entry.defeated) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
@@ -413,23 +455,39 @@ private fun ConfigSection(
 
 /**
  * Zoomed view of a drawn token (or a tapped log entry): its art (or text fallback), name, stat line
- * and attacks, a "?" to open the full ability info window, and prev/next with an "x of y" counter
- * when a whole batch was drawn at once.
+ * and attacks, a "?" to open the full ability info window, prev/next with an "x of y" counter when a
+ * whole batch was drawn at once, and a Defeat button (D2/D11).
+ *
+ * [log] is the whole Draw Log so [state]'s indices can be resolved to entries; that lookup also
+ * drives the Defeat button's own state (whether *this* entry is already defeated), since the same
+ * dialog instance stays open across [onNavigate] calls as the user flips through a batch.
  */
 @Composable
 private fun TokenZoomDialog(
     state: ZoomState,
+    log: List<DrawLogEntry>,
     onNavigate: (Int) -> Unit,
     onShowInfo: (EnemyToken) -> Unit,
+    onToggleDefeated: (Int, Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val token = TokenCatalogue.byId(state.tokenIds[state.index])
+    val logIndex = state.logIndices[state.index]
+    val entry = log[logIndex]
+    val token = TokenCatalogue.byId(entry.tokenId)
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        // D11: Defeat is the primary (filled) action; Close stays a plain text button beside it.
+        // Material3's AlertDialog renders dismissButton to the left of confirmButton, so this
+        // reads Close / Defeat left-to-right without a manual Row.
+        confirmButton = {
+            Button(onClick = { onToggleDefeated(logIndex, true) }, enabled = !entry.defeated) {
+                Text(if (entry.defeated) "Defeated" else "Defeat")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
         title = {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(token?.name ?: state.tokenIds[state.index])
+                Text(token?.name ?: entry.tokenId)
                 if (token != null) {
                     IconButton(onClick = { onShowInfo(token) }) {
                         Icon(Icons.Filled.QuestionMark, contentDescription = "Abilities")
@@ -460,13 +518,13 @@ private fun TokenZoomDialog(
                         )
                     }
                 }
-                if (state.tokenIds.size > 1) {
+                if (state.logIndices.size > 1) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { onNavigate(state.index - 1) }, enabled = state.index > 0) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous")
                         }
-                        Text("${state.index + 1} of ${state.tokenIds.size}")
-                        IconButton(onClick = { onNavigate(state.index + 1) }, enabled = state.index < state.tokenIds.size - 1) {
+                        Text("${state.index + 1} of ${state.logIndices.size}")
+                        IconButton(onClick = { onNavigate(state.index + 1) }, enabled = state.index < state.logIndices.size - 1) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next")
                         }
                     }
@@ -474,6 +532,87 @@ private fun TokenZoomDialog(
             }
         },
     )
+}
+
+/**
+ * Grid overview of a multi-token draw batch (D3/D7): one cell per drawn token with art, name and a
+ * Defeat toggle; tapping a cell opens [TokenZoomDialog] for that token with prev/next across the
+ * same batch. Sized to content with a max height (D10) so a rare large batch scrolls internally
+ * instead of pushing the dialog off-screen, rather than always reserving full-screen space for the
+ * common small batch.
+ */
+@Composable
+private fun TokenGridDialog(
+    state: GridState,
+    log: List<DrawLogEntry>,
+    onOpenDetail: (Int) -> Unit,
+    onToggleDefeated: (Int, Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val pile = log[state.logIndices.first()].pile
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        title = { Text("${state.logIndices.size} ${pile.displayName()} drawn") },
+        text = {
+            // Adaptive columns (not a fixed count) so 2-6 tokens - the common case - render as a
+            // comfortably large grid, while a rare large batch just packs more/smaller columns
+            // automatically instead of needing separate tuning (D9).
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = GRID_CELL_MIN_SIZE),
+                modifier = Modifier.heightIn(max = GRID_MAX_HEIGHT),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // position = index within this batch (for prev/next); logIndex = the entry's real
+                // Draw Log index (for reading/writing its defeated flag).
+                itemsIndexed(state.logIndices) { position, logIndex ->
+                    TokenGridCell(
+                        entry = log[logIndex],
+                        onOpen = { onOpenDetail(position) },
+                        onToggleDefeated = { defeated -> onToggleDefeated(logIndex, defeated) },
+                    )
+                }
+            }
+        },
+    )
+}
+
+/** One grid cell: art + name (dimmed once defeated, matching the Draw Log's own treatment) and a
+ * Defeat toggle icon matching [DrawLogRow]'s. The cell's own [Modifier.clickable] opens the detail
+ * view; it sits underneath the toggle's own clickable, which intercepts taps on itself first, so
+ * tapping the icon toggles Defeat instead of also opening the detail. */
+@Composable
+private fun TokenGridCell(entry: DrawLogEntry, onOpen: () -> Unit, onToggleDefeated: (Boolean) -> Unit) {
+    val token = TokenCatalogue.byId(entry.tokenId)
+    Column(
+        // fillMaxWidth (not a fixed width) so the cell matches whatever slot width Adaptive chose
+        // for this row - which can be wider than GRID_CELL_MIN_SIZE once it divides evenly.
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Column(
+            modifier = Modifier.alpha(if (entry.defeated) 0.5f else 1f),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (token != null) {
+                EnemyTokenFace(token = token, size = 72.dp)
+            }
+            Text(
+                text = token?.name ?: entry.tokenId,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        IconButton(onClick = { onToggleDefeated(!entry.defeated) }) {
+            Icon(
+                imageVector = if (entry.defeated) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
+                contentDescription = if (entry.defeated) "Defeated" else "Mark defeated",
+                tint = if (entry.defeated) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 /** The "?" info window: every whole-token ability and per-attack modifier, with its rules text. */
@@ -513,8 +652,8 @@ private fun TokenInfoDialog(token: EnemyToken, onDismiss: () -> Unit) {
 }
 
 /** The Defeat dialog: a Defeated toggle plus a free-text note (for enemies kept on the board),
- * saved together. The one-tap Defeat button on the zoom/grid is a follow-up (Issue A); this is the
- * per-log-row entry point. */
+ * saved together. This is the per-log-row entry point (note-editing needs the dialog); the zoom
+ * and grid views instead use a one-tap Defeat button/checkbox with no note. */
 @Composable
 private fun DefeatDialog(entry: DrawLogEntry, onSave: (Boolean, String) -> Unit, onDismiss: () -> Unit) {
     var defeated by remember { mutableStateOf(entry.defeated) }
@@ -545,6 +684,12 @@ private fun DefeatDialog(entry: DrawLogEntry, onSave: (Boolean, String) -> Unit,
 
 /** Largest number of tokens a single stepper draw allows - a sanity cap, well above any real need. */
 private const val MAX_BATCH = 20
+
+/** Grid cell min width (D9): sized so the common 2-6 token batch reads as a comfortably large grid. */
+private val GRID_CELL_MIN_SIZE = 96.dp
+
+/** Grid dialog max height (D10): a batch taller than this scrolls internally instead of growing the dialog. */
+private val GRID_MAX_HEIGHT = 400.dp
 
 /**
  * "Armor 3 · Fame 2" summary line for a token. Deliberately *excludes* the attack (D5): the
