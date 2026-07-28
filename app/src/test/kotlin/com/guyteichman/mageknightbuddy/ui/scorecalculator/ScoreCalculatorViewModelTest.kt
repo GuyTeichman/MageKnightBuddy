@@ -1,6 +1,7 @@
 package com.guyteichman.mageknightbuddy.ui.scorecalculator
 
 import androidx.lifecycle.SavedStateHandle
+import com.guyteichman.mageknightbuddy.data.ScoreCalculatorDraftRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.data.toDomain
 import com.guyteichman.mageknightbuddy.domain.AgainstTheApocalypseScoringInput
@@ -24,17 +25,40 @@ import com.guyteichman.mageknightbuddy.domain.SoloConquestChallengeScoringInput
 import com.guyteichman.mageknightbuddy.domain.SoloConquestScoringInput
 import com.guyteichman.mageknightbuddy.domain.VolkaresQuestScoringInput
 import com.guyteichman.mageknightbuddy.domain.VolkaresReturnScoringInput
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ScoreCalculatorViewModelTest {
+
+    // Every field write autosaves the draft via `viewModelScope.launch` (issue #174), which
+    // dispatches through Dispatchers.Main - a test dispatcher needs to be installed for plain JVM
+    // unit tests, same as DummyPlayerAiViewModelTest.
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(StandardTestDispatcher())
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
 
     @Test
     fun `save persists a ScoringSession built from the current field values`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.knight = Knight.WOLFHAWK
         viewModel.playerName = "Guy"
@@ -64,7 +88,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save maps a blank Player name to null`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.save()
 
@@ -74,7 +98,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds a FirstReconnaissanceScoringInput when First Reconnaissance is selected`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.FirstReconnaissance.id
         viewModel.fame = "20"
@@ -97,7 +121,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds a HiddenValleyScoringInput when The Hidden Valley is selected`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.HiddenValley.id
         viewModel.fame = "5"
@@ -117,7 +141,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds a RealmOfTheDeadScoringInput when The Realm of the Dead is selected`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.RealmOfTheDead.id
         viewModel.fame = "5"
@@ -139,7 +163,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds a ForTheCouncilScoringInput from the selected Reputation track space, negative modifier included`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.ForTheCouncil.id
         viewModel.questPoints = "12"
@@ -159,7 +183,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds an AgainstTheDragonScoringInput when Against the Dragon is selected`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.AgainstTheDragon.id
         viewModel.fame = "30"
@@ -182,7 +206,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds an AgainstTheHorsemenScoringInput when Against the Horsemen is selected`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.AgainstTheHorsemen.id
         viewModel.fame = "20"
@@ -203,7 +227,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds an ApocalypseIsHereScoringInput when Apocalypse is Here is selected`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.ApocalypseIsHere.id
         viewModel.fame = "40"
@@ -228,7 +252,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds a FracturedLandsScoringInput when The Fractured Lands is selected`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.FracturedLands.id
         viewModel.fame = "12"
@@ -249,7 +273,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds a LifeAndDeathScoringInput when Life and Death is selected`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.LifeAndDeath.id
         viewModel.fame = "25"
@@ -274,7 +298,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds a LostRelicScoringInput when The Lost Relic is selected`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.LostRelic.id
         viewModel.fame = "18"
@@ -296,7 +320,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds an AgainstTheApocalypseScoringInput mapping the ziggurat and pyramid switches to 1 or 0`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.AgainstTheApocalypse.id
         viewModel.fame = "35"
@@ -323,7 +347,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds a SoloConquestChallengeScoringInput for Tovak, a Knight with no extra fields`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.SoloConquestChallenge.id
         viewModel.knight = Knight.TOVAK
@@ -347,7 +371,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds a SoloConquestChallengeScoringInput for Arythea, combining wounds in deck and on Units`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.SoloConquestChallenge.id
         viewModel.knight = Knight.ARYTHEA
@@ -370,7 +394,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds a SoloConquestChallengeScoringInput for Goldyx, deriving distinctCrystalColorsInInventory from 4 color checkboxes`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.SoloConquestChallenge.id
         viewModel.knight = Knight.GOLDYX
@@ -396,7 +420,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds a SoloConquestChallengeScoringInput for Krang, whose Puppet Master line replaces all 6 Achievements`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.SoloConquestChallenge.id
         viewModel.knight = Knight.KRANG
@@ -420,7 +444,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds a SoloConquestChallengeScoringInput for Braevalar, combining the deck switch, 4 color checkboxes, and the Move-cost pill picker`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.SoloConquestChallenge.id
         viewModel.knight = Knight.BRAEVALAR
@@ -452,7 +476,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds a VolkaresQuestScoringInput when Volkare's Quest is selected`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.VolkaresQuest.id
         viewModel.fame = "32"
@@ -479,7 +503,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save builds a VolkaresReturnScoringInput when Volkare's Return is selected`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
 
         viewModel.scenarioId = Scenario.VolkaresReturn.id
         viewModel.fame = "27"
@@ -504,7 +528,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `save resets the wizard back to its defaults after persisting`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
         viewModel.pageIndex = 5
         viewModel.scenarioId = Scenario.ForTheCouncil.id
         viewModel.knight = Knight.WOLFHAWK
@@ -534,7 +558,7 @@ class ScoreCalculatorViewModelTest {
     @Test
     fun `reset clears all fields back to their defaults`() = runTest {
         val fakeDao = FakeScoringSessionDao()
-        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao))
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(fakeDao), ScoreCalculatorDraftRepository(FakeScoreCalculatorDraftDao()))
         viewModel.pageIndex = 5
         viewModel.knight = Knight.WOLFHAWK
         viewModel.playerName = "Guy"
@@ -562,5 +586,87 @@ class ScoreCalculatorViewModelTest {
         assertEquals(0, viewModel.graveyardsSealed)
         assertEquals(false, viewModel.necromancerDefeated)
         assertEquals(ReputationTrackSpace.CENTER.name, viewModel.reputationTrackSpaceName)
+    }
+
+    // Issue #174: SavedStateHandle's Bundle doesn't survive the app being killed while
+    // backgrounded (e.g. swiped away from Recents), so every field write is also mirrored to a
+    // Room-backed draft repository as a durable fallback, restored on the next genuinely fresh
+    // start. The tests below exercise that autosave/restore path directly against a fake Dao,
+    // mirroring DummyPlayerAiViewModelTest's approach for the same kind of Room-backed autosave.
+
+    @Test
+    fun `every field write autosaves the draft`() = runTest {
+        val draftDao = FakeScoreCalculatorDraftDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(FakeScoringSessionDao()), ScoreCalculatorDraftRepository(draftDao))
+
+        viewModel.fame = "37"
+        advanceUntilIdle()
+
+        assertEquals("37", draftDao.saved?.toDomain()?.get("fame"))
+    }
+
+    @Test
+    fun `a fresh ViewModel with an empty SavedStateHandle restores its fields from the autosaved draft`() = runTest {
+        val draftDao = FakeScoreCalculatorDraftDao()
+        val firstRun = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(FakeScoringSessionDao()), ScoreCalculatorDraftRepository(draftDao))
+        firstRun.knight = Knight.WOLFHAWK
+        firstRun.fame = "42"
+        firstRun.city1Conquered = true
+        advanceUntilIdle()
+
+        // A brand new SavedStateHandle simulates the app being killed while backgrounded and
+        // restarted from scratch - no Bundle to restore from, only the Room draft above.
+        val restarted = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(FakeScoringSessionDao()), ScoreCalculatorDraftRepository(draftDao))
+        advanceUntilIdle()
+
+        assertEquals(Knight.WOLFHAWK, restarted.knight)
+        assertEquals("42", restarted.fame)
+        assertEquals(true, restarted.city1Conquered)
+    }
+
+    // Note: there's no unit test here for "a ViewModel whose SavedStateHandle already has data
+    // doesn't get overwritten by an older Room draft" (the other branch of
+    // `startedWithoutSavedState`) - `saveable()` stores each field in a Compose-Saver-specific
+    // Bundle format only its own registered provider can produce, so a plain JVM test has no way
+    // to fabricate a "pre-restored" SavedStateHandle without a real save/restore cycle through the
+    // Android framework. The guard itself (`savedStateHandle.keys().isEmpty()`, checked before any
+    // `resettable()` call adds its own key) is exercised structurally by the "restores from the
+    // autosaved draft" test below, which relies on it evaluating `true` for a fresh handle.
+
+    @Test
+    fun `reset also clears the autosaved draft, so a later restart doesn't restore the finished session's values`() = runTest {
+        val draftDao = FakeScoreCalculatorDraftDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(FakeScoringSessionDao()), ScoreCalculatorDraftRepository(draftDao))
+        viewModel.fame = "50"
+        advanceUntilIdle()
+
+        viewModel.reset()
+        advanceUntilIdle()
+
+        assertEquals("0", draftDao.saved?.toDomain()?.get("fame"))
+    }
+
+    @Test
+    fun `save clears the autosaved draft after persisting the session`() = runTest {
+        val draftDao = FakeScoreCalculatorDraftDao()
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(FakeScoringSessionDao()), ScoreCalculatorDraftRepository(draftDao))
+        viewModel.fame = "50"
+        advanceUntilIdle()
+
+        viewModel.save()
+        advanceUntilIdle()
+
+        assertEquals("0", draftDao.saved?.toDomain()?.get("fame"))
+    }
+
+    @Test
+    fun `restore returns null when nothing has been saved yet, leaving a fresh ViewModel at its defaults`() = runTest {
+        val draftDao = FakeScoreCalculatorDraftDao()
+
+        val viewModel = ScoreCalculatorViewModel(SavedStateHandle(), ScoringSessionRepository(FakeScoringSessionDao()), ScoreCalculatorDraftRepository(draftDao))
+        advanceUntilIdle()
+
+        assertNull(draftDao.saved)
+        assertEquals("0", viewModel.fame)
     }
 }

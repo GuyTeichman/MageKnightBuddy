@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
 // behind the scenes. `exportSchema = false` skips writing that schema to a JSON file on disk,
 // since this project isn't tracking schema history for migrations yet.
 @Database(
-    entities = [ScoringSessionEntity::class, DummyPlayerSessionEntity::class, VolkareSessionEntity::class, ProxyPlayerSessionEntity::class, EnemyPickerSessionEntity::class],
+    entities = [ScoringSessionEntity::class, DummyPlayerSessionEntity::class, VolkareSessionEntity::class, ProxyPlayerSessionEntity::class, EnemyPickerSessionEntity::class, ScoreCalculatorDraftEntity::class],
     // Bumped 2 -> 3: ScoringSessionEntity's ~22 wide columns collapsed into a single inputJson
     // column (see ScoringInputDto). Bumped 3 -> 4: ScoringInputDto.ForTheCouncil's own shape
     // changed (reputationModifier/shieldOnXSpace/reputation -> one reputationTrackPosition).
@@ -52,8 +52,11 @@ import androidx.room.RoomDatabase
     // unshipped: while finalising #178 its drawLogJson content was reshaped - DrawLogEntryDto's
     // stillInPlay field became defeated, and the token catalogue's ability model split into
     // offensive/defensive - so any pre-merge v11 test DB should be reinstalled clean rather than
-    // carried over. No further bump, since v11 never shipped.)
-    version = 11,
+    // carried over. No further bump, since v11 never shipped.) Bumped 11 -> 12: added the new
+    // ScoreCalculatorDraftEntity table (score_calculator_drafts) for the Score Calculator wizard's
+    // autosaved in-progress draft (issue #174) - no hand-written migration,
+    // fallbackToDestructiveMigration is fine pre-release, same as every prior bump.
+    version = 12,
     exportSchema = false,
 )
 abstract class MageKnightBuddyDatabase : RoomDatabase() {
@@ -64,4 +67,5 @@ abstract class MageKnightBuddyDatabase : RoomDatabase() {
     abstract fun volkareSessionDao(): VolkareSessionDao
     abstract fun proxyPlayerSessionDao(): ProxyPlayerSessionDao
     abstract fun enemyPickerSessionDao(): EnemyPickerSessionDao
+    abstract fun scoreCalculatorDraftDao(): ScoreCalculatorDraftDao
 }

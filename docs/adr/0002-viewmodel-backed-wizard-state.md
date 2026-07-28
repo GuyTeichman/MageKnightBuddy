@@ -8,3 +8,9 @@ We chose a heavier alternative instead: hoist all wizard state into a `ViewModel
 
 - A reader who only knows about the tab-switching bug might reasonably ask "why not just `rememberSaveable`?" — this is that answer.
 - If persistence plans ever change and the wizard stops needing to save anywhere, this is more architecture than the tab-switching fix alone would justify.
+
+## Update (issue #174): SavedStateHandle alone wasn't enough
+
+`SavedStateHandle`'s Bundle survives ordinary backgrounding and OS-triggered process death, but not every "app was minimized" case — most notably, Android discards a task's saved instance state entirely when the user swipes the app away from Recents, treating that as an intentional close rather than a backgrounding. Players were losing in-progress wizard data "on occasion," matching that gap.
+
+The fix layers the same single-slot Room autosave pattern already used by the Dummy Player tab's sessions and the Enemy Picker (`SingleSlotAutosaveRepository`, `ScoreCalculatorDraftRepository`) on top of the existing `SavedStateHandle` wiring, rather than replacing it: every wizard field write also autosaves a `Map<String, String>` draft to Room, and a ViewModel that starts with a genuinely empty `SavedStateHandle` (checked via `savedStateHandle.keys().isEmpty()` before any field is declared) restores from that draft. A `SavedStateHandle` that already has data (an ordinary tab switch or config change) is left untouched, since it's already the more current source of truth than a Room draft that autosaves asynchronously.

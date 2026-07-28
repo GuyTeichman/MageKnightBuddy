@@ -4,6 +4,7 @@ import android.app.Application
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.EnemyPickerSessionRepository
 import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
+import com.guyteichman.mageknightbuddy.data.ScoreCalculatorDraftRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.data.createDatabase
@@ -21,6 +22,7 @@ class MageKnightBuddyApplication : Application() {
     // so the database is only opened once, the first time something actually needs it.
     private val database by lazy { createDatabase(this) }
     val scoringSessionRepository by lazy { ScoringSessionRepository(database.scoringSessionDao()) }
+    val scoreCalculatorDraftRepository by lazy { ScoreCalculatorDraftRepository(database.scoreCalculatorDraftDao()) }
     val dummyPlayerSessionRepository by lazy { DummyPlayerSessionRepository(database.dummyPlayerSessionDao()) }
     val volkareSessionRepository by lazy { VolkareSessionRepository(database.volkareSessionDao()) }
     val proxyPlayerSessionRepository by lazy { ProxyPlayerSessionRepository(database.proxyPlayerSessionDao()) }

@@ -26,6 +26,7 @@ import com.guyteichman.mageknightbuddy.R
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.EnemyPickerSessionRepository
 import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
+import com.guyteichman.mageknightbuddy.data.ScoreCalculatorDraftRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.ui.dummyplayer.DummyPlayerTab
@@ -57,6 +58,7 @@ private val tabs = listOf(Tab.Scoreboard, Tab.ScoreCalculator, Tab.DummyPlayer, 
 @Composable
 fun MageKnightBuddyApp(
     repository: ScoringSessionRepository,
+    draftRepository: ScoreCalculatorDraftRepository,
     dummyPlayerRepository: DummyPlayerSessionRepository,
     volkareRepository: VolkareSessionRepository,
     proxyPlayerRepository: ProxyPlayerSessionRepository,
@@ -125,6 +127,7 @@ fun MageKnightBuddyApp(
             composable(Tab.ScoreCalculator.route) {
                 ScoreCalculatorScreen(
                     repository = repository,
+                    draftRepository = draftRepository,
                     fieldHelp = fieldHelp,
                     onDone = { navigateToTab(Tab.Scoreboard.route) },
                 )

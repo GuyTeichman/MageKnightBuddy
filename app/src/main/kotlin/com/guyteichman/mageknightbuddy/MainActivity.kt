@@ -22,6 +22,7 @@ class MainActivity : ComponentActivity() {
             MageKnightBuddyTheme {
                 MageKnightBuddyApp(
                     repository = app.scoringSessionRepository,
+                    draftRepository = app.scoreCalculatorDraftRepository,
                     dummyPlayerRepository = app.dummyPlayerSessionRepository,
                     volkareRepository = app.volkareSessionRepository,
                     proxyPlayerRepository = app.proxyPlayerSessionRepository,
