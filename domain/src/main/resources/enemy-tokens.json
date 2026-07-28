@@ -72,7 +72,8 @@
     "copies": 3,
     "armor": 4,
     "fame": 3,
-    "attacks": [{ "value": 4 }]
+    "attacks": [{ "value": 4 }],
+    "offensiveAbilities": ["SWIFT"]
   },
   {
     "id": "grey_guardsmen",
@@ -125,7 +126,7 @@
     "copies": 2,
     "armor": 3,
     "fame": 4,
-    "attacks": [{ "summons": "RED" }],
+    "attacks": [{ "summons": "BROWN" }],
     "resistances": ["PHYSICAL"]
   },
   {
@@ -148,7 +149,8 @@
     "armor": 4,
     "fame": 5,
     "attacks": [{ "value": 2, "element": "ICE" }],
-    "resistances": ["ICE", "PHYSICAL"]
+    "resistances": ["ICE", "PHYSICAL"],
+    "offensiveAbilities": ["PARALYZE"]
   },
   {
     "id": "violet_fire_mages",
@@ -170,12 +172,13 @@
     "armor": 4,
     "fame": 5,
     "attacks": [{ "value": 3, "element": "FIRE" }],
-    "resistances": ["FIRE", "PHYSICAL"]
+    "resistances": ["FIRE", "PHYSICAL"],
+    "offensiveAbilities": ["BRUTAL"]
   },
   {
-    "id": "brown_swamp_dragon",
+    "id": "red_swamp_dragon",
     "name": "Swamp Dragon",
-    "pile": "BROWN",
+    "pile": "RED",
     "expansion": "BASE",
     "copies": 2,
     "armor": 9,
@@ -184,9 +187,9 @@
     "offensiveAbilities": ["SWIFT", "POISON"]
   },
   {
-    "id": "brown_fire_dragon",
+    "id": "red_fire_dragon",
     "name": "Fire Dragon",
-    "pile": "BROWN",
+    "pile": "RED",
     "expansion": "BASE",
     "copies": 2,
     "armor": 7,
@@ -195,20 +198,21 @@
     "resistances": ["FIRE", "PHYSICAL"]
   },
   {
-    "id": "brown_ice_dragon",
+    "id": "red_ice_dragon",
     "name": "Ice Dragon",
-    "pile": "BROWN",
+    "pile": "RED",
     "expansion": "BASE",
     "copies": 2,
     "armor": 7,
     "fame": 8,
     "attacks": [{ "value": 6, "element": "ICE" }],
-    "resistances": ["ICE", "PHYSICAL"]
+    "resistances": ["ICE", "PHYSICAL"],
+    "offensiveAbilities": ["PARALYZE"]
   },
   {
-    "id": "brown_high_dragon",
+    "id": "red_high_dragon",
     "name": "High Dragon",
-    "pile": "BROWN",
+    "pile": "RED",
     "expansion": "BASE",
     "copies": 2,
     "armor": 9,
@@ -218,19 +222,20 @@
     "offensiveAbilities": ["BRUTAL"]
   },
   {
-    "id": "red_minotaur",
+    "id": "brown_minotaur",
     "name": "Minotaur",
-    "pile": "RED",
+    "pile": "BROWN",
     "expansion": "BASE",
     "copies": 2,
     "armor": 5,
     "fame": 4,
-    "attacks": [{ "value": 5 }]
+    "attacks": [{ "value": 5 }],
+    "offensiveAbilities": ["BRUTAL"]
   },
   {
-    "id": "red_gargoyle",
+    "id": "brown_gargoyle",
     "name": "Gargoyle",
-    "pile": "RED",
+    "pile": "BROWN",
     "expansion": "BASE",
     "copies": 2,
     "armor": 4,
@@ -239,19 +244,20 @@
     "resistances": ["PHYSICAL"]
   },
   {
-    "id": "red_medusa",
+    "id": "brown_medusa",
     "name": "Medusa",
-    "pile": "RED",
+    "pile": "BROWN",
     "expansion": "BASE",
     "copies": 2,
     "armor": 4,
     "fame": 5,
-    "attacks": [{ "value": 6 }]
+    "attacks": [{ "value": 6 }],
+    "offensiveAbilities": ["PARALYZE"]
   },
   {
-    "id": "red_crypt_worm",
+    "id": "brown_crypt_worm",
     "name": "Crypt Worm",
-    "pile": "RED",
+    "pile": "BROWN",
     "expansion": "BASE",
     "copies": 2,
     "armor": 6,
@@ -260,9 +266,9 @@
     "defensiveAbilities": ["FORTIFIED"]
   },
   {
-    "id": "red_werewolf",
+    "id": "brown_werewolf",
     "name": "Werewolf",
-    "pile": "RED",
+    "pile": "BROWN",
     "expansion": "BASE",
     "copies": 2,
     "armor": 5,
@@ -291,7 +297,8 @@
     "armor": 6,
     "fame": 7,
     "attacks": [{ "value": 6, "element": "FIRE" }],
-    "resistances": ["ICE"]
+    "resistances": ["ICE"],
+    "offensiveAbilities": ["BRUTAL"]
   },
   {
     "id": "white_altem_guardsmen",

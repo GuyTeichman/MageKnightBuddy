@@ -67,7 +67,7 @@ the "Keep Garrisons" bag's individual token faces).
 
 | Token | Copies | Armor | Attack | Element | Modifiers | Fame | Resistances / abilities |
 |-------|:------:|:-----:|:------:|---------|-----------|:----:|-------------------------|
-| Crossbowmen | 3 | 4 | 4 | Physical | — | 3 | — |
+| Crossbowmen | 3 | 4 | 4 | Physical | Swift | 3 | — |
 | Guardsmen   | 3 | 7 | 3 | Physical | — | 3 | Fortified |
 | Swordsmen   | 2 | 5 | 6 | Physical | — | 4 | — |
 | Golems      | 2 | 5 | 2 | Physical | — | 4 | Physical Resistance |
@@ -80,43 +80,41 @@ the "Keep Garrisons" bag's individual token faces).
 | Token | Copies | Armor | Attack | Element | Modifiers | Fame | Resistances / abilities |
 |-------|:------:|:-----:|:------:|---------|-----------|:----:|-------------------------|
 | Monks         | 2 | 5 | 5 | Physical | Poison | 4 | — |
-| Illusionists  | 2 | 3 | — | — | Summon → Red | 4 | Physical Resistance |
+| Illusionists  | 2 | 3 | — | — | Summon → Brown | 4 | Physical Resistance |
 | Ice Mages     | 2 | 6 | 5 | Ice | — | 5 | Ice Resistance |
-| Ice Golems    | 1 | 4 | 2 | Ice | — | 5 | Ice + Physical Resistance |
+| Ice Golems    | 1 | 4 | 2 | Ice | Paralyze | 5 | Ice + Physical Resistance |
 | Fire Mages    | 2 | 5 | 6 | Fire | — | 5 | Fire Resistance |
-| Fire Golems   | 1 | 4 | 3 | Fire | — | 5 | Fire + Physical Resistance |
+| Fire Golems   | 1 | 4 | 3 | Fire | Brutal | 5 | Fire + Physical Resistance |
 
 **Illusionists has no printed attack value** - like Orc Summoners, it summons a token instead of
-attacking. Its summon icon's colour matches the **Red** pile's swatch on the reference sheet, not a
-neighbouring pile, which is worth double-checking against the physical token alongside everything
-else pending verification (see "Source & provenance" above) since it's the one detail here that
-isn't corroborated by a matching count in the bag data the way every stat block is.
+attacking. Its summon icon's colour matches the **Brown** pile's swatch on the reference sheet.
 
-## Brown pile — Draconum (base game)
+## Red pile — Draconum (base game)
 
-8 tokens: 4 types, the game's dragons (issue #187, cross-checked against the "Draconum" bag).
+8 tokens: 4 types, the game's dragons (issue #187, cross-checked against the "Draconum" bag - despite
+the internal bag name, this is the pile the rulebook calls **Red**).
 
 | Token | Copies | Armor | Attack | Element | Modifiers | Fame | Resistances / abilities |
 |-------|:------:|:-----:|:------:|---------|-----------|:----:|-------------------------|
 | Swamp Dragon | 2 | 9 | 5 | Physical | Swift, Poison | 7 | — |
 | Fire Dragon  | 2 | 7 | 9 | Fire | — | 8 | Fire + Physical Resistance |
-| Ice Dragon   | 2 | 7 | 6 | Ice | — | 8 | Ice + Physical Resistance |
+| Ice Dragon   | 2 | 7 | 6 | Ice | Paralyze | 8 | Ice + Physical Resistance |
 | High Dragon  | 2 | 9 | 6 | Cold Fire | Brutal | 9 | Fire + Ice Resistance |
 
 High Dragon resists **both** Fire and Ice, which per the Quick Reference Sheet means it also
 resists Cold Fire attacks - see `AttackElement`'s doc comment.
 
-## Red pile — Dungeon Monsters (base game)
+## Brown pile — Dungeon Monsters (base game)
 
-10 tokens: 5 types (issue #187, cross-checked against the "Dungeon Monsters" bag). Despite the
-internal bag name, this is the pile the rulebook calls **Red** - used at Dungeons and (per the
+10 tokens: 5 types (issue #187, cross-checked against the "Dungeon Monsters" bag - despite the
+internal bag name, this is the pile the rulebook calls **Brown**) - used at Dungeons and (per the
 Walkthrough's "Revealing Ruins") for some Ruin combats; it is *not* the Ruin pile itself.
 
 | Token | Copies | Armor | Attack | Element | Modifiers | Fame | Resistances / abilities |
 |-------|:------:|:-----:|:------:|---------|-----------|:----:|-------------------------|
-| Minotaur    | 2 | 5 | 5 | Physical | — | 4 | — |
+| Minotaur    | 2 | 5 | 5 | Physical | Brutal | 4 | — |
 | Gargoyle    | 2 | 4 | 5 | Physical | — | 4 | Physical Resistance |
-| Medusa      | 2 | 4 | 6 | Physical | — | 5 | — |
+| Medusa      | 2 | 4 | 6 | Physical | Paralyze | 5 | — |
 | Crypt Worm  | 2 | 6 | 6 | Physical | — | 5 | Fortified |
 | Werewolf    | 2 | 5 | 7 | Physical | Swift | 5 | — |
 
@@ -128,7 +126,7 @@ tokens are the game's toughest base-game enemies short of the dragons.
 | Token | Copies | Armor | Attack | Element | Modifiers | Fame | Resistances / abilities |
 |-------|:------:|:-----:|:------:|---------|-----------|:----:|-------------------------|
 | Freezers        | 3 | 7 | 3 | Ice | Swift | 7 | Fire Resistance |
-| Gunners         | 3 | 6 | 6 | Fire | — | 7 | Ice Resistance |
+| Gunners         | 3 | 6 | 6 | Fire | Brutal | 7 | Ice Resistance |
 | Altem Guardsmen | 2 | 7 | 5 | Physical | — | 8 | Fortified; Fire + Ice + Physical Resistance |
 | Altem Mages     | 2 | 8 | 4 | Cold Fire | Brutal, Poison | 8 | Physical Resistance |
 
