@@ -165,13 +165,14 @@ the Ultimate Edition Walkthrough), a Ruin token is one of two kinds:
 validated (mirroring `TokenCatalogue`'s mandatory catalogue-validation test, ADR-0007) but
 `EnemyPickerSession`/the UI don't build or render the RUIN pile yet, since a drawn Ruin token needs
 different UI treatment than a round enemy token (a mana-payment prompt vs. a two-pile draw
-instruction) rather than an armor/attack/fame display. Tracked as a follow-up to issue #187.
+instruction) rather than an armor/attack/fame display, and no art exists for any `ruin_*` id yet
+either. Tracked as issue #201.
 
 ## Follow-up work (issue #178)
 
 Tracked as GitHub sub-issues of #178:
 
-- Wire the RUIN pile into the Enemy Picker's draw flow and UI (new issue - see "Ruin tokens" above)
+- Wire the RUIN pile into the Enemy Picker's draw flow, UI, and art (#201)
 - Lost Legion & Shades of Tezla tokens (#188)
 - Apocalypse Dragon — possessed enemies & faction tokens (#189); faction tokens → Score Calculator (#190)
 - Explicit Summon Draw action (#191) — incl. summoned tokens applying their own offensive abilities

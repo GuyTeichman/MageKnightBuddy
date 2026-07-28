@@ -16,7 +16,7 @@ Fire Mages, Fire Golems), `brown_*` (Swamp Dragon, Fire Dragon, Ice Dragon, High
 (Minotaur, Gargoyle, Medusa, Crypt Worm, Werewolf), `white_*` (Freezers, Gunners, Altem Guardsmen,
 Altem Mages) — ids match `enemy-tokens.json` exactly. Ruin tokens (`RuinToken`/`ruin-tokens.json`)
 are hexagonal and have no art here yet - not wired into the Enemy Picker's draw flow yet either
-(follow-up to issue #187). The Lost Legion/Shades of Tezla/Apocalypse Dragon expansions' tokens
+(tracked as issue #201). The Lost Legion/Shades of Tezla/Apocalypse Dragon expansions' tokens
 follow as those are transcribed.
 
 ## Source & provenance

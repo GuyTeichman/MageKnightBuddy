@@ -124,8 +124,8 @@ Treasure** draw (draw one token each from the two named **Token Pile**s - the sa
 named twice - fight both, and claim the printed reward if you defeat them both). The reward isn't
 modeled: like the rest of the **Enemy Picker**, `RuinToken` tracks only which pile(s) to draw from,
 never Fame or rewards ([ADR-0006](docs/adr/0006-enemy-picker-owns-pile-state-but-models-no-map.md)).
-Not yet wired into the picker's draw flow or UI (issue #187's follow-up) - only the catalogue is
-transcribed so far.
+Not yet wired into the picker's draw flow or UI, and has no art yet either (issue #201) - only the
+catalogue is transcribed so far.
 _Avoid_: Enemy Token (different shape entirely - no armor/attack/fame, and an Ancient Altar isn't
 combat at all)
 
