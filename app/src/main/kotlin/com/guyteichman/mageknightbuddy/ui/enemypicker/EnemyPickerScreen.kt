@@ -788,7 +788,15 @@ private fun SummonedChildZoomDialog(
         confirmButton = {},
         title = {
             Box(Modifier.fillMaxWidth()) {
-                Text(text = token?.name ?: entry.tokenId, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                // "(Summoned)" suffix - unlike TokenZoomDialog's title, this dialog is always a
+                // Summon Draw child, so the title itself says so rather than requiring the "Summon"
+                // text on the parent's own dialog to be remembered. End padding reserves room for
+                // the "?" button below so this longer title doesn't run into it before centering.
+                Text(
+                    text = "${token?.name ?: entry.tokenId} (Summoned)",
+                    modifier = Modifier.fillMaxWidth().padding(end = 40.dp),
+                    textAlign = TextAlign.Center,
+                )
                 if (token != null) {
                     IconButton(onClick = { onShowInfo(token) }, modifier = Modifier.align(Alignment.CenterEnd)) {
                         Icon(Icons.Filled.QuestionMark, contentDescription = "Abilities")
