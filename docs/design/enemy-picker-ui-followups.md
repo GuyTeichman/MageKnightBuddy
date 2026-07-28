@@ -198,8 +198,10 @@ is just a one-entry map.
   WHITE, RUIN — already the rulebook's difficulty order, author-confirmed 2026-07-28), not
   whatever order the caller's `Map` happens to iterate in, so `DrawLogEntry` insertion order (and
   therefore Draw Log display order for a batch) is deterministic regardless of UI selection order.
-- Reuses the exact same per-pile draw/replenish logic the old `draw()` had (extracted into a
-  private helper) — one implementation of "how a pile gets drawn from," not two.
+- Reuses the exact same per-pile draw/replenish logic the old `draw()` had, inlined in this
+  function's own loop body (no separate private helper needed - there's only the one call site
+  now that the old single-pile overload is gone) — one implementation of "how a pile gets drawn
+  from," not two.
 - Validates `require(draws.isNotEmpty())` and `require(draws.values.all { it >= 1 })`, mirroring
   the old function's own `require(count >= 1)` rather than silently tolerating a malformed call.
 - No DB/schema migration: `DrawLogEntry` already carries `pile` and a shared `batchId` per entry
