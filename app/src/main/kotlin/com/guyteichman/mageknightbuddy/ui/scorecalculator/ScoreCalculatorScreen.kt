@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.guyteichman.mageknightbuddy.data.ScoreCalculatorDraftRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.domain.BRAEVALAR_FINAL_SPACE_MOVE_COST_RANGE
 import com.guyteichman.mageknightbuddy.domain.CardColor
@@ -269,12 +270,15 @@ private fun wizardPagesFor(scenario: Scenario, knight: Knight): List<WizardPage>
  * dialog around [WizardContent], which renders the actual per-page fields.
  *
  * @param repository where a completed [com.guyteichman.mageknightbuddy.domain.ScoringSession] gets saved.
+ * @param draftRepository where the wizard's in-progress field values are autosaved (issue #174),
+ * so they survive the app being killed while backgrounded rather than just tab switches.
  * @param fieldHelp the bundled "?" help text/citations (see [FieldHelp]), keyed by [WizardPage.helpKeys].
  * @param onDone called after a successful save, to navigate back to the Scoreboard tab.
  */
 @Composable
 fun ScoreCalculatorScreen(
     repository: ScoringSessionRepository,
+    draftRepository: ScoreCalculatorDraftRepository,
     fieldHelp: Map<String, FieldHelp>,
     onDone: () -> Unit,
 ) {
@@ -283,7 +287,7 @@ fun ScoreCalculatorScreen(
     // instance across recompositions (and, per ADR-0002, across this tab being navigated away
     // from and back). The factory is needed because this ViewModel's constructor takes a
     // repository the default lookup can't provide on its own.
-    val viewModel: ScoreCalculatorViewModel = viewModel(factory = ScoreCalculatorViewModel.factory(repository))
+    val viewModel: ScoreCalculatorViewModel = viewModel(factory = ScoreCalculatorViewModel.factory(repository, draftRepository))
     // A CoroutineScope tied to this composable's lifecycle, used below to launch the suspend
     // `viewModel.save()` call from a plain (non-suspend) button click handler.
     val scope = rememberCoroutineScope()

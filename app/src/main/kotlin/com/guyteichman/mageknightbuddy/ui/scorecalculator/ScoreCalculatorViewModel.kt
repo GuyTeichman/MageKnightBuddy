@@ -8,10 +8,12 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.SavedStateHandleSaveableApi
 import androidx.lifecycle.viewmodel.compose.saveable
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.guyteichman.mageknightbuddy.data.ScoreCalculatorDraftRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.domain.AgainstTheApocalypseScoringInput
 import com.guyteichman.mageknightbuddy.domain.AgainstTheDragonScoringInput
@@ -41,6 +43,7 @@ import com.guyteichman.mageknightbuddy.domain.VolkaresReturnScoringInput
 import com.guyteichman.mageknightbuddy.domain.outcome
 import com.guyteichman.mageknightbuddy.domain.score
 import java.time.Instant
+import kotlinx.coroutines.launch
 
 /** Kotlin extension function on `String`: treats a blank/non-numeric text field as 0 rather than crashing or nulling out. */
 private fun String.toIntOrZero() = toIntOrNull() ?: 0
@@ -57,15 +60,28 @@ private fun String.toIntOrZero() = toIntOrNull() ?: 0
 class ScoreCalculatorViewModel(
     private val savedStateHandle: SavedStateHandle,
     private val repository: ScoringSessionRepository,
+    private val draftRepository: ScoreCalculatorDraftRepository,
 ) : ViewModel() {
+
+    // Whether this instance's SavedStateHandle already carried real data forward - either a
+    // config change/tab switch (this same ViewModel instance survives those, per ADR-0002) or
+    // Android successfully restoring a saved-instance-state Bundle. Checked here, before any
+    // `resettable()` call below adds its own key, so an empty result means a genuinely fresh start:
+    // either the very first launch ever (nothing to restore anyway), or a full app/task kill that
+    // discarded the Bundle - e.g. swiping the app away from Recents, which Android treats as an
+    // intentional close and does not retain saved instance state for (see GitHub issue #174). Only
+    // in that second case does the init block below need to overlay the autosaved Room draft; in
+    // every other case the SavedStateHandle already has the correct, most current values, so
+    // applying a (possibly slightly older) Room draft on top would risk *regressing* a field.
+    private val startedWithoutSavedState = savedStateHandle.keys().isEmpty()
 
     // `by resettable("key", default)` is a Kotlin *property delegate*: reading/writing `pageIndex`
     // actually reads/writes a Compose `MutableState` that is mirrored into the ViewModel's
     // SavedStateHandle under "pageIndex", so the value survives both tab switches (ViewModel
     // outlives the composition) and process death (SavedStateHandle is backed by a Bundle) - see
-    // [resettable]'s own doc comment below for how it also wires the field into [reset]. Every
-    // property below follows this same pattern, one per wizard field, each with its own string
-    // key and default value.
+    // [resettable]'s own doc comment below for how it also wires the field into [reset] and into
+    // the Room-backed draft autosave (issue #174). Every property below follows this same pattern,
+    // one per wizard field, each with its own string key and default value.
 
     /**
      * Reset closures, one per field, collected as each field is declared below via [resettable].
@@ -76,17 +92,28 @@ class ScoreCalculatorViewModel(
     private val resettables = mutableListOf<() -> Unit>()
 
     /**
+     * One entry per wizard field, collected as each field is declared via [resettable] - the
+     * generic hook that lets [autosaveDraft]/[restoreDraft] read or write every field without
+     * hand-listing all ~50 of them, the same way [resettables] already does for [reset].
+     */
+    private val fields = mutableListOf<FieldEntry<*>>()
+
+    /**
      * Declares one wizard field: still backed by [SavedStateHandle] exactly as before (see
-     * docs/adr/0002-viewmodel-backed-wizard-state.md) - the only addition is remembering [default]
-     * so [reset] can restore it later without a hand-written line. Returns the same
-     * `MutableState<T>` `savedStateHandle.saveable` always returned, so `var x by resettable(key,
-     * default)` is a drop-in replacement for `var x by savedStateHandle.saveable(key) {
-     * mutableStateOf(default) }`.
+     * docs/adr/0002-viewmodel-backed-wizard-state.md) - the only additions are remembering
+     * [default] so [reset] can restore it later without a hand-written line, registering the field
+     * in [fields] so [autosaveDraft]/[restoreDraft] can find it generically, and wrapping the
+     * returned state so every write also triggers [autosaveDraft] (issue #174: SavedStateHandle's
+     * Bundle doesn't survive the app being killed while backgrounded, e.g. swiped away from
+     * Recents, so every field write is also mirrored to Room as a durable fallback). `var x by
+     * resettable(key, default)` is still a drop-in replacement for `var x by
+     * savedStateHandle.saveable(key) { mutableStateOf(default) }`.
      */
     private fun <T : Any> resettable(key: String, default: T): MutableState<T> {
         val state = savedStateHandle.saveable(key) { mutableStateOf(default) }
         resettables += { state.value = default }
-        return state
+        fields += FieldEntry(key = key, default = default, get = { state.value }, set = { state.value = it })
+        return AutosavingState(state) { autosaveDraft() }
     }
 
     var pageIndex: Int by resettable("pageIndex", 0)
@@ -193,6 +220,46 @@ class ScoreCalculatorViewModel(
     // (ScoreCalculatorScreen's ReputationTrackPicker) and everything else For the Council's
     // scoring needs is derived from it.
     var reputationTrackSpaceName: String by resettable("reputationTrackSpaceName", ReputationTrackSpace.CENTER.name)
+
+    // Only runs when this instance started with a genuinely empty SavedStateHandle (see
+    // [startedWithoutSavedState]) - a normal tab switch or config change already has the correct
+    // values in memory and shouldn't have an older Room draft overlaid on top of them.
+    //
+    // `runCatching` because a draft's `fieldsJson` is arbitrary previously-persisted data: a
+    // future rename/reshape of a field (this app has a documented history of that - see
+    // MageKnightBuddyDatabase.kt's version-bump comments) could leave it un-decodable. Silently
+    // dropping an unreadable draft and falling back to defaults is strictly better than crashing
+    // the wizard on launch, which would be a worse failure than the data loss issue #174 fixes.
+    init {
+        if (startedWithoutSavedState) {
+            viewModelScope.launch {
+                runCatching { draftRepository.restore() }.getOrNull()?.let { restoreDraft(it) }
+            }
+        }
+    }
+
+    /**
+     * Persists the current value of every wizard field to [draftRepository], keyed by each
+     * field's own SavedStateHandle key (see [FieldEntry]) - called after every field write (via
+     * [AutosavingState]) and from [reset], so a full app kill that discards the in-memory
+     * SavedStateHandle Bundle (e.g. swiping the app away from Recents - see GitHub issue #174)
+     * still has somewhere durable to restore from. `viewModelScope.launch` because
+     * [ScoreCalculatorDraftRepository.save][com.guyteichman.mageknightbuddy.data.SingleSlotAutosaveRepository.save]
+     * goes through Room off the main thread.
+     *
+     * Runs on every field write, not just wizard-page (Next/Previous) transitions - deliberately
+     * finer-grained than issue #174's literal "every step" wording, so a kill mid-page doesn't
+     * lose that page's typing either. Each call is one small single-row Room upsert, so even a
+     * fast typist triggering several of these per second is cheap on real hardware.
+     */
+    private fun autosaveDraft() {
+        viewModelScope.launch { draftRepository.save(fields.associate { it.key to it.toStringValue() }) }
+    }
+
+    /** Applies a restored Room [draft] onto every matching field (see [FieldEntry.setFromString]); missing keys keep their current value. */
+    private fun restoreDraft(draft: Map<String, String>) {
+        fields.forEach { field -> draft[field.key]?.let(field::setFromString) }
+    }
 
     // Shared by every scenario except For the Council (which has no Standard Achievements at
     // all - see the `when` in [input]), so it's factored out instead of repeated 4 times.
@@ -368,9 +435,14 @@ class ScoreCalculatorViewModel(
      * whole reason for existing (per ADR-0002) is to *not* reset itself on tab switches. Each
      * field's default lives next to its declaration (see [resettable]) rather than being
      * hand-listed here, so a new field can't be added without also wiring up its reset.
+     *
+     * Also re-autosaves the now-blank draft (see [autosaveDraft]), so the just-finished session's
+     * field values don't linger in Room and get mistakenly restored the next time this ViewModel
+     * is created from a fresh process (issue #174).
      */
     fun reset() {
         resettables.forEach { it() }
+        autosaveDraft()
     }
 
     /**
@@ -410,14 +482,74 @@ class ScoreCalculatorViewModel(
     companion object {
         /**
          * Builds a [ViewModelProvider.Factory] for this ViewModel. A factory is needed because
-         * this constructor takes a [ScoringSessionRepository] the default Compose `viewModel()`
-         * lookup can't supply on its own; `initializer { }` wires in `createSavedStateHandle()`
-         * so the ViewModel still gets its process-death-surviving `SavedStateHandle` as usual.
+         * this constructor takes a [ScoringSessionRepository]/[ScoreCalculatorDraftRepository] the
+         * default Compose `viewModel()` lookup can't supply on its own; `initializer { }` wires in
+         * `createSavedStateHandle()` so the ViewModel still gets its process-death-surviving
+         * `SavedStateHandle` as usual.
          */
-        fun factory(repository: ScoringSessionRepository): ViewModelProvider.Factory = viewModelFactory {
+        fun factory(repository: ScoringSessionRepository, draftRepository: ScoreCalculatorDraftRepository): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                ScoreCalculatorViewModel(createSavedStateHandle(), repository)
+                ScoreCalculatorViewModel(createSavedStateHandle(), repository, draftRepository)
             }
         }
     }
+}
+
+/**
+ * One registered wizard field (see [ScoreCalculatorViewModel.resettable]): pairs its
+ * [SavedStateHandle] [key] and [default] value with type-erased [get]/[set] closures, so
+ * [ScoreCalculatorViewModel.autosaveDraft]/[ScoreCalculatorViewModel.restoreDraft] can snapshot or
+ * restore every field generically without hand-listing all ~50 of them (mirroring how
+ * [ScoreCalculatorViewModel.resettables] already does this for `reset()`). [default]'s runtime type
+ * doubles as the type witness [setFromString] needs to parse a restored String back correctly.
+ */
+private class FieldEntry<T : Any>(
+    val key: String,
+    private val default: T,
+    private val get: () -> T,
+    private val set: (T) -> Unit,
+) {
+    /** The field's current value, stringified for Room storage - an enum's `.name`, everything else's `.toString()`. */
+    fun toStringValue(): String = get().let { if (it is Enum<*>) it.name else it.toString() }
+
+    /**
+     * Parses [value] back into this field's type (inferred from [default]) and writes it via
+     * [set] - a no-op (keeping the field at its current value) if [value] doesn't actually parse
+     * as that type, e.g. a stale/foreign draft restored after a field was renamed or reshaped
+     * (see the `init` block's [runCatching] for the analogous case of the whole draft being
+     * undecodable). A field's *type* not being one of the branches below is a real programming
+     * error instead (a new field type added to [ScoreCalculatorViewModel] without extending this
+     * function), so that still fails loudly via [error].
+     */
+    fun setFromString(value: String) {
+        @Suppress("UNCHECKED_CAST")
+        val typed = when (default) {
+            is Boolean -> value.toBooleanStrictOrNull() as T?
+            is Int -> value.toIntOrNull() as T?
+            is String -> value as T?
+            is Enum<*> -> default.javaClass.enumConstants!!.firstOrNull { (it as Enum<*>).name == value } as T?
+            else -> error("Unsupported ScoreCalculatorViewModel field type: ${default.javaClass}")
+        }
+        if (typed != null) set(typed)
+    }
+}
+
+/**
+ * Wraps [inner] so every write also calls [onChange] - used by [ScoreCalculatorViewModel.resettable]
+ * to trigger a Room autosave (issue #174) on every field write, without changing how `by
+ * resettable(...)` reads/writes the field elsewhere in the class.
+ */
+private class AutosavingState<T>(
+    private val inner: MutableState<T>,
+    private val onChange: () -> Unit,
+) : MutableState<T> {
+    override var value: T
+        get() = inner.value
+        set(newValue) {
+            inner.value = newValue
+            onChange()
+        }
+
+    override fun component1(): T = value
+    override fun component2(): (T) -> Unit = { value = it }
 }
