@@ -286,7 +286,7 @@
     "fame": 7,
     "attacks": [{ "value": 3, "element": "ICE" }],
     "resistances": ["FIRE"],
-    "offensiveAbilities": ["SWIFT"]
+    "offensiveAbilities": ["SWIFT", "PARALYZE"]
   },
   {
     "id": "white_gunners",

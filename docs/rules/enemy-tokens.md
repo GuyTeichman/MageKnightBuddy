@@ -125,7 +125,7 @@ tokens are the game's toughest base-game enemies short of the dragons.
 
 | Token | Copies | Armor | Attack | Element | Modifiers | Fame | Resistances / abilities |
 |-------|:------:|:-----:|:------:|---------|-----------|:----:|-------------------------|
-| Freezers        | 3 | 7 | 3 | Ice | Swift | 7 | Fire Resistance |
+| Freezers        | 3 | 7 | 3 | Ice | Swift, Paralyze | 7 | Fire Resistance |
 | Gunners         | 3 | 6 | 6 | Fire | Brutal | 7 | Ice Resistance |
 | Altem Guardsmen | 2 | 7 | 5 | Physical | — | 8 | Fortified; Fire + Ice + Physical Resistance |
 | Altem Mages     | 2 | 8 | 4 | Cold Fire | Brutal, Poison | 8 | Physical Resistance |

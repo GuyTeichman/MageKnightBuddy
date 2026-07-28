@@ -237,6 +237,14 @@ class TokenCatalogueTest {
     }
 
     @Test
+    fun `Freezers is a swift, paralyzing attacker`() {
+        val freezers = assertNotNull(TokenCatalogue.byId("white_freezers"))
+        assertEquals(setOf(OffensiveAbility.SWIFT, OffensiveAbility.PARALYZE), freezers.offensiveAbilities)
+        assertEquals(setOf(AttackElement.FIRE), freezers.resistances)
+        assertEquals(AttackElement.ICE, freezers.attacks.single().element)
+    }
+
+    @Test
     fun `Gunners is a brutal attacker`() {
         val gunners = assertNotNull(TokenCatalogue.byId("white_gunners"))
         assertEquals(setOf(OffensiveAbility.BRUTAL), gunners.offensiveAbilities)
