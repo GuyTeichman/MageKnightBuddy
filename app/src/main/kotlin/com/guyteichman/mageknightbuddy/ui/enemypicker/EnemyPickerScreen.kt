@@ -176,6 +176,10 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
         isBusy = viewModel.isBusy,
         onDraw = onDraw,
         onOpenToken = { index -> zoom = ZoomState(listOf(index), 0); summonGrid = null; summonZoom = null },
+        // Reopening a batch from the Draw Log (#203/D18) is fully identical to the grid a fresh
+        // draw opens - same GridState, same TokenGridDialog, same D8 checkboxes/D10 dismiss - so
+        // this just sets the same `gridState` `onDraw`'s N>1 branch does.
+        onOpenBatch = { indices -> gridState = GridState(indices); zoom = null; summonGrid = null; summonZoom = null },
         onOpenDefeatDialog = { index -> defeatDialogIndex = index },
         currentChildOf = currentChildOf,
         onRequestReset = { pendingReset = { scope.launch { viewModel.reset() } } },
@@ -295,6 +299,7 @@ private fun EnemyPickerContent(
     isBusy: Boolean,
     onDraw: (Map<TokenPileId, Int>) -> Unit,
     onOpenToken: (Int) -> Unit,
+    onOpenBatch: (List<Int>) -> Unit,
     onOpenDefeatDialog: (Int) -> Unit,
     currentChildOf: (Int) -> DrawLogEntry?,
     onRequestReset: () -> Unit,
@@ -356,6 +361,7 @@ private fun EnemyPickerContent(
                 DrawLogSection(
                     log = session.drawLog,
                     onOpenToken = onOpenToken,
+                    onOpenBatch = onOpenBatch,
                     onOpenDefeatDialog = onOpenDefeatDialog,
                     currentChildOf = currentChildOf,
                 )
@@ -479,14 +485,20 @@ private fun QuantityStepper(quantity: Int, onQuantityChange: (Int) -> Unit, max:
 }
 
 /**
- * The Draw Log (see `CONTEXT.md`'s "Draw Log"): newest-first, split into the enemies still **on the
- * board** (top) and the **defeated** ones (dimmed, below). A freshly drawn enemy starts on the board
- * (D2); tapping a row re-opens that token zoomed, and the trailing icon opens the Defeat dialog.
+ * The Draw Log (see `CONTEXT.md`'s "Draw Log"): newest-first, split into the batches still **on the
+ * board** (top) and the **defeated** ones (dimmed, below). Since #203/D18, one row is one *batch*
+ * (a shared [DrawLogEntry.batchId]), not one token - a size-1 batch renders exactly like the old
+ * one-row-per-token model ([DrawLogRow], tapping opens that token zoomed), while a size>1 batch
+ * collapses into [DrawLogBatchRow] and tapping it reopens the same grid overview a fresh draw would
+ * (D18's "fully identical" call - no separate read-only mode). A batch stays "on the board" until
+ * every member is defeated (D19), so it moves exactly once rather than flapping between sections as
+ * individual members get cleared.
  */
 @Composable
 private fun DrawLogSection(
     log: List<DrawLogEntry>,
     onOpenToken: (Int) -> Unit,
+    onOpenBatch: (List<Int>) -> Unit,
     onOpenDefeatDialog: (Int) -> Unit,
     currentChildOf: (Int) -> DrawLogEntry?,
 ) {
@@ -497,13 +509,11 @@ private fun DrawLogSection(
             return@Column
         }
 
-        // Keep each entry's original (chronological) index for defeating, then show newest-first.
-        // Summon Draw children (parentIndex != null) are excluded here - they're never independently
-        // defeated or navigated to as their own top-level entry (issue #191); they're only reachable
-        // via the summoner's own row/zoom, which is also where their thumbnail badge is shown.
-        val indexed = log.withIndex().filter { it.value.parentIndex == null }
-        val onBoard = indexed.filter { !it.value.defeated }.asReversed()
-        val defeated = indexed.filter { it.value.defeated }.asReversed()
+        // groupDrawLog already excludes Summon Draw children (parentIndex != null) and returns
+        // newest-batch-first - see its own doc comment for why.
+        val groups = groupDrawLog(log)
+        val onBoard = groups.filter { !it.allDefeated(log) }
+        val defeated = groups.filter { it.allDefeated(log) }
 
         // Only show the section headers once there's actually a split to label; a fresh log with
         // nothing defeated yet is just a flat newest-first list.
@@ -511,8 +521,8 @@ private fun DrawLogSection(
 
         if (onBoard.isNotEmpty()) {
             if (showHeaders) Text("On the board", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-            onBoard.forEach { (index, entry) ->
-                DrawLogRow(index, entry, onOpenToken, onOpenDefeatDialog, currentChildOf(index))
+            onBoard.forEach { group ->
+                DrawLogGroupRow(group, log, onOpenToken, onOpenBatch, onOpenDefeatDialog, currentChildOf)
             }
         }
         if (defeated.isNotEmpty()) {
@@ -522,10 +532,30 @@ private fun DrawLogSection(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            defeated.forEach { (index, entry) ->
-                DrawLogRow(index, entry, onOpenToken, onOpenDefeatDialog, currentChildOf(index))
+            defeated.forEach { group ->
+                DrawLogGroupRow(group, log, onOpenToken, onOpenBatch, onOpenDefeatDialog, currentChildOf)
             }
         }
+    }
+}
+
+/** Dispatches one [DrawLogGroup] to [DrawLogRow] (size 1, unchanged single-token row) or
+ * [DrawLogBatchRow] (size > 1, collapsed batch row) - the one place that decides which of the two
+ * a group renders as. */
+@Composable
+private fun DrawLogGroupRow(
+    group: DrawLogGroup,
+    log: List<DrawLogEntry>,
+    onOpenToken: (Int) -> Unit,
+    onOpenBatch: (List<Int>) -> Unit,
+    onOpenDefeatDialog: (Int) -> Unit,
+    currentChildOf: (Int) -> DrawLogEntry?,
+) {
+    if (group.logIndices.size == 1) {
+        val index = group.logIndices.single()
+        DrawLogRow(index, log[index], onOpenToken, onOpenDefeatDialog, currentChildOf(index))
+    } else {
+        DrawLogBatchRow(group, log, onOpenBatch)
     }
 }
 
@@ -572,6 +602,51 @@ private fun DrawLogRow(
                     tint = if (entry.defeated) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+    }
+}
+
+/**
+ * A collapsed Draw Log row for a batch of more than one token (#203/D18/D20): up to
+ * [BATCH_ROW_THUMBNAIL_CAP] small art thumbnails (+N for the rest), an "N tokens drawn" title, and a
+ * subtitle with the pile name - only when every member shares one, since #192 will eventually allow
+ * a batch to span piles, and D16 already decided per-token pile labels aren't needed once art color
+ * conveys it - plus on-board/defeated counts. No Defeat control of its own: defeating a batch member
+ * only happens through the grid's own checkboxes ([TokenGridDialog]/D8), which [onOpenBatch] reopens
+ * (tapping the row or its "View" button both fire it - either the whole card or just the button is a
+ * fine tap target here, since there's nothing else on the row to conflict with).
+ */
+@Composable
+private fun DrawLogBatchRow(group: DrawLogGroup, log: List<DrawLogEntry>, onOpenBatch: (List<Int>) -> Unit) {
+    val entries = group.logIndices.map { log[it] }
+    val onBoardCount = entries.count { !it.defeated }
+    val defeatedCount = entries.size - onBoardCount
+    val pileLabel = entries.map { it.pile }.distinct().singleOrNull()?.displayName()
+    val subtitle = listOfNotNull(pileLabel, "$onBoardCount on board, $defeatedCount defeated").joinToString(" · ")
+
+    Card(modifier = Modifier.fillMaxWidth().clickable { onOpenBatch(group.logIndices) }) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                entries.take(BATCH_ROW_THUMBNAIL_CAP).forEach { entry ->
+                    TokenCatalogue.byId(entry.tokenId)?.let { token -> EnemyTokenFace(token = token, size = 32.dp) }
+                }
+                if (entries.size > BATCH_ROW_THUMBNAIL_CAP) {
+                    Text(
+                        "+${entries.size - BATCH_ROW_THUMBNAIL_CAP}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Column(Modifier.weight(1f).padding(start = 8.dp)) {
+                Text("${entries.size} tokens drawn", style = MaterialTheme.typography.bodyLarge)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            TextButton(onClick = { onOpenBatch(group.logIndices) }) { Text("View") }
         }
     }
 }
@@ -1059,6 +1134,9 @@ private val GRID_MAX_HEIGHT = 400.dp
 
 /** Size of a superimposed summoned-child thumbnail (issue #191), relative to the summoner's own art. */
 private const val SUMMON_BADGE_SCALE = 0.45f
+
+/** Most thumbnails a collapsed Draw Log batch row shows before summarizing the rest as "+N" (D20). */
+private const val BATCH_ROW_THUMBNAIL_CAP = 4
 
 /**
  * "Armor 3 · Fame 2" summary line for a token. Deliberately *excludes* the attack (D5): the
