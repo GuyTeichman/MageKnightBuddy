@@ -59,21 +59,8 @@ data class EnemyPickerSession private constructor(
             var pile = updatedPiles.getValue(pileId)
 
             repeat(count) {
-                val drawnId: String
-                if (drawWithReplacement) {
-                    // With replacement: sample one token and leave the pile exactly as it was.
-                    require(pile.drawPile.isNotEmpty()) { "pile $pileId has no tokens to draw" }
-                    drawnId = shuffle(pile.drawPile).first()
-                } else {
-                    // Replenish if the draw pile ran out: the discard becomes the new, shuffled pile.
-                    if (pile.drawPile.isEmpty()) {
-                        require(pile.discardPile.isNotEmpty()) { "pile $pileId is completely empty" }
-                        pile = TokenPile(drawPile = shuffle(pile.discardPile), discardPile = emptyList())
-                    }
-                    drawnId = pile.drawPile.first()
-                    // Drawn token leaves the draw pile and lands in the discard immediately (ADR-0006).
-                    pile = TokenPile(drawPile = pile.drawPile.drop(1), discardPile = pile.discardPile + drawnId)
-                }
+                val (drawnId, next) = drawOneFrom(pileId, pile, shuffle)
+                pile = next
                 newEntries += DrawLogEntry(tokenId = drawnId, pile = pileId, batchId = batchId)
             }
 
@@ -83,6 +70,83 @@ data class EnemyPickerSession private constructor(
         }
 
         return copy(piles = updatedPiles, drawLog = drawLog + newEntries)
+    }
+
+    /**
+     * The **Summon Draw** action (see `CONTEXT.md`'s "Summon Draw"): draws one token from each pile
+     * in [pileIds] - a summoner token's own `EnemyAttack.summons` piles, resolved by the caller from
+     * the catalogue, since this session never looks up [EnemyToken] itself (same separation [draw]
+     * keeps). Every new entry is tagged [DrawLogEntry.parentIndex] = [parentIndex] (the summoner's
+     * own chronological [drawLog] index) and shares one [batchId], so multiple summon slots on one
+     * token are drawn and discarded together, matching the rulebook.
+     *
+     * A summoner can be re-engaged and summoned again - each call appends a *new* set of entries
+     * rather than replacing the old ones (the log stays append-only, like [setDefeated]); the
+     * previous children remain in [drawLog] but are superseded - see [currentChildrenOf].
+     *
+     * Reuses the same per-pile draw/replenish rules [draw] uses (with/without replacement, discard
+     * on draw), via the shared [drawOneFrom] helper.
+     */
+    fun summon(
+        parentIndex: Int,
+        pileIds: List<TokenPileId>,
+        batchId: Long = System.currentTimeMillis(),
+        shuffle: (List<String>) -> List<String> = { it.shuffled() },
+    ): EnemyPickerSession {
+        require(parentIndex in drawLog.indices) { "parentIndex $parentIndex is out of range" }
+        require(pileIds.isNotEmpty()) { "pileIds must not be empty" }
+
+        var updatedPiles = piles
+        val newEntries = ArrayList<DrawLogEntry>()
+        for (pileId in pileIds) {
+            val (drawnId, next) = drawOneFrom(pileId, updatedPiles.getValue(pileId), shuffle)
+            newEntries += DrawLogEntry(tokenId = drawnId, pile = pileId, batchId = batchId, parentIndex = parentIndex)
+            updatedPiles = updatedPiles + (pileId to next)
+        }
+
+        return copy(piles = updatedPiles, drawLog = drawLog + newEntries)
+    }
+
+    /**
+     * The [drawLog] indices of the *current* Summon Draw children of the entry at [parentIndex] -
+     * the entries whose [DrawLogEntry.parentIndex] points here, filtered down to the most recent
+     * shared [DrawLogEntry.batchId] among them (a re-summon appends a whole new batch rather than
+     * replacing the old one - see [summon]). Empty if this entry has never been summoned from.
+     */
+    fun currentChildrenOf(parentIndex: Int): List<Int> {
+        val children = drawLog.withIndex().filter { it.value.parentIndex == parentIndex }
+        val latestBatchId = children.maxOfOrNull { it.value.batchId } ?: return emptyList()
+        return children.filter { it.value.batchId == latestBatchId }.map { it.index }
+    }
+
+    /**
+     * Draws one token from [pile] (named [pileId] only for its error messages), following the same
+     * with/without-replacement rules [draw] and [summon] both need: with replacement, samples a
+     * token and leaves [pile] untouched; without, replenishes from a shuffled discard if the draw
+     * pile just ran out, then moves the drawn token from draw pile to discard immediately (ADR-0006).
+     * Returns the drawn token id alongside the [pile] state after the draw.
+     */
+    private fun drawOneFrom(
+        pileId: TokenPileId,
+        pile: TokenPile,
+        shuffle: (List<String>) -> List<String>,
+    ): Pair<String, TokenPile> {
+        if (drawWithReplacement) {
+            require(pile.drawPile.isNotEmpty()) { "pile $pileId has no tokens to draw" }
+            return shuffle(pile.drawPile).first() to pile
+        }
+
+        // Replenish if the draw pile ran out: the discard becomes the new, shuffled pile.
+        val replenished = if (pile.drawPile.isEmpty()) {
+            require(pile.discardPile.isNotEmpty()) { "pile $pileId is completely empty" }
+            TokenPile(drawPile = shuffle(pile.discardPile), discardPile = emptyList())
+        } else {
+            pile
+        }
+        val drawnId = replenished.drawPile.first()
+        // Drawn token leaves the draw pile and lands in the discard immediately (ADR-0006).
+        val next = TokenPile(drawPile = replenished.drawPile.drop(1), discardPile = replenished.discardPile + drawnId)
+        return drawnId to next
     }
 
     /**

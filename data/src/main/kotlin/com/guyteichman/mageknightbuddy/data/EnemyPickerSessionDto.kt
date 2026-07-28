@@ -19,7 +19,12 @@ data class TokenPileDto(
     val discardPile: List<String>,
 )
 
-/** Mirror of [com.guyteichman.mageknightbuddy.domain.DrawLogEntry]; [pile] holds the pile enum's name. */
+/**
+ * Mirror of [com.guyteichman.mageknightbuddy.domain.DrawLogEntry]; [pile] holds the pile enum's
+ * name. [parentIndex] mirrors [com.guyteichman.mageknightbuddy.domain.DrawLogEntry.parentIndex]
+ * (a Summon Draw child's summoner index) - defaulted so older persisted rows without it still
+ * decode.
+ */
 @Serializable
 data class DrawLogEntryDto(
     val tokenId: String,
@@ -27,4 +32,5 @@ data class DrawLogEntryDto(
     val batchId: Long,
     val defeated: Boolean = false,
     val note: String = "",
+    val parentIndex: Int? = null,
 )

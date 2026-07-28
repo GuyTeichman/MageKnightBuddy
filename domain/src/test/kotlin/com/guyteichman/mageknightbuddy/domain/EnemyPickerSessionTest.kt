@@ -223,4 +223,92 @@ class EnemyPickerSessionTest {
         assertEquals(6, after.drawLog.size)
         assertTrue(thisBatch.all { it.batchId == 5L })
     }
+
+    @Test
+    fun `summon draws one token per requested pile and tags each entry with the parent's log index`() {
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+            .draw(mapOf(TokenPileId.GREEN to 1), batchId = 1L, shuffle = noShuffle) // parent at index 0
+
+        val after = session.summon(parentIndex = 0, pileIds = listOf(TokenPileId.BROWN), batchId = 50L, shuffle = noShuffle)
+
+        assertEquals(2, after.drawLog.size)
+        assertEquals(
+            DrawLogEntry(tokenId = "brown_x", pile = TokenPileId.BROWN, batchId = 50L, parentIndex = 0),
+            after.drawLog[1],
+        )
+        // The summon draw goes through the same pile mechanics as any other draw (ADR-0006).
+        val brown = after.piles.getValue(TokenPileId.BROWN)
+        assertEquals(emptyList(), brown.drawPile)
+        assertEquals(listOf("brown_x"), brown.discardPile)
+    }
+
+    @Test
+    fun `summon rejects an out-of-range parent index`() {
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+            .draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
+        assertFailsWith<IllegalArgumentException> {
+            session.summon(parentIndex = 1, pileIds = listOf(TokenPileId.BROWN))
+        }
+    }
+
+    @Test
+    fun `summon rejects an empty pile list`() {
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+            .draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
+        assertFailsWith<IllegalArgumentException> {
+            session.summon(parentIndex = 0, pileIds = emptyList())
+        }
+    }
+
+    @Test
+    fun `re-summoning the same parent appends a new set of children rather than replacing the old one`() {
+        // Two-slot summoner: drains BROWN's only copy first, so the second summon must replenish it.
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+            .draw(mapOf(TokenPileId.GREEN to 1), batchId = 1L, shuffle = noShuffle) // parent at index 0
+
+        val firstSummon = session.summon(parentIndex = 0, pileIds = listOf(TokenPileId.BROWN), batchId = 10L, shuffle = noShuffle)
+        val resummoned = firstSummon.summon(parentIndex = 0, pileIds = listOf(TokenPileId.BROWN), batchId = 20L, shuffle = noShuffle)
+
+        // Both summons are still in the log (append-only) - nothing overwritten.
+        assertEquals(3, resummoned.drawLog.size)
+        assertEquals(listOf(10L, 20L), resummoned.drawLog.drop(1).map { it.batchId })
+        assertTrue(resummoned.drawLog.drop(1).all { it.parentIndex == 0 })
+    }
+
+    @Test
+    fun `currentChildrenOf returns only the most recent summon batch for a parent`() {
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+            .draw(mapOf(TokenPileId.GREEN to 1), batchId = 1L, shuffle = noShuffle) // parent at index 0
+            .summon(parentIndex = 0, pileIds = listOf(TokenPileId.BROWN), batchId = 10L, shuffle = noShuffle) // stale child at index 1
+            .summon(parentIndex = 0, pileIds = listOf(TokenPileId.BROWN), batchId = 20L, shuffle = noShuffle) // current child at index 2
+
+        assertEquals(listOf(2), session.currentChildrenOf(parentIndex = 0))
+    }
+
+    @Test
+    fun `currentChildrenOf is empty for an entry that was never summoned from`() {
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+            .draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
+
+        assertEquals(emptyList(), session.currentChildrenOf(parentIndex = 0))
+    }
+
+    @Test
+    fun `a two-slot summon shares one batch id across both children`() {
+        // BROWN and GREEN both used as summon piles here purely as two distinct fixture piles.
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+            .draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle) // parent at index 0, leaves 3 in GREEN
+
+        val after = session.summon(
+            parentIndex = 0,
+            pileIds = listOf(TokenPileId.BROWN, TokenPileId.GREEN),
+            batchId = 77L,
+            shuffle = noShuffle,
+        )
+
+        val children = after.drawLog.drop(1)
+        assertEquals(2, children.size)
+        assertTrue(children.all { it.batchId == 77L && it.parentIndex == 0 })
+        assertEquals(listOf("brown_x", "orc_a"), children.map { it.tokenId })
+    }
 }
