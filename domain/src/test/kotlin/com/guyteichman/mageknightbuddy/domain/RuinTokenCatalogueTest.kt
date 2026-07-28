@@ -36,6 +36,14 @@ class RuinTokenCatalogueTest {
     @Test
     fun `every token is either an altar or an enemy draw, never both or neither`() {
         RuinTokenCatalogue.tokens.forEach { token ->
+            // Checked separately from the hasAltar/hasEnemyDraw XOR below: without this, a token
+            // with both altarColor and a lone firstPile (secondPile left null) would slip through,
+            // since hasEnemyDraw only goes true once *both* pile fields are set.
+            assertEquals(
+                token.firstPile == null,
+                token.secondPile == null,
+                "${token.id} has only one of firstPile/secondPile set: $token",
+            )
             val hasAltar = token.altarColor != null
             val hasEnemyDraw = token.firstPile != null && token.secondPile != null
             assertTrue(
