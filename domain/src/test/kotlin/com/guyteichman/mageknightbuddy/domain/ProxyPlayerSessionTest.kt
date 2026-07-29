@@ -389,6 +389,70 @@ class ProxyPlayerSessionTest {
     }
 
     @Test
+    fun `usedDualColorCards is empty for a fresh session with no Advanced Action cards added`() {
+        val session = ProxyPlayerSession.start(Knight.CORAL)
+
+        assertEquals(emptySet(), session.usedDualColorCards)
+    }
+
+    @Test
+    fun `usedDualColorCards contains a Dual-Color card added via endRound`() {
+        val dual = CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE)
+        val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+
+        val next = session.endRound(advancedActionOfferColor = dual, spellOfferColor = CardColor.WHITE)
+
+        assertEquals(setOf(dual), next.usedDualColorCards)
+    }
+
+    @Test
+    fun `usedDualColorCards ignores single-color Advanced Action, Basic, and Unique cards - only dual-color ones are singletons`() {
+        // A fresh deck already holds Basic/Unique cards; add a single-color Advanced Action on top.
+        val session = ProxyPlayerSession.start(Knight.CORAL)
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.RED),
+            spellOfferColor = CardColor.WHITE,
+        )
+
+        assertEquals(emptySet(), next.usedDualColorCards)
+    }
+
+    @Test
+    fun `usedDualColorCards counts a Dual-Color card that became the current objective card`() {
+        val dual = CardIdentity.DualColor(CardColor.RED, CardColor.WHITE)
+        // A controlled deck so the first playTurn (no objective yet) draws the dual-color card as
+        // the new objective card - exercising the objectiveCard path, not just deck/discard.
+        val session = ProxyPlayerSession.start(
+            Knight.CORAL,
+            deckOrder = listOf(
+                ProxyPlayerCard.AdvancedAction(dual),
+                ProxyPlayerCard.BasicAction(CardColor.GREEN),
+                ProxyPlayerCard.BasicAction(CardColor.GREEN),
+            ),
+        )
+
+        val next = session.playTurn()
+
+        // sanity: the dual card is the objective now, not in the deck or discard pile
+        assertEquals(ProxyPlayerCard.AdvancedAction(dual), next.objectiveCard)
+        assertEquals(setOf(dual), next.usedDualColorCards)
+    }
+
+    @Test
+    fun `usedDualColorCards accumulates every distinct Dual-Color card added across multiple rounds`() {
+        val first = CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE)
+        val second = CardIdentity.DualColor(CardColor.RED, CardColor.WHITE)
+        val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+
+        val next = session
+            .endRound(advancedActionOfferColor = first, spellOfferColor = CardColor.WHITE)
+            .endRound(advancedActionOfferColor = second, spellOfferColor = CardColor.WHITE)
+
+        assertEquals(setOf(first, second), next.usedDualColorCards)
+    }
+
+    @Test
     fun `endRound appends the Advanced Action offer card to the deck and grants a Spell-color crystal`() {
         val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
 
