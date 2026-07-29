@@ -96,7 +96,7 @@ attack(s) remain in the detail list below.
 
 When a summoner draws a token to fight in its place, that summoned token applies **its own**
 offensive abilities to its attack(s). No code now (the Summon Draw action is issue #191) — record
-this in `CONTEXT.md`'s "Summon Draw" entry and in issue #191 so it isn't lost.
+this in `docs/context-enemy-picker.md`'s "Summon Draw" entry and in issue #191 so it isn't lost.
 
 ## Scope: what lands in PR #186 vs. new issues
 
@@ -105,7 +105,7 @@ this in `CONTEXT.md`'s "Summon Draw" entry and in issue #191 so it isn't lost.
 - D2 *domain half* — rename `stillInPlay`→`defeated`, flip default, DTO/entity/mapper, DB bump,
   and the Draw Log's On-the-board / Defeated grouping.
 - D5 zoom summary-line trim (one line of UI).
-- D6 documentation (CONTEXT.md + issue #191).
+- D6 documentation (docs/context-enemy-picker.md + issue #191).
 
 *(Both D1 and D2 bump the DB version; since neither has shipped, fold them into a single
 v10→v11 bump on this branch rather than two.)*
@@ -245,7 +245,7 @@ suggestion, 2026-07-28):
   nested `LazyVerticalGrid`, to avoid nested-scrollable handling.
 - A trailing odd card (today: RUIN, since it's last in `TokenPileId.entries` and the base set has
   7 piles) renders **full-width** rather than half-width-with-a-spacer - deliberately, since Ruin
-  isn't a real enemy pile and plays by different rules (see `CONTEXT.md`'s "Ruin Token"), so it
+  isn't a real enemy pile and plays by different rules (see `docs/context-enemy-picker.md`'s "Ruin Token"), so it
   reading visually distinct is fitting rather than an inconsistency to hide.
 
 ### D15 — UI: global "Draw" button placement and disabled state

@@ -8,7 +8,7 @@ A short scenario built entirely around Quests: the Council of the Void tests you
 
 - Length: Three rounds (2 days and 1 night).
 - Purpose: a short scenario that uses Quests. Quest scoring, Reputation, and Titles determine your score.
-- Uses the Quests rules (Quest cards, Quest Points — see `CONTEXT.md`) throughout.
+- Uses the Quests rules (Quest cards, Quest Points — see `docs/context-scoring.md`) throughout.
 
 ## Setup (all variants)
 

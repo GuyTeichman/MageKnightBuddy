@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build `ProxyPlayerSession` (and its supporting `ProxyPlayerCard`/`ProxyPlayerEvent` types) in `domain/`: the pure-Kotlin state machine for Proxy Player mode, per `docs/rules/proxy-player.md` and `CONTEXT.md`'s **Proxy Player Session**/**Objective Card** entries.
+**Goal:** Build `ProxyPlayerSession` (and its supporting `ProxyPlayerCard`/`ProxyPlayerEvent` types) in `domain/`: the pure-Kotlin state machine for Proxy Player mode, per `docs/rules/proxy-player.md` and `docs/context-dummy-player.md`'s **Proxy Player Session**/**Objective Card** entries.
 
 **Architecture:** Mirrors `VolkareSession`'s shape exactly (private constructor + companion factory functions `start`/`startRandom`/`restore`, immutable `copy()`-based transitions, an append-only `log`). `ProxyPlayerCard` distinguishes generic Basic Actions, Unique Basic Action Cards, and Advanced Actions (reusing `CardIdentity` from the shared-card-identity plan for the latter's single/dual-color split). The session narrates rather than simulates (ADR-0004): it tracks deck, discard, crystals, current Objective Card, and its Shield count, and computes the movement-point formula, but never decides map targets.
 

@@ -81,7 +81,7 @@ The rulebook is explicit that the real goal is just to defeat Volkare — scorin
 
 ## Course of the Game
 
-Source: same PDF, p.13. Extracted for the Dummy Player tab's Volkare mode — see `CONTEXT.md`'s **Volkare Session** entry and [ADR-0004](../adr/0004-volkare-narrates-cards-not-simulates-board.md) for how much of this the app actually simulates (short answer: none of the board/combat parts below — only the card-triggered procedural instructions).
+Source: same PDF, p.13. Extracted for the Dummy Player tab's Volkare mode — see `docs/context-dummy-player.md`'s **Volkare Session** entry and [ADR-0004](../adr/0004-volkare-narrates-cards-not-simulates-board.md) for how much of this the app actually simulates (short answer: none of the board/combat parts below — only the card-triggered procedural instructions).
 
 ### Tactic selection
 
@@ -141,4 +141,4 @@ A player or players may also attack Volkare using the standard attacking-Volkare
 
 ## Not modeled by this app
 
-Actual combat resolution (fighting Volkare's army, the Retreat/Fight choice's consequences, city-defense combat outcomes) and full board/map state (Volkare's literal position, tile adjacency, Source dice contents, Unit-offer contents) stay entirely player-managed at the physical table. The Dummy Player tab's Volkare mode only narrates what a revealed card means procedurally — see `CONTEXT.md`'s **Volkare Session** entry — it never resolves combat or tracks the map.
+Actual combat resolution (fighting Volkare's army, the Retreat/Fight choice's consequences, city-defense combat outcomes) and full board/map state (Volkare's literal position, tile adjacency, Source dice contents, Unit-offer contents) stay entirely player-managed at the physical table. The Dummy Player tab's Volkare mode only narrates what a revealed card means procedurally — see `docs/context-dummy-player.md`'s **Volkare Session** entry — it never resolves combat or tracks the map.

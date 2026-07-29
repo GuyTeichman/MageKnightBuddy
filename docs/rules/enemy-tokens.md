@@ -53,10 +53,10 @@ Ability meanings are on the Quick Reference Sheet ("Enemy Token Abilities"), spl
 (Swift/Brutal/Poison/Paralyze/Cumbersome/Assassination/Vampiric — modify the enemy's own attacks) and
 **defensive** (Fortified/Elusive/Arcane Immunity, plus element Resistances — govern how it's
 attacked). Both are whole-token; the domain models them as `EnemyToken.offensiveAbilities` /
-`defensiveAbilities` / `resistances` (see `CONTEXT.md`'s "Offensive / Defensive Ability"), and
+`defensiveAbilities` / `resistances` (see `docs/context-enemy-picker.md`'s "Offensive / Defensive Ability"), and
 they're mirrored in the app's info window (`EnemyAbilityText.kt`). **Orc Summoners has no printed
 attack value** — at
-the start of the Block phase it draws a **brown** token to fight in its place (see `CONTEXT.md`'s
+the start of the Block phase it draws a **brown** token to fight in its place (see `docs/context-enemy-picker.md`'s
 "Summon Draw"). The summoned pile is recorded per-token in the catalogue rather than assumed to be
 brown, since possessed/expansion summoners can draw from other colours.
 
@@ -304,7 +304,7 @@ Tracked as GitHub sub-issues of #178:
 - Bug: destructive DB migration crash-loop on upgrade (#194)
 - Chore: refresh CLAUDE.md's stale scope line (#195)
 
-Design context lives in `CONTEXT.md` (Enemy Picker glossary), [ADR-0006](../adr/0006-enemy-picker-owns-pile-state-but-models-no-map.md),
+Design context lives in `docs/context-enemy-picker.md`, [ADR-0006](../adr/0006-enemy-picker-owns-pile-state-but-models-no-map.md),
 [ADR-0007](../adr/0007-token-catalogue-as-json-in-domain-resources.md), and
 `docs/design/architecture.md`. The art/data extraction method is in project memory
 (`tts_mod_asset_extraction.md`).

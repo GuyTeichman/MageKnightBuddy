@@ -445,7 +445,7 @@ Near the top of the file, alongside the existing route constants:
 ```kotlin
 private const val PROXY_PLAYER_AI_ROUTE = "proxy_player_ai"
 
-/** Which of the Dummy Player tab's 3 modes is currently selected on the setup screen - see `CONTEXT.md`'s "Dummy Player tab" entry. Replaces the old `volkareSelected: Boolean` flag now that Proxy Player also needs its own selected state. */
+/** Which of the Dummy Player tab's 3 modes is currently selected on the setup screen - see `docs/context-dummy-player.md`'s "Dummy Player tab" entry. Replaces the old `volkareSelected: Boolean` flag now that Proxy Player also needs its own selected state. */
 private enum class DummyPlayerMode { STANDARD, VOLKARE, PROXY_PLAYER }
 ```
 
@@ -589,7 +589,7 @@ private fun DummyPlayerSetupScreen(
 - [ ] **Step 4: Add `DummyPlayerModeSelector` and rename `KnightPicker` to `KnightOnlyPicker`**
 
 ```kotlin
-/** The 3-way Standard/Volkare/Proxy Player mode selector at the top of the setup screen - see `CONTEXT.md`'s "Dummy Player tab" entry. */
+/** The 3-way Standard/Volkare/Proxy Player mode selector at the top of the setup screen - see `docs/context-dummy-player.md`'s "Dummy Player tab" entry. */
 @Composable
 private fun DummyPlayerModeSelector(mode: DummyPlayerMode, onModeSelected: (DummyPlayerMode) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

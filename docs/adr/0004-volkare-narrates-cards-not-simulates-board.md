@@ -6,5 +6,5 @@ We chose to have Volkare mode reveal one card per turn and log a rules-derived, 
 
 ## Consequences
 
-- A reader expecting Volkare mode to "play" Volkare (move his token, resolve fights, know when the scenario ends) will be surprised — it only narrates card implications. Volkare's Quest's deck-exhaustion-as-automatic-loss (see `CONTEXT.md`'s Frenzy entry) is the one exception, since that specific case is fully determinable from deck state alone.
+- A reader expecting Volkare mode to "play" Volkare (move his token, resolve fights, know when the scenario ends) will be surprised — it only narrates card implications. Volkare's Quest's deck-exhaustion-as-automatic-loss (see `../context-dummy-player.md`'s Frenzy entry) is the one exception, since that specific case is fully determinable from deck state alone.
 - If a future Proxy Player-style feature ever wants real board simulation, it needs its own design — this decision doesn't preclude that, it just keeps Volkare mode's scope to what card-driven narration alone can support.

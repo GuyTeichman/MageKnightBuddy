@@ -46,7 +46,7 @@ Same two independent axes as Volkare's Return, with this scenario's own values:
 
 ## Course of the Game
 
-Source: same PDF, p.16. Extracted for the Dummy Player tab's Volkare mode — see `CONTEXT.md`'s **Volkare Session** entry and [ADR-0004](../adr/0004-volkare-narrates-cards-not-simulates-board.md) for how much of this the app actually simulates (short answer: none of the board/combat parts below — only the card-triggered procedural instructions).
+Source: same PDF, p.16. Extracted for the Dummy Player tab's Volkare mode — see `docs/context-dummy-player.md`'s **Volkare Session** entry and [ADR-0004](../adr/0004-volkare-narrates-cards-not-simulates-board.md) for how much of this the app actually simulates (short answer: none of the board/combat parts below — only the card-triggered procedural instructions).
 
 ### Tactic selection
 

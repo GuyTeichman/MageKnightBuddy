@@ -16,7 +16,7 @@ Some scenario scoring (e.g. Solo Conquest, see `solo-conquest.md`) counts how ma
 
 ## Achievements Scoring
 
-A Scoring Session's full set of scoring categories is its **Achievements Scoring**: the fixed **Standard Achievements Scoring** six, plus whichever optional variant categories are enabled (currently just Greatest Quester — see below). Which variants are enabled will eventually be a Settings choice; see `CONTEXT.md`.
+A Scoring Session's full set of scoring categories is its **Achievements Scoring**: the fixed **Standard Achievements Scoring** six, plus whichever optional variant categories are enabled (currently just Greatest Quester — see below). Which variants are enabled will eventually be a Settings choice; see `docs/context-scoring.md`.
 
 ### Standard Achievements Scoring
 
@@ -49,7 +49,7 @@ The Apocalypse Dragon expansion introduces **Quest cards** — optional objectiv
 |---|---|
 | **Greatest Quester** | 1 Fame per quest point scored (from completed Quest card steps) |
 
-Like the other six categories, Greatest Quester's Title (+3 Fame to whoever scored the most quest points, +1 if tied) only applies in multiplayer. Per the rulebook it's an optional category, gated on whether the scenario/session is using Quest cards — unlike the base six, which are always in play. The app doesn't have a Settings screen to gate it yet, though: until that exists, the Score Calculator scores it unconditionally (see `CONTEXT.md`'s Achievements Scoring and Settings entries).
+Like the other six categories, Greatest Quester's Title (+3 Fame to whoever scored the most quest points, +1 if tied) only applies in multiplayer. Per the rulebook it's an optional category, gated on whether the scenario/session is using Quest cards — unlike the base six, which are always in play. The app doesn't have a Settings screen to gate it yet, though: until that exists, the Score Calculator scores it unconditionally (see `docs/context-scoring.md`'s Achievements Scoring and Settings entries).
 
 ## Solo play: no Titles
 

@@ -161,7 +161,7 @@ import androidx.room.PrimaryKey
  * Deck/discard pile/objective card/event log are `...Json` `String` columns, same reason as
  * [VolkareSessionEntity]'s equivalents (Room can't map `List`/sealed-class/nullable-sealed-class
  * columns directly). [objectiveCardJson] is nullable - `null` means no current Objective Card
- * (see `CONTEXT.md`'s **Objective Card** entry). Crystal counts flatten into 4 named columns,
+ * (see `docs/context-dummy-player.md`'s **Objective Card** entry). Crystal counts flatten into 4 named columns,
  * matching [DummyPlayerSessionEntity]'s convention (Room has no direct `Map` column support).
  */
 @Entity(tableName = "proxy_player_sessions")

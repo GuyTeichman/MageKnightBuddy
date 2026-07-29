@@ -1,0 +1,59 @@
+# Domain glossary — Enemy Picker
+
+Terms for the Enemy Picker tab: the app-side replacement for the physical face-down enemy/ruin/faction token piles. See `CONTEXT.md` for the other two glossary slices (Scoring, Dummy Player tab).
+
+**Enemy Picker**:
+The tab and screen that replaces the physical face-down token piles: tapping a **Token Pile** draws a token, shows it zoomed with its title, and records it in the **Draw Log**. Authoritative — the cardboard piles stay in the box and the app is the source of both the randomness and what's left in each pile, so its state persists across app restarts for the whole length of a game. Like the Dummy Player tab's modes it *narrates rather than simulates* ([ADR-0004](adr/0004-volkare-narrates-cards-not-simulates-board.md)): it models no map, no site, and no combat — a drawn token is discarded immediately, and remembering which enemy is still standing on which space is the player's job (the Draw Log is there to help).
+_Avoid_: Enemy browser, token reference (it owns real pile state; browsing abilities is a secondary affordance)
+
+**Token Pile**:
+One face-down stack of same-backed tokens the **Enemy Picker** draws from — the 6 enemy colors (green/grey/violet/brown/red/white), ruin tokens, possessed enemies, and one per faction. Each has its own Discard Pile, matching the rulebook's "sort the enemy (round) and ruin (hexagonal) tokens by the reverse side, and stack them in seven face down piles. Next to each pile, there is a space for discarded tokens" (p.3). Which piles exist at all depends on the active expansion selection.
+_Avoid_: Deck (reserved for `docs/context-dummy-player.md`'s Dummy Player's/Volkare's/Proxy Player's card decks — a Token Pile holds cardboard tokens and has entirely different draw rules); Enemy Pile (3 of the piles hold non-enemies)
+
+**Ruin Token**:
+One of the RUIN **Token Pile**'s 12 base-game hexagonal tokens (rulebook "Revealing Ruins" /
+Ultimate Edition Walkthrough), modeled as `RuinToken` - a sibling type to **Enemy Token**, not a
+variant of it, since a Ruin token prints no Armor/Attack/Fame block. Two kinds: an **Ancient Altar**
+(pay three mana of one printed color for 7 Fame immediately, no combat) or an **Enemies With
+Treasure** draw (draw one token each from the two named **Token Pile**s - the same pile can be
+named twice - fight both, and claim the printed reward if you defeat them both). The reward isn't
+modeled: like the rest of the **Enemy Picker**, `RuinToken` tracks only which pile(s) to draw from,
+never Fame or rewards ([ADR-0006](adr/0006-enemy-picker-owns-pile-state-but-models-no-map.md)).
+Not yet wired into the picker's draw flow or UI, and has no art yet either (issue #201) - only the
+catalogue is transcribed so far.
+_Avoid_: Enemy Token (different shape entirely - no armor/attack/fame, and an Ancient Altar isn't
+combat at all)
+
+**Replenish**:
+What happens when a **Token Pile** is drawn empty: its Discard Pile is shuffled and becomes the new pile (rulebook p.3, "If you run out of tokens, reshuffle the discarded ones and create a new face down pile"; the Apocalypse Dragon rulebook repeats it verbatim for possessed enemies and faction tokens). Mandatory and automatic — never a setting.
+_Avoid_: Reshuffle (that term is taken by `docs/context-dummy-player.md`'s entry, and means the Dummy/Proxy Player deck+discard merge — see its own entry; keeping the two words apart is deliberate)
+
+**Draw Log**:
+The **Enemy Picker**'s newest-first record of every token drawn since the last Reset, persisted alongside the pile state. Load-bearing rather than decorative: because the picker discards a token the moment it's drawn and models no map, the log is the *only* record of which enemy is still standing on which space. Since issue #203, one row is one **draw batch** (every token sharing a `batchId`), not one token: a batch of 1 renders and behaves exactly as before (tapping re-opens that token zoomed with its info window), while a batch of more than 1 collapses into a single row - tapping it (re)opens the same grid overview a fresh multi-token draw opens, whether that draw just happened or is being revisited later. Each entry carries a **defeated** flag: a freshly drawn enemy starts **on the board** (not defeated) because it was just revealed, and is marked defeated once the player beats it — the common reveal→defeat flow. The log groups the on-the-board batches at the top and the defeated ones (dimmed) below; a batch stays on-the-board until *every* member is defeated, moving to Defeated only once the last one clears. A single-token row may carry a short free-text note ("keep, NE tile") and its own Defeat toggle; a collapsed batch row has no Defeat control of its own — defeating a member only happens through the grid's checkboxes. The flag is purely a memory aid — it has no effect on any **Token Pile** (a defeated enemy was already discarded when it was drawn), so draw odds are identical however it's set.
+_Avoid_: History (reserved for the Scoreboard's saved sessions); treating the defeated flag as pile state; "still in play" (the flag's sense is now inverted — it tracks *defeated*, defaulting to on-the-board); assuming a row is always one token (true only for a batch of size 1, since #203)
+
+**Possessed Enemy**:
+An Apocalypse Dragon enemy formed from *two* tokens: a possessed enemy token plus a normal circular enemy token of a color the triggering text names (Apocalypse Dragon rulebook p.7). The possessed token carries **deltas, not stats** — it modifies the circular token's Armor, topmost Attack, and Fame, and may add a Psychic Attack of value 1-4. The **Enemy Picker** renders the pair the way the cardboard looks (circular token superimposed on the possessed token's circular slot) and shows only the **summed** numbers, never the deltas alongside them, so the player is never left wondering whether they're expected to do the arithmetic themselves. Defeating one also awards a faction token from the faction the triggering text names.
+_Avoid_: Treating the possessed token as an enemy in its own right (it has no standalone stat line)
+
+**Faction Token**:
+An Apocalypse Dragon reward token drawn from one of two 12-token **Token Pile**s (The Apocalypse Cult, The Council of the Void), typically on defeating a **Possessed Enemy**. The one kind of token the **Enemy Picker** does *not* discard on draw: per the Apocalypse Dragon rulebook (p.6), a drawn faction token is **held** face up in the player's play area until spent, and whatever is still held at game end is worth 1 Fame each. So the picker keeps a small held-inventory list with a Spend action that moves a token to its discard — in-play state it deliberately refuses to keep for enemies ([ADR-0006](adr/0006-enemy-picker-owns-pile-state-but-models-no-map.md)), justified because this is flat inventory rather than board position, and because the rules make it player-visible anyway.
+_Avoid_: Treating a faction token like an enemy draw (its lifecycle is draw → hold → spend, not draw → discard)
+
+**Summon Draw**:
+The extra **Token Pile** draw an enemy with the Summon ability forces: a token drawn *at the start of the Block phase* (the brown pile for every base-game summoner, but the summoned pile is recorded per-token in the catalogue rather than assumed, since possessed/expansion summoners can draw other colours), which replaces the summoner for the Block and Damage Assigning phases and is always discarded afterward, never yielding Fame or a faction token (rulebook p.9; Apocalypse Dragon p.10). In the **Enemy Picker** it's an explicit action on the drawn enemy rather than an automatic part of the reveal, because the player commits to the fight before legally knowing what gets summoned — auto-drawing would leak that. The summoned token fights with **its own** stats *and its own offensive abilities* (a summoned Brutal token attacks Brutally) — the summoner lends only the fight slot, not its abilities. When a **Possessed Enemy**'s topmost attack is itself a Summon, the possessed token's Attack delta applies to *this* token instead of the summoner, and is applied at the moment it's drawn (not yet implemented - possessed enemies are #189).
+
+A summoned child is **ephemeral**, unlike every other **Draw Log** entry: it isn't independently resolved. The summoner's *own* Defeat flag marks the whole encounter (summon or no summon) over, and re-engaging a summoner that wasn't defeated draws a **fresh** child - so Summon is a repeatable action (relabelled "Re-summon" once used), not one-shot. `DrawLogEntry.parentIndex` records which log entry summoned a child; because the log is append-only, a re-summon *appends* a new child rather than replacing the old one, so several entries can share one `parentIndex` - `EnemyPickerSession.currentChildrenOf` resolves which are *current* (the most recent shared `batchId`, since a token with several Summon attacks draws and discards all of them together in one action). A token with two Summon attacks is a real rules case (not hypothetical) but has no current catalogue token, so it's untested against real data - see #191's implementation notes.
+_Avoid_: Drawing the summoned token at reveal time; treating a child like a normal Draw Log entry (it has no independent Defeat state)
+
+**Token Set**:
+The **Enemy Picker**'s per-game choice of which expansions' tokens make up its **Token Pile**s — a setup decision (a scenario may dictate it), not a statement about what the player owns. Changing it necessarily rebuilds every pile and clears the **Draw Log**, so edits are staged in the screen's config section and committed by one "Apply & Reset" action rather than taking effect per checkbox. Distinct from `docs/context-scoring.md`'s **Settings**' eventual global expansion toggles — see that entry.
+_Avoid_: Expansion settings, owned expansions (that's **Settings**' question, deliberately kept separate)
+
+**Draw with Replacement**:
+The **Enemy Picker**'s off-by-default config toggle: when on, a drawn token returns to its **Token Pile** immediately and the pile is shuffled, so piles never deplete and no Discard Pile accumulates. For pulling a one-off random enemy without perturbing a real game's pile state. When off (the rules-correct default), a draw is without replacement and the pile **Replenish**es only once emptied.
+_Avoid_: "Shuffle back in" (ambiguous with Replenish — say which)
+
+**Offensive / Defensive Ability**:
+The two kinds of enemy-token special ability (Quick Reference Sheet, "Enemy Token Abilities"). **Defensive** abilities govern how the enemy is *attacked* — Fortified, Elusive, Arcane Immunity, Unfortified (the Lost Legion's opposite of Fortified: ignores all site fortifications), plus the element **Resistances** (Physical/Fire/Ice), which are a defensive trait parameterised by element. **Offensive** abilities modify the enemy's *own* attack — Swift, Brutal, Poison, Paralyze, Cumbersome, Assassination, Vampiric. Both kinds are **whole-token**: they apply to *every* one of the enemy's attacks, not a single one (Lost Legion, "Multiple Attacks"), which is why the domain models them as `Set`s on `EnemyToken` (`defensiveAbilities`, `offensiveAbilities`, `resistances`) rather than on individual attacks — only an attack's value and element are per-attack. **Elusive** is the one defensive ability that carries a number: its second, higher Armor value lives in `EnemyToken.elusiveArmor` (non-null exactly when Elusive is present), kept off the enum for the same reason Resistances are — an enum entry can't hold the value. A **Summon**ed token applies its own offensive abilities (see **Summon Draw**). *Vampiric is offensive* (it grows the enemy's Armor from *its* attacks landing), a classification worth stating because its effect is on Armor and could be mistaken for defensive.
+_Avoid_: per-attack modifier (abilities are token-wide, never attached to one attack)
