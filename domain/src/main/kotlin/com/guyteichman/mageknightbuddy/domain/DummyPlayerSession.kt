@@ -57,6 +57,23 @@ data class DummyPlayerSession private constructor(
         get() = CardColor.entries.associateWith { color -> deckOrder.count { it.matches(color) } }
 
     /**
+     * The [CardIdentity.DualColor] Advanced Action cards already added to this Dummy Player's deck.
+     * Each of the 4 dual-color cards is a physical singleton (see [CardIdentity.DUAL_COLOR_CARDS]):
+     * once one has been added to the Dummy Player's deck it's no longer available anywhere else in
+     * the game, so it can never be added a second time. The End Round dialog reads this to drop
+     * already-used dual-color cards from the pickable Advanced Action options (issue #213).
+     *
+     * Derived from [deckOrder] + [discardPile] because a dual-color card, once added, lives
+     * permanently in one pile or the other and is never removed - `endRound` reshuffles the whole
+     * discard pile back into the deck, so at any resting point the card is in exactly one of them.
+     * `filterIsInstance` keeps only the [CardIdentity.DualColor] entries (single-color cards aren't
+     * singletons - many cards of each color exist), and `toSet` collapses duplicates that can't
+     * actually occur but keeps the type a plain set of distinct cards.
+     */
+    val usedDualColorCards: Set<CardIdentity.DualColor>
+        get() = (deckOrder + discardPile).filterIsInstance<CardIdentity.DualColor>().toSet()
+
+    /**
      * How many turns have been played so far in the *current* [round] - e.g. "Round 2, Turn 4" in
      * the AI screen's header (issue #125). Counts [DummyPlayerEvent.TurnPlayed] entries in [log]
      * whose own `round` matches this session's current [round]; every other event kind (including

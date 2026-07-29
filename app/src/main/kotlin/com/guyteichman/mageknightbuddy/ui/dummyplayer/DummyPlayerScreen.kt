@@ -576,9 +576,11 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
         }
     }
 
-    if (showEndRoundDialog) {
+    if (showEndRoundDialog && session != null) {
         EndRoundDialog(
             fieldHelp = fieldHelp,
+            // Dual-color cards already in the deck are singletons - drop them from the picker.
+            usedDualColorCards = session.usedDualColorCards,
             onDismiss = { showEndRoundDialog = false },
             onConfirm = { advancedActionOfferColor, spellColor ->
                 scope.launch { viewModel.endRound(advancedActionOfferColor, spellColor) }
@@ -1085,6 +1087,7 @@ private fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
 @Composable
 private fun EndRoundDialog(
     fieldHelp: Map<String, FieldHelp>,
+    usedDualColorCards: Set<CardIdentity>,
     onDismiss: () -> Unit,
     onConfirm: (advancedActionOfferColor: CardIdentity, spellColor: CardColor) -> Unit,
 ) {
@@ -1114,6 +1117,7 @@ private fun EndRoundDialog(
                     label = "Advanced Action offer",
                     selected = advancedActionIdentity,
                     onSelect = { advancedActionIdentity = it },
+                    unavailableCards = usedDualColorCards,
                 )
                 ColorPickerRow(
                     label = "Spell offer",
@@ -1175,12 +1179,23 @@ internal fun ColorPickerRow(
  * of a "Dual-color card" checkbox plus a free second-color picker) means there's no way to select
  * a color pair that doesn't correspond to an actual printed card.
  *
+ * [unavailableCards] are Advanced Action cards that can no longer be picked - the dual-color cards
+ * already added to this session's deck (see [DummyPlayerSession.usedDualColorCards]). Each is a
+ * physical singleton, so once added it's gone from the game; its chip is removed entirely rather
+ * than shown disabled (issue #213). Only dual-color cards ever appear here - single colors aren't
+ * singletons - so the 4 single-color chips are always offered.
+ *
  * `internal`, not `private`: `ProxyPlayerScreen.kt`'s `ProxyPlayerEndRoundDialog` reuses this
  * directly, for the same reason it reuses [ColorPickerRow].
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-internal fun IdentityPickerRow(label: String, selected: CardIdentity, onSelect: (CardIdentity) -> Unit) {
+internal fun IdentityPickerRow(
+    label: String,
+    selected: CardIdentity,
+    onSelect: (CardIdentity) -> Unit,
+    unavailableCards: Set<CardIdentity> = emptySet(),
+) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium)
         // Centered (not left-packed): the 4 single-color chips usually fill their row edge-to-edge,
@@ -1191,7 +1206,10 @@ internal fun IdentityPickerRow(label: String, selected: CardIdentity, onSelect: 
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            ADVANCED_ACTION_OFFER_OPTIONS.forEach { identity ->
+            // filterNot drops any already-used singleton (a dual-color card in the deck); the
+            // default selection is always a single color, which is never removed, so the current
+            // selection can't vanish out from under the dialog.
+            ADVANCED_ACTION_OFFER_OPTIONS.filterNot { it in unavailableCards }.forEach { identity ->
                 FilterChip(
                     selected = identity == selected,
                     onClick = { onSelect(identity) },

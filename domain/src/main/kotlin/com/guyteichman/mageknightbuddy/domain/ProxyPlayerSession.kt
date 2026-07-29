@@ -46,6 +46,26 @@ data class ProxyPlayerSession private constructor(
         get() = CardColor.entries.associateWith { color -> deckOrder.count { it.matches(color) } }
 
     /**
+     * The [CardIdentity.DualColor] Advanced Action cards already added to this Proxy Player's deck -
+     * mirrors [DummyPlayerSession.usedDualColorCards] (issue #213): each of the 4 dual-color cards
+     * is a physical singleton, so once added it can never be added again, and the End Round dialog
+     * drops it from the pickable Advanced Action options.
+     *
+     * Unlike the standard Dummy Player, a Proxy Player card can also be the current [objectiveCard]
+     * (a freshly-flipped Advanced Action can become the objective being pursued - see [playTurn]),
+     * so that slot is folded into the union alongside [deckOrder] and [discardPile]; missing it
+     * would let an in-play dual-color objective card be wrongly offered as still available. The two
+     * `filterIsInstance` steps first keep only [ProxyPlayerCard.AdvancedAction]s, then - after
+     * mapping each to its [CardIdentity] - keep only the dual-color identities.
+     */
+    val usedDualColorCards: Set<CardIdentity.DualColor>
+        get() = (deckOrder + discardPile + listOfNotNull(objectiveCard))
+            .filterIsInstance<ProxyPlayerCard.AdvancedAction>()
+            .map { it.identity }
+            .filterIsInstance<CardIdentity.DualColor>()
+            .toSet()
+
+    /**
      * How many turns have been played so far in the current [round] - mirrors
      * [DummyPlayerSession.turnInRound] (issue #125), counting whichever of [playTurn]'s two log
      * entries fired ([ProxyPlayerEvent.NewObjectiveDrawn] or [ProxyPlayerEvent.TurnContinued]) -

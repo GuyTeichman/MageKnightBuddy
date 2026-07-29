@@ -338,9 +338,12 @@ fun ProxyPlayerAiScreen(
         }
     }
 
-    if (showEndRoundDialog) {
+    if (showEndRoundDialog && session != null) {
         ProxyPlayerEndRoundDialog(
             fieldHelp = fieldHelp,
+            // Dual-color cards already in the deck (or the current objective) are singletons - drop
+            // them from the picker (issue #213).
+            usedDualColorCards = session.usedDualColorCards,
             onDismiss = { showEndRoundDialog = false },
             onConfirm = { advancedActionOfferColor, spellOfferColor ->
                 scope.launch {
@@ -669,6 +672,7 @@ private fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
 @Composable
 private fun ProxyPlayerEndRoundDialog(
     fieldHelp: Map<String, FieldHelp>,
+    usedDualColorCards: Set<CardIdentity>,
     onDismiss: () -> Unit,
     onConfirm: (advancedActionOfferColor: CardIdentity, spellOfferColor: CardColor) -> Unit,
 ) {
@@ -698,6 +702,7 @@ private fun ProxyPlayerEndRoundDialog(
                     label = "Advanced Action offer",
                     selected = advancedActionIdentity,
                     onSelect = { advancedActionIdentity = it },
+                    unavailableCards = usedDualColorCards,
                 )
                 ColorPickerRow(
                     label = "Spell offer",

@@ -247,6 +247,64 @@ class DummyPlayerSessionTest {
     }
 
     @Test
+    fun `usedDualColorCards is empty for a fresh session with no Advanced Action cards added`() {
+        val session = DummyPlayerSession.start(Knight.CORAL)
+
+        assertEquals(emptySet(), session.usedDualColorCards)
+    }
+
+    @Test
+    fun `usedDualColorCards contains a Dual-Color card added via endRound`() {
+        val dual = CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE)
+        val session = DummyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+
+        val next = session.endRound(advancedActionOfferColor = dual, spellOfferColor = CardColor.WHITE)
+
+        assertEquals(setOf(dual), next.usedDualColorCards)
+    }
+
+    @Test
+    fun `usedDualColorCards ignores single-color Advanced Action cards - only dual-color ones are singletons`() {
+        val session = DummyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.RED),
+            spellOfferColor = CardColor.WHITE,
+        )
+
+        assertEquals(emptySet(), next.usedDualColorCards)
+    }
+
+    @Test
+    fun `usedDualColorCards counts a Dual-Color card sitting in the discard pile, not just the deck`() {
+        val dual = CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE)
+        // A controlled deck order so playTurn flips the dual-color card off the top into the
+        // discard pile - exercising the deckOrder + discardPile union, not just deckOrder.
+        val session = DummyPlayerSession.start(
+            Knight.CORAL,
+            deckOrder = listOf(dual, CardIdentity.SingleColor(CardColor.RED), CardIdentity.SingleColor(CardColor.RED)),
+        )
+
+        val next = session.playTurn()
+
+        assertEquals(emptyList(), next.deckOrder) // sanity: the dual card really left the deck
+        assertEquals(setOf(dual), next.usedDualColorCards)
+    }
+
+    @Test
+    fun `usedDualColorCards accumulates every distinct Dual-Color card added across multiple rounds`() {
+        val first = CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE)
+        val second = CardIdentity.DualColor(CardColor.RED, CardColor.WHITE)
+        val session = DummyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+
+        val next = session
+            .endRound(advancedActionOfferColor = first, spellOfferColor = CardColor.WHITE)
+            .endRound(advancedActionOfferColor = second, spellOfferColor = CardColor.WHITE)
+
+        assertEquals(setOf(first, second), next.usedDualColorCards)
+    }
+
+    @Test
     fun `endRound grants +1 crystal of the Spell offer color, uncapped`() {
         val session = DummyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
 
