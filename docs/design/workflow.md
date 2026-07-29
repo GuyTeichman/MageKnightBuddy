@@ -31,6 +31,20 @@ Never merge `assets` into `main` — it's asset storage only, not app code.
 
 Branch protection on `main` requires the `test` and `build` jobs defined in `.github/workflows/ci.yml` to pass before a PR can merge. Both must be added as required status checks in the repo's branch protection settings (GitHub only offers a check for selection after it has run at least once, or it can be typed in manually).
 
+## Testing procedures
+
+Most logic here is covered by JVM unit tests (`./gradlew test`), but those tests run *inside* the JVM and never cross the boundaries where the Android framework serializes app state. Bugs that only exist at those boundaries pass every ordinary test and only surface on a real device. Issue #212 was exactly this: the app crashed every time the Dummy Player screen was backgrounded, because `VolkareSetupViewModel` stored a `Scenario` (`data object`, not `Parcelable`/`Serializable`) in its `SavedStateHandle` — and every test used a plain in-memory `SavedStateHandle()` that holds any object without ever parceling it. The following procedures exist to close that class of gap.
+
+### Saved-state must be parcelable — test it through a real Parcel
+
+Any value put into a `SavedStateHandle` (`saveable(...)`) or a `rememberSaveable { mutableStateOf(...) }` must be Parcelable-safe: a primitive, `String`, enum, or a `Parcelable`/`Serializable` type. **A Kotlin `data object` is none of these** — storing one (e.g. a `Scenario` or any sealed-interface singleton) crashes with `IllegalArgumentException: Parcel: unknown type for value <X>` the moment Android parcels saved state on background. The fix pattern is to store a stable primitive proxy and re-derive the object: store `scenarioId: String` and read `Scenario.fromId(id)` (see `ScoreCalculatorViewModel`).
+
+When you add or change a `saveable`-backed field on any ViewModel, add (or extend) a Robolectric round-trip test next to it — see the `*SavedStateTest.kt` files and the shared `testsupport/parcelRoundTrip(handle)` helper, which pushes the handle's saved state through an actual `Parcel` exactly the way `onSaveInstanceState` does. A plain-JVM `SavedStateHandle()` assertion will *not* catch a non-parcelable value; only the real Parcel round-trip will. (The Room persistence boundary is already covered analogously — DAO tests run against a real SQLite database via `BundledSQLiteDriver`, see ADR-0003 — so serialization there is genuinely exercised, not faked.)
+
+### Manual pre-release lifecycle smoke test
+
+Before publishing a build (tagging `v*.*.*`), run one manual pass that forces Android's process-death/restore path, since that's where saved-state bugs hide. On the device or emulator, enable **Settings → Developer options → "Don't keep activities"** (or `adb shell settings put global always_finish_activities 1`) — this destroys and recreates the top activity on every background, turning intermittent process-death bugs into deterministic ones. Then, for **each tab and any screen with entered state**: put some state in, press Home, and return to the app. A crash or lost/garbled state on return is a saved-state bug. Turn the setting back off when done (`... always_finish_activities 0`). If a crash reproduces, `adb logcat` will show the fatal stack trace to pin the offending state.
+
 ## Publishing a build
 
 Pushing a version tag matching `v*.*.*` (e.g. `v0.1.0`) triggers `.github/workflows/publish.yml`, which runs the unit tests, builds the **debug** APK (auto-signed with the debug keystore — no release signing config exists yet, so an unsigned release build wouldn't be installable), and attaches it to a GitHub Release created for that tag. This is separate from `ci.yml`'s per-PR checks and isn't required for merging.

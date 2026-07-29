@@ -35,6 +35,13 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        // Robolectric loads Android framework resources (AndroidManifest, etc.) for tests that run
+        // real Android types like Parcel/Bundle on the JVM - needed by the saved-state round-trip
+        // regression tests (see VolkareSetupViewModelSavedStateTest).
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 dependencies {
@@ -57,4 +64,5 @@ dependencies {
 
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
 }
