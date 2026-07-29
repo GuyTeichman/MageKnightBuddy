@@ -35,7 +35,7 @@ class VolkareSetupViewModel(
     // members are `data object`s (see domain/Scenario.kt), which are neither Parcelable nor
     // Serializable, so putting one straight into SavedStateHandle crashes the app the moment
     // Android parcels saved state on background ("Parcel: unknown type for value VolkaresReturn" -
-    // issue #208). This mirrors ScoreCalculatorViewModel.scenarioId, which stores the id for the
+    // issue #212). This mirrors ScoreCalculatorViewModel.scenarioId, which stores the id for the
     // same reason. Every other saveable field below is an enum/Int/Boolean (all Parcelable-safe).
     private var scenarioId: String by savedStateHandle.saveable("scenarioId") { mutableStateOf(Scenario.VolkaresReturn.id) }
 

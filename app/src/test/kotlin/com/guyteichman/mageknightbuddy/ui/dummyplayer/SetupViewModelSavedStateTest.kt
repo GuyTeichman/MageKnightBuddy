@@ -23,7 +23,7 @@ import org.robolectric.annotation.Config
  * ([DummyPlayerSetupViewModel], [ProxyPlayerSetupViewModel]). Neither is broken today - both store
  * only a [Knight] enum (Serializable) and a Boolean - but the whole tab is instantiated at once
  * (see DummyPlayerScreen), so every one of its ViewModels' saved state is parceled together on
- * background. These tests hold the same invariant [VolkareSetupViewModel] violated in issue #208,
+ * background. These tests hold the same invariant [VolkareSetupViewModel] violated in issue #212,
  * so a future field of a non-parcelable type (a `data object`, an un-annotated domain class) fails
  * here instead of crashing the app. See [parcelRoundTrip] for why plain-JVM tests miss this.
  */

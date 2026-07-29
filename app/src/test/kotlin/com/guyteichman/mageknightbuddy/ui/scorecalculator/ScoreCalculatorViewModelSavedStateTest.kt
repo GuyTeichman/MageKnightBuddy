@@ -22,7 +22,7 @@ import org.robolectric.annotation.Config
 /**
  * Saved-state parcelability guard for [ScoreCalculatorViewModel], which owns 50+ `saveable`-backed
  * wizard fields - by far the most likely place a future field of a non-parcelable type slips in.
- * It already dodges the issue-#208 trap the right way (it stores the scenario as its String
+ * It already dodges the issue-#212 trap the right way (it stores the scenario as its String
  * [ScoreCalculatorViewModel.scenarioId], never the `Scenario` `data object`); this test pins that
  * down and fails loudly if any field it stores ever becomes something Android can't parcel. See
  * [parcelRoundTrip] for why plain-JVM `SavedStateHandle` tests can't catch this.

@@ -33,7 +33,7 @@ Branch protection on `main` requires the `test` and `build` jobs defined in `.gi
 
 ## Testing procedures
 
-Most logic here is covered by JVM unit tests (`./gradlew test`), but those tests run *inside* the JVM and never cross the boundaries where the Android framework serializes app state. Bugs that only exist at those boundaries pass every ordinary test and only surface on a real device. Issue #208 was exactly this: the app crashed every time the Dummy Player screen was backgrounded, because `VolkareSetupViewModel` stored a `Scenario` (`data object`, not `Parcelable`/`Serializable`) in its `SavedStateHandle` — and every test used a plain in-memory `SavedStateHandle()` that holds any object without ever parceling it. The following procedures exist to close that class of gap.
+Most logic here is covered by JVM unit tests (`./gradlew test`), but those tests run *inside* the JVM and never cross the boundaries where the Android framework serializes app state. Bugs that only exist at those boundaries pass every ordinary test and only surface on a real device. Issue #212 was exactly this: the app crashed every time the Dummy Player screen was backgrounded, because `VolkareSetupViewModel` stored a `Scenario` (`data object`, not `Parcelable`/`Serializable`) in its `SavedStateHandle` — and every test used a plain in-memory `SavedStateHandle()` that holds any object without ever parceling it. The following procedures exist to close that class of gap.
 
 ### Saved-state must be parcelable — test it through a real Parcel
 

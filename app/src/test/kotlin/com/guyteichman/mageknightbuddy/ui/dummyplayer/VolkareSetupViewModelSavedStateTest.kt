@@ -20,7 +20,7 @@ import org.robolectric.annotation.Config
 
 /**
  * Regression tests for the "app crashes every time you background the Dummy Player screen" bug
- * (issue #208): [VolkareSetupViewModel] used to store the [Scenario] object itself in
+ * (issue #212): [VolkareSetupViewModel] used to store the [Scenario] object itself in
  * [SavedStateHandle], but Scenario's members are `data object`s - neither Parcelable nor
  * Serializable - so Android threw `IllegalArgumentException: Parcel: unknown type for value
  * VolkaresReturn` the instant it parceled saved state on background.

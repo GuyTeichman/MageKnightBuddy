@@ -11,7 +11,7 @@ import androidx.lifecycle.SavedStateHandle
  * This is the boundary plain-JVM `SavedStateHandle()` tests never cross: an in-memory handle holds
  * any object, so a value Android can't actually parcel (e.g. a `data object` that's neither
  * Parcelable nor Serializable) sails through every ordinary unit test and only crashes on a real
- * device (issue #208). Calling this in a Robolectric test forces that crash into the test instead.
+ * device (issue #212). Calling this in a Robolectric test forces that crash into the test instead.
  *
  * Must be called from a Robolectric-run test (`@RunWith(RobolectricTestRunner::class)`) so the
  * android.os types have real implementations.
