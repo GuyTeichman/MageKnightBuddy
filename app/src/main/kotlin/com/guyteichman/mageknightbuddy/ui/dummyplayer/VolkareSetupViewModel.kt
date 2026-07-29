@@ -31,8 +31,21 @@ class VolkareSetupViewModel(
     private val repository: VolkareSessionRepository,
 ) : ViewModel() {
 
-    var scenario: Scenario by savedStateHandle.saveable("scenario") { mutableStateOf(Scenario.VolkaresReturn) }
-        private set
+    // Stored as the scenario's stable String **id**, not the Scenario object itself: Scenario's
+    // members are `data object`s (see domain/Scenario.kt), which are neither Parcelable nor
+    // Serializable, so putting one straight into SavedStateHandle crashes the app the moment
+    // Android parcels saved state on background ("Parcel: unknown type for value VolkaresReturn" -
+    // issue #208). This mirrors ScoreCalculatorViewModel.scenarioId, which stores the id for the
+    // same reason. Every other saveable field below is an enum/Int/Boolean (all Parcelable-safe).
+    private var scenarioId: String by savedStateHandle.saveable("scenarioId") { mutableStateOf(Scenario.VolkaresReturn.id) }
+
+    // Computed property (no backing field of its own): re-derives the Scenario from the stored id
+    // on every read, and writes back through the id on set - so the picker still reads/writes a
+    // Scenario while only a String ever reaches SavedStateHandle.
+    var scenario: Scenario
+        get() = Scenario.fromId(scenarioId)
+        private set(value) { scenarioId = value.id }
+
     var raceLevel: RaceLevel by savedStateHandle.saveable("raceLevel") { mutableStateOf(RaceLevel.FAIR) }
         private set
 
