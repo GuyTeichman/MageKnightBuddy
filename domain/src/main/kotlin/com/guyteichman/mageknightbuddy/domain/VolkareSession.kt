@@ -1,5 +1,7 @@
 package com.guyteichman.mageknightbuddy.domain
 
+import kotlin.random.Random
+
 /**
  * Immutable snapshot of Volkare's state at a point in time - his deck, discard pile, current
  * round, and a log of events so far - for the Dummy Player tab's Volkare mode (Volkare's Return /
@@ -29,6 +31,15 @@ data class VolkareSession private constructor(
     // Whether this session began on a night Round (Round 1 = night) instead of the usual day
     // start - set once at setup, never changed afterward. See [isDay].
     val startsAtNight: Boolean = false,
+    // This Round's Tactic Card draft - mirrors [DummyPlayerSession.tacticState] exactly, see its
+    // own doc comment. Note [scenario] above (Return/Quest) is never read for Volkare's Tactic
+    // removal rule - it's fixed (TacticRules.kt's tacticRemovalRule, isVolkare branch), keyed only
+    // off [isSolo] below.
+    val tacticState: TacticState = TacticState(),
+    // Whether this is a solo game (issue #179) - mirrors [DummyPlayerSession.isSolo]; defaults
+    // preserve every pre-existing caller's behavior until the setup UI (a later PR) starts
+    // threading a real player choice through here.
+    val isSolo: Boolean = true,
 ) {
     /**
      * Whether the current [round] is a day round - see [isDayRound] for the odd/even derivation
@@ -127,7 +138,21 @@ data class VolkareSession private constructor(
      * convenience for tracking, not a game mechanic" (issue #128), so this just increments
      * [round] and logs it.
      */
-    fun endRound(): VolkareSession = copy(round = round + 1, log = log + VolkareEvent.RoundEnded(round))
+    fun endRound(): VolkareSession = copy(
+        round = round + 1,
+        // See DummyPlayerSession.endRound's matching comment: fields here are all read on `this`,
+        // i.e. before round advances. isVolkare = true always here, so [scenario] (Return/Quest)
+        // is ignored by tacticRemovalRule's Volkare branch - only [isSolo] matters.
+        tacticState = tacticState.advanceRound(
+            remove = tacticRemovalTarget(
+                rule = tacticRemovalRule(isVolkare = true, isSolo = isSolo, scenario = scenario),
+                round = round,
+                startsAtNight = startsAtNight,
+            ),
+            isDay = isDay,
+        ),
+        log = log + VolkareEvent.RoundEnded(round),
+    )
 
     /**
      * Flips the [cityRevealed] flag - see `CONTEXT.md`'s "City Revealed" entry. Meaningful for
@@ -136,6 +161,19 @@ data class VolkareSession private constructor(
      * nothing there ever reads it.
      */
     fun toggleCityRevealed(): VolkareSession = copy(cityRevealed = !cityRevealed)
+
+    /**
+     * Records the real player's Tactic pick for the active Day/Night pile ([isDay]) - mirrors
+     * [DummyPlayerSession.pickPlayerTactic]. Volkare's coop mode is always player-first (see
+     * `TacticRules.kt`'s `tacticPickOrder`), so this is the pick the player makes before Volkare's.
+     */
+    fun pickPlayerTactic(card: Int): VolkareSession = copy(tacticState = tacticState.pickPlayer(card, isDay))
+
+    /**
+     * Draws Volkare's own Tactic pick at random for the active Day/Night pile ([isDay]) - mirrors
+     * [DummyPlayerSession.pickDummyTactic].
+     */
+    fun pickDummyTactic(random: Random = Random): VolkareSession = copy(tacticState = tacticState.pickDummy(isDay, random))
 
     companion object {
         /**
@@ -166,6 +204,7 @@ data class VolkareSession private constructor(
             woundCount: Int = volkareWoundCount(scenario, raceLevel),
             deckOrder: List<VolkareCard> = buildDeck(woundCount).shuffled(),
             startsAtNight: Boolean = false,
+            isSolo: Boolean = true,
         ): VolkareSession = VolkareSession(
             scenario = scenario,
             raceLevel = raceLevel,
@@ -176,6 +215,7 @@ data class VolkareSession private constructor(
             lost = false,
             log = listOf(VolkareEvent.RoundStarted(round = 1)),
             startsAtNight = startsAtNight,
+            isSolo = isSolo,
         )
 
         /**
@@ -193,6 +233,8 @@ data class VolkareSession private constructor(
             lost: Boolean,
             log: List<VolkareEvent>,
             startsAtNight: Boolean = false,
+            tacticState: TacticState = TacticState(),
+            isSolo: Boolean = true,
         ): VolkareSession = VolkareSession(
             scenario = scenario,
             raceLevel = raceLevel,
@@ -203,6 +245,8 @@ data class VolkareSession private constructor(
             lost = lost,
             log = log,
             startsAtNight = startsAtNight,
+            tacticState = tacticState,
+            isSolo = isSolo,
         )
     }
 }

@@ -28,6 +28,14 @@ data class ProxyPlayerSession private constructor(
     // Whether this session began on a night Round (Round 1 = night) instead of the usual day
     // start - set once at setup, never changed afterward. See [isDay].
     val startsAtNight: Boolean = false,
+    // This Round's Tactic Card draft - mirrors [DummyPlayerSession.tacticState] exactly, see its
+    // own doc comment.
+    val tacticState: TacticState = TacticState(),
+    // Whether this is a solo game (issue #179) - mirrors [DummyPlayerSession.isSolo]/[scenario];
+    // defaults preserve every pre-existing caller's behavior (solo, "Conquest") until the setup
+    // UI (a later PR) starts threading a real player choice through here.
+    val isSolo: Boolean = true,
+    val scenario: Scenario = Scenario.SoloConquest,
 ) {
     /**
      * Whether the current [round] is a day round - see [isDayRound] for the odd/even derivation
@@ -171,9 +179,31 @@ data class ProxyPlayerSession private constructor(
             crystals = crystals + (spellOfferColor to crystals.getValue(spellOfferColor) + 1),
             round = round + 1,
             roundEnded = false,
+            // See DummyPlayerSession.endRound's matching comment: fields here are all read on
+            // `this`, i.e. before round advances.
+            tacticState = tacticState.advanceRound(
+                remove = tacticRemovalTarget(
+                    rule = tacticRemovalRule(isVolkare = false, isSolo = isSolo, scenario = scenario),
+                    round = round,
+                    startsAtNight = startsAtNight,
+                ),
+                isDay = isDay,
+            ),
             log = log + ProxyPlayerEvent.RoundEnded(round, advancedActionOfferColor, spellOfferColor, discardedObjective),
         )
     }
+
+    /**
+     * Records the real player's Tactic pick for the active Day/Night pile ([isDay]) - mirrors
+     * [DummyPlayerSession.pickPlayerTactic].
+     */
+    fun pickPlayerTactic(card: Int): ProxyPlayerSession = copy(tacticState = tacticState.pickPlayer(card, isDay))
+
+    /**
+     * Draws the Proxy Player's Tactic pick at random for the active Day/Night pile ([isDay]) -
+     * mirrors [DummyPlayerSession.pickDummyTactic].
+     */
+    fun pickDummyTactic(random: Random = Random): ProxyPlayerSession = copy(tacticState = tacticState.pickDummy(isDay, random))
 
     /**
      * The Proxy Player's total movement points this turn (docs/rules/proxy-player.md's "Movement
@@ -237,6 +267,8 @@ data class ProxyPlayerSession private constructor(
             wasRandom: Boolean = false,
             deckOrder: List<ProxyPlayerCard> = buildStartingDeck(knight).shuffled(),
             startsAtNight: Boolean = false,
+            isSolo: Boolean = true,
+            scenario: Scenario = Scenario.SoloConquest,
         ): ProxyPlayerSession = ProxyPlayerSession(
             knight = knight,
             wasRandom = wasRandom,
@@ -249,12 +281,19 @@ data class ProxyPlayerSession private constructor(
             objectiveShields = 0,
             log = listOf(ProxyPlayerEvent.RoundStarted(round = 1)),
             startsAtNight = startsAtNight,
+            isSolo = isSolo,
+            scenario = scenario,
         )
 
         /** Begins a new session with a randomly-chosen [Knight] - mirrors [DummyPlayerSession.startRandom]. */
-        fun startRandom(random: Random = Random, startsAtNight: Boolean = false): ProxyPlayerSession {
+        fun startRandom(
+            random: Random = Random,
+            startsAtNight: Boolean = false,
+            isSolo: Boolean = true,
+            scenario: Scenario = Scenario.SoloConquest,
+        ): ProxyPlayerSession {
             val knight = Knight.entries.toList().random(random)
-            return start(knight, wasRandom = true, startsAtNight = startsAtNight)
+            return start(knight, wasRandom = true, startsAtNight = startsAtNight, isSolo = isSolo, scenario = scenario)
         }
 
         /** Reconstructs a session from its full persisted state - not for general use; [start]/[startRandom] begin a new session. */
@@ -270,6 +309,9 @@ data class ProxyPlayerSession private constructor(
             objectiveShields: Int,
             log: List<ProxyPlayerEvent>,
             startsAtNight: Boolean = false,
+            tacticState: TacticState = TacticState(),
+            isSolo: Boolean = true,
+            scenario: Scenario = Scenario.SoloConquest,
         ): ProxyPlayerSession = ProxyPlayerSession(
             knight = knight,
             wasRandom = wasRandom,
@@ -282,6 +324,9 @@ data class ProxyPlayerSession private constructor(
             objectiveShields = objectiveShields,
             log = log,
             startsAtNight = startsAtNight,
+            tacticState = tacticState,
+            isSolo = isSolo,
+            scenario = scenario,
         )
     }
 }
