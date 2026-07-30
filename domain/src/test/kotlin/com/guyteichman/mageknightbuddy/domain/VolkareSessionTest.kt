@@ -1,5 +1,6 @@
 package com.guyteichman.mageknightbuddy.domain
 
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -496,5 +497,59 @@ class VolkareSessionTest {
             startsAtNight = true,
         )
         assertEquals(isDayRound(round = 2, startsAtNight = true), nightStartSession.isDay)
+    }
+
+    @Test
+    fun `pickPlayerTactic records the player's pick for the active Day-Night pile`() {
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR)
+
+        val next = session.pickPlayerTactic(card = 3)
+
+        assertEquals(3, next.tacticState.playerPick)
+        assertEquals(null, next.tacticState.dummyPick)
+    }
+
+    @Test
+    fun `pickDummyTactic records a random pick for the active Day-Night pile`() {
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR)
+
+        val next = session.pickDummyTactic(random = Random(0))
+
+        assertEquals(true, next.tacticState.dummyPick in 1..6)
+        assertEquals(null, next.tacticState.playerPick)
+    }
+
+    @Test
+    fun `endRound removes only the player's Tactic pick in solo, never Volkare's own`() {
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR, woundCount = 0, deckOrder = emptyList())
+            .pickPlayerTactic(card = 2)
+            .pickDummyTactic(random = Random(0))
+
+        val next = session.endRound()
+
+        assertEquals(setOf(2), next.tacticState.removedDayCards)
+        assertEquals(null, next.tacticState.playerPick)
+        assertEquals(null, next.tacticState.dummyPick)
+    }
+
+    @Test
+    fun `endRound never removes a Tactic card in coop, only clears the picks`() {
+        val session = VolkareSession.restore(
+            scenario = Scenario.VolkaresQuest,
+            raceLevel = RaceLevel.FAIR,
+            deckOrder = emptyList(),
+            discardPile = emptyList(),
+            round = 1,
+            cityRevealed = false,
+            lost = false,
+            log = emptyList(),
+            isSolo = false,
+        ).pickPlayerTactic(card = 2).pickDummyTactic(random = Random(0))
+
+        val next = session.endRound()
+
+        assertEquals(emptySet(), next.tacticState.removedDayCards)
+        assertEquals(null, next.tacticState.playerPick)
+        assertEquals(null, next.tacticState.dummyPick)
     }
 }

@@ -495,4 +495,68 @@ class DummyPlayerSessionTest {
         )
         assertEquals(isDayRound(round = 2, startsAtNight = true), nightStartSession.isDay)
     }
+
+    @Test
+    fun `pickPlayerTactic records the player's pick for the active Day-Night pile`() {
+        val session = DummyPlayerSession.start(Knight.CORAL)
+
+        val next = session.pickPlayerTactic(card = 3)
+
+        assertEquals(3, next.tacticState.playerPick)
+        assertEquals(null, next.tacticState.dummyPick)
+    }
+
+    @Test
+    fun `pickDummyTactic records a random pick for the active Day-Night pile`() {
+        val session = DummyPlayerSession.start(Knight.CORAL)
+
+        val next = session.pickDummyTactic(random = Random(0))
+
+        assertEquals(true, next.tacticState.dummyPick in 1..6)
+        assertEquals(null, next.tacticState.playerPick)
+    }
+
+    @Test
+    fun `endRound applies solo's EveryRound BOTH removal to tacticState by default`() {
+        val session = DummyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+            .pickPlayerTactic(card = 2)
+            .pickDummyTactic(random = Random(0))
+        val dummyPick = session.tacticState.dummyPick
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+            spellOfferColor = CardColor.BLUE,
+        )
+
+        assertEquals(setOf(2, dummyPick), next.tacticState.removedDayCards)
+        assertEquals(null, next.tacticState.playerPick)
+        assertEquals(null, next.tacticState.dummyPick)
+    }
+
+    @Test
+    fun `endRound applies a coop scenario's removal rule to tacticState, keyed by isSolo and scenario`() {
+        // Realm of the Dead never removes a Tactic card (TacticRules.kt's Never row), so only the
+        // picks themselves should clear - removedDayCards must stay empty.
+        val session = DummyPlayerSession.restore(
+            knight = Knight.CORAL,
+            wasRandom = false,
+            deckOrder = emptyList(),
+            discardPile = emptyList(),
+            crystals = startingCrystals(Knight.CORAL),
+            round = 1,
+            roundEnded = false,
+            log = emptyList(),
+            isSolo = false,
+            scenario = Scenario.RealmOfTheDead,
+        ).pickPlayerTactic(card = 2).pickDummyTactic(random = Random(0))
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+            spellOfferColor = CardColor.BLUE,
+        )
+
+        assertEquals(emptySet(), next.tacticState.removedDayCards)
+        assertEquals(null, next.tacticState.playerPick)
+        assertEquals(null, next.tacticState.dummyPick)
+    }
 }
