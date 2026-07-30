@@ -8,14 +8,22 @@ import kotlinx.serialization.Serializable
  * per-game setup choice, deliberately distinct from the future global [Settings] "which expansions
  * do I own" toggle.
  *
- * `@Serializable` so it can tag each [EnemyToken] in the JSON catalogue (ADR-0007). Only [BASE] has
- * tokens transcribed so far (the green-pile vertical slice, issue #178); the rest are listed ahead
- * of their tokens being added.
+ * `@Serializable` so it can tag each [EnemyToken] in the JSON catalogue (ADR-0007).
+ *
+ * Shades of Tezla is split into **two** entries - one per faction ([SHADES_OF_TEZLA_ELEMENTALIST],
+ * [SHADES_OF_TEZLA_DARK_CRUSADER]) - rather than one, because its enemy tokens come in two
+ * factions whose enemies are chosen per scenario. This app only models the rulebook's "mix the
+ * faction tokens into the regular piles" mode (Shades of Tezla rules, "Variants for Other
+ * Scenarios"), so each faction is just another independently-selectable token set that shuffles
+ * into the same six colour piles - like [LOST_LEGION]. The stricter "faction-only, separate piles
+ * per faction" scenarios need per-faction piles the Token Set can't express yet, and are deferred
+ * (issues #189/#190). [APOCALYPSE_DRAGON] is listed ahead of its tokens being transcribed.
  */
 @Serializable
 enum class Expansion {
     BASE,
     LOST_LEGION,
-    SHADES_OF_TEZLA,
+    SHADES_OF_TEZLA_ELEMENTALIST,
+    SHADES_OF_TEZLA_DARK_CRUSADER,
     APOCALYPSE_DRAGON,
 }

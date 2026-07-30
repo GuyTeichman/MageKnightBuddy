@@ -15,16 +15,18 @@ import kotlin.test.assertTrue
 class TokenCatalogueTest {
 
     // Expected *total* physical token count per pile (copies summed across all expansions). These
-    // are base game + Lost Legion (issue #188): Lost Legion tokens share the base tokens' backs and
-    // shuffle into the same six colour piles, so e.g. GREEN is 12 base + 8 Lost Legion = 20. The
-    // per-expansion breakdown that adds up to these is asserted separately below, so a token added
-    // to the wrong pile or tagged the wrong expansion is caught, not just a wrong grand total.
+    // are base + Lost Legion + both Shades of Tezla factions (issue #188): every expansion's tokens
+    // share the base tokens' backs and shuffle into the same six colour piles, so e.g. GREEN is
+    // 12 base + 8 Lost Legion + 8 Elementalist + 8 Dark Crusader = 36. Shades of Tezla only adds to
+    // GREEN/BROWN/RED (its "Marauding", "Dungeon Monsters" and "Draconum" enemies). The per-expansion
+    // breakdown that adds up to these is asserted separately below, so a token added to the wrong
+    // pile or tagged the wrong expansion is caught, not just a wrong grand total.
     private val expectedPileCounts = mapOf(
-        TokenPileId.GREEN to 20,
+        TokenPileId.GREEN to 36,
         TokenPileId.GREY to 18,
         TokenPileId.VIOLET to 14,
-        TokenPileId.BROWN to 16,
-        TokenPileId.RED to 14,
+        TokenPileId.BROWN to 24,
+        TokenPileId.RED to 22,
         TokenPileId.WHITE to 16,
     )
 
@@ -48,6 +50,16 @@ class TokenCatalogueTest {
         TokenPileId.BROWN to 6,
         TokenPileId.RED to 6,
         TokenPileId.WHITE to 6,
+    )
+
+    // Each Shades of Tezla faction's own additions (issue #188), counted from the individual token
+    // faces in that faction's "Marauding …", "… Dungeon Monsters" and "… Draconum" bags in the TTS
+    // mod, cross-checked against the mod's per-token combat-script stat table. Both factions have the
+    // same shape - 8 green, 4 brown, 4 red - and touch no other pile. See docs/rules/enemy-tokens.md.
+    private val expectedShadesFactionPileCounts = mapOf(
+        TokenPileId.GREEN to 8,
+        TokenPileId.BROWN to 4,
+        TokenPileId.RED to 4,
     )
 
     @Test
@@ -110,10 +122,29 @@ class TokenCatalogueTest {
                 .sumOf { it.copies }
             assertEquals(expected, actual, "pile $pile has $actual LOST_LEGION tokens, expected $expected")
         }
-        // Only BASE and LOST_LEGION are transcribed so far (Shades of Tezla / Apocalypse Dragon come
-        // later) - a token tagged with any other expansion should fail loudly, not slip in silently.
+        // Each Shades of Tezla faction contributes the same 8/4/4 to GREEN/BROWN/RED and nothing to
+        // the other three piles - asserted per faction so a token tagged the wrong faction is caught.
+        listOf(Expansion.SHADES_OF_TEZLA_ELEMENTALIST, Expansion.SHADES_OF_TEZLA_DARK_CRUSADER).forEach { faction ->
+            TokenPileId.entries.forEach { pile ->
+                val expected = expectedShadesFactionPileCounts[pile] ?: 0
+                val actual = TokenCatalogue.tokens
+                    .filter { it.pile == pile && it.expansion == faction }
+                    .sumOf { it.copies }
+                assertEquals(expected, actual, "pile $pile has $actual $faction tokens, expected $expected")
+            }
+        }
+        // Apocalypse Dragon is the only expansion still un-transcribed - a token tagged with it (or
+        // any pile the factions shouldn't touch) should fail loudly, not slip in silently.
         val expansionsPresent = TokenCatalogue.tokens.map { it.expansion }.toSet()
-        assertEquals(setOf(Expansion.BASE, Expansion.LOST_LEGION), expansionsPresent)
+        assertEquals(
+            setOf(
+                Expansion.BASE,
+                Expansion.LOST_LEGION,
+                Expansion.SHADES_OF_TEZLA_ELEMENTALIST,
+                Expansion.SHADES_OF_TEZLA_DARK_CRUSADER,
+            ),
+            expansionsPresent,
+        )
     }
 
     @Test
@@ -496,5 +527,218 @@ class TokenCatalogueTest {
             setOf(OffensiveAbility.ASSASSINATION, OffensiveAbility.PARALYZE),
             delphana.offensiveAbilities,
         )
+    }
+
+    // --- Shades of Tezla rosters (issue #188). Each faction's enemies live in GREEN/BROWN/RED, so
+    // they're asserted per faction (like the Lost Legion rosters), filtering on the faction's tag.
+
+    private fun shadesNamesIn(faction: Expansion, pile: TokenPileId): Set<String> =
+        TokenCatalogue.tokens.filter { it.pile == pile && it.expansion == faction }.map { it.name }.toSet()
+
+    @Test
+    fun `Elementalist green pile has the five Marauding Elementalist types`() {
+        assertEquals(
+            setOf("Elemental Priestesses", "Elven Protectors", "Crystal Sprites", "Centaur Outriders", "Cloud Griffons"),
+            shadesNamesIn(Expansion.SHADES_OF_TEZLA_ELEMENTALIST, TokenPileId.GREEN),
+        )
+    }
+
+    @Test
+    fun `Elementalist brown pile has the four Elemental Dungeon Monster types`() {
+        assertEquals(
+            setOf("Air Elemental", "Fire Elemental", "Water Elemental", "Earth Elemental"),
+            shadesNamesIn(Expansion.SHADES_OF_TEZLA_ELEMENTALIST, TokenPileId.BROWN),
+        )
+    }
+
+    @Test
+    fun `Elementalist red pile has the two Elementalist Draconum types`() {
+        assertEquals(
+            setOf("Savage Dragon", "Lightning Dragon"),
+            shadesNamesIn(Expansion.SHADES_OF_TEZLA_ELEMENTALIST, TokenPileId.RED),
+        )
+    }
+
+    @Test
+    fun `Dark Crusader green pile has the five Marauding Dark Crusader types`() {
+        assertEquals(
+            setOf("Corrupted Priests", "Zombie Horde", "Gibbering Ghouls", "Shrouded Necromancers", "Skeletal Warriors"),
+            shadesNamesIn(Expansion.SHADES_OF_TEZLA_DARK_CRUSADER, TokenPileId.GREEN),
+        )
+    }
+
+    @Test
+    fun `Dark Crusader brown pile has the four Dark Crusader Dungeon Monster types`() {
+        assertEquals(
+            setOf("Blood Demon", "Pain Wraith", "Vampire", "Mummy"),
+            shadesNamesIn(Expansion.SHADES_OF_TEZLA_DARK_CRUSADER, TokenPileId.BROWN),
+        )
+    }
+
+    @Test
+    fun `Dark Crusader red pile has the two Dark Crusader Draconum types`() {
+        assertEquals(
+            setOf("Vampire Dragon", "Death Dragon"),
+            shadesNamesIn(Expansion.SHADES_OF_TEZLA_DARK_CRUSADER, TokenPileId.RED),
+        )
+    }
+
+    // --- Shades of Tezla spot-checks. Values derived by hand from docs/rules/enemy-tokens.md's
+    // Shades tables (transcribed from the token faces + the mod's combat-script stat table).
+
+    @Test
+    fun `Elemental Priestesses makes a fire and an ice attack and resists both`() {
+        val priestesses = assertNotNull(TokenCatalogue.byId("green_elemental_priestesses"))
+        assertEquals(4, priestesses.armor)
+        assertEquals(3, priestesses.fame)
+        assertEquals(setOf(AttackElement.FIRE, AttackElement.ICE), priestesses.resistances)
+        // Multiple Attacks: one ice-3 and one fire-3, blocked/assigned separately.
+        assertEquals(setOf(3), priestesses.attacks.map { it.value }.toSet())
+        assertEquals(
+            setOf(AttackElement.ICE, AttackElement.FIRE),
+            priestesses.attacks.map { it.element }.toSet(),
+        )
+    }
+
+    @Test
+    fun `Elven Protectors has Defend 2 and no Elusive armor`() {
+        val protectors = assertNotNull(TokenCatalogue.byId("green_elven_protectors"))
+        assertEquals(4, protectors.armor)
+        assertEquals(2, protectors.defend)
+        assertEquals(null, protectors.elusiveArmor)
+        assertEquals(setOf(AttackElement.FIRE), protectors.resistances)
+        assertEquals(3, protectors.attacks.single().value)
+    }
+
+    @Test
+    fun `Crystal Sprites is a Defending Elusive with two ice attacks`() {
+        val sprites = assertNotNull(TokenCatalogue.byId("green_crystal_sprites"))
+        assertEquals(2, sprites.copies)
+        assertEquals(1, sprites.armor)
+        assertEquals(2, sprites.elusiveArmor) // Elusive armor is double the printed value.
+        assertEquals(1, sprites.defend)
+        assertTrue(DefensiveAbility.ELUSIVE in sprites.defensiveAbilities)
+        assertEquals(listOf(1, 1), sprites.attacks.map { it.value })
+        assertTrue(sprites.attacks.all { it.element == AttackElement.ICE })
+    }
+
+    @Test
+    fun `Cloud Griffons is Unfortified, Swift and Elusive but not Fortified`() {
+        val griffons = assertNotNull(TokenCatalogue.byId("green_cloud_griffons"))
+        assertEquals(4, griffons.armor)
+        assertEquals(8, griffons.elusiveArmor)
+        assertEquals(
+            setOf(DefensiveAbility.UNFORTIFIED, DefensiveAbility.ELUSIVE),
+            griffons.defensiveAbilities,
+        )
+        assertTrue(DefensiveAbility.FORTIFIED !in griffons.defensiveAbilities)
+        assertEquals(setOf(OffensiveAbility.SWIFT), griffons.offensiveAbilities)
+    }
+
+    @Test
+    fun `Air Elemental has a Cold Fire attack and is Swift and Elusive`() {
+        val air = assertNotNull(TokenCatalogue.byId("brown_air_elemental"))
+        assertEquals(4, air.armor)
+        assertEquals(8, air.elusiveArmor)
+        assertEquals(AttackElement.COLD_FIRE, air.attacks.single().element)
+        assertEquals(setOf(OffensiveAbility.SWIFT), air.offensiveAbilities)
+        assertEquals(setOf(AttackElement.FIRE, AttackElement.ICE), air.resistances)
+    }
+
+    @Test
+    fun `Earth Elemental is a Fortified, Cumbersome, physically-resistant brute`() {
+        val earth = assertNotNull(TokenCatalogue.byId("brown_earth_elemental"))
+        assertEquals(setOf(AttackElement.PHYSICAL), earth.resistances)
+        assertTrue(DefensiveAbility.FORTIFIED in earth.defensiveAbilities)
+        assertEquals(
+            setOf(OffensiveAbility.BRUTAL, OffensiveAbility.CUMBERSOME),
+            earth.offensiveAbilities,
+        )
+    }
+
+    @Test
+    fun `Lightning Dragon has a Cold Fire attack and Elusive armor 7 rising to 14`() {
+        val lightning = assertNotNull(TokenCatalogue.byId("red_lightning_dragon"))
+        assertEquals(7, lightning.armor)
+        assertEquals(14, lightning.elusiveArmor)
+        assertEquals(7, lightning.fame)
+        assertEquals(AttackElement.COLD_FIRE, lightning.attacks.single().element)
+        assertEquals(setOf(AttackElement.FIRE, AttackElement.ICE), lightning.resistances)
+    }
+
+    @Test
+    fun `Corrupted Priests is a Vampiric Defender with a Cold Fire attack`() {
+        val priests = assertNotNull(TokenCatalogue.byId("green_corrupted_priests"))
+        assertEquals(1, priests.defend)
+        assertEquals(setOf(OffensiveAbility.VAMPIRIC), priests.offensiveAbilities)
+        assertEquals(AttackElement.COLD_FIRE, priests.attacks.single().element)
+    }
+
+    @Test
+    fun `Zombie Horde makes three physical attacks and is Cumbersome`() {
+        val zombies = assertNotNull(TokenCatalogue.byId("green_zombie_horde"))
+        assertEquals(listOf(1, 1, 1), zombies.attacks.map { it.value })
+        assertEquals(setOf(OffensiveAbility.CUMBERSOME), zombies.offensiveAbilities)
+        assertEquals(setOf(AttackElement.ICE), zombies.resistances)
+    }
+
+    @Test
+    fun `Shrouded Necromancers summons a green token and is Fortified`() {
+        val necromancers = assertNotNull(TokenCatalogue.byId("green_shrouded_necromancers"))
+        val attack = necromancers.attacks.single()
+        assertTrue(attack.isSummon)
+        // A faction summoner draws from its own faction's pile - here the GREEN Marauding enemies.
+        assertEquals(TokenPileId.GREEN, attack.summons)
+        assertEquals(null, attack.value)
+        assertTrue(DefensiveAbility.FORTIFIED in necromancers.defensiveAbilities)
+    }
+
+    @Test
+    fun `Blood Demon is Brutal, Assassinating and arcane-immune`() {
+        val demon = assertNotNull(TokenCatalogue.byId("brown_blood_demon"))
+        assertEquals(6, demon.armor)
+        assertEquals(setOf(AttackElement.FIRE), demon.resistances)
+        assertTrue(DefensiveAbility.ARCANE_IMMUNITY in demon.defensiveAbilities)
+        assertEquals(
+            setOf(OffensiveAbility.BRUTAL, OffensiveAbility.ASSASSINATION),
+            demon.offensiveAbilities,
+        )
+    }
+
+    @Test
+    fun `Vampire Dragon is a Vampiric Elusive with armor 8 rising to 16`() {
+        val dragon = assertNotNull(TokenCatalogue.byId("red_vampire_dragon"))
+        assertEquals(8, dragon.armor)
+        assertEquals(16, dragon.elusiveArmor)
+        assertEquals(7, dragon.fame)
+        assertEquals(8, dragon.attacks.single().value)
+        assertEquals(setOf(OffensiveAbility.VAMPIRIC), dragon.offensiveAbilities)
+    }
+
+    @Test
+    fun `Death Dragon is a Paralyzing assassin with the game's toughest faction armor`() {
+        val dragon = assertNotNull(TokenCatalogue.byId("red_death_dragon"))
+        assertEquals(9, dragon.armor)
+        assertEquals(7, dragon.attacks.single().value)
+        assertEquals(null, dragon.elusiveArmor)
+        assertEquals(
+            setOf(OffensiveAbility.PARALYZE, OffensiveAbility.ASSASSINATION),
+            dragon.offensiveAbilities,
+        )
+    }
+
+    @Test
+    fun `Defend is printed only on the three faction tokens that carry it, and is positive`() {
+        // Two Elementalist tokens (Elven Protectors 2, Crystal Sprites 1) and one Dark Crusader
+        // (Corrupted Priests 1) print a Defend shield; every other token prints none.
+        val withDefend = TokenCatalogue.tokens.filter { it.defend != null }.associate { it.id to it.defend }
+        assertEquals(
+            mapOf("green_elven_protectors" to 2, "green_crystal_sprites" to 1, "green_corrupted_priests" to 1),
+            withDefend,
+        )
+        // Wherever set, a Defend value raises Armor, so it must be at least 1.
+        TokenCatalogue.tokens.forEach { token ->
+            token.defend?.let { assertTrue(it >= 1, "${token.id}: Defend must be >= 1") }
+        }
     }
 }

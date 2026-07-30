@@ -1081,6 +1081,9 @@ private fun TokenInfoDialog(token: EnemyToken, onDismiss: () -> Unit) {
     val lines = buildList {
         token.resistances.forEach { add(it.displayName() + " Resistance" to "Attacks of this element are inefficient (halved).") }
         token.defensiveAbilities.forEach { add(it.describe()) }
+        // Defend is a valued defensive trait (a number, not an enum), so it's described inline here
+        // rather than via DefensiveAbility.describe() (Shades of Tezla, "New Enemy Token Abilities").
+        token.defend?.let { add("Defend $it" to "The first enemy you attack this combat has its Armor raised by $it until the end of the combat.") }
         token.offensiveAbilities.forEach { add(it.describe()) }
         // Summon isn't an ability - it's a whole different kind of attack - so describe it here.
         token.attacks.filter { it.isSummon }.forEach {
@@ -1169,13 +1172,17 @@ private const val SUMMON_STACK_GAP = -0.10f
  * what a player faces until they block all its attacks (Lost Legion, "Elusive"), so hiding it would
  * be misleading; the "Elusive" ability entry in the "?" window explains which value applies when.
  * A token with a printed Reputation change (Lost Legion Thugs/Heroes) appends it as "· Reputation
- * +1" / "-1"; the common `reputation == 0` case adds nothing.
+ * +1" / "-1"; the common `reputation == 0` case adds nothing. A Shades of Tezla token with the
+ * Defend ability appends "· Defend N" beside its Armor (the value it adds to the first enemy
+ * attacked); the "Defend N" entry in the "?" window explains the timing.
  */
 private fun EnemyToken.statLine(): String {
     val armorText = if (elusiveArmor != null) "$armor/$elusiveArmor" else "$armor"
+    // Defend sits beside Armor since it's an Armor-boosting defensive trait (Shades of Tezla).
+    val defendText = if (defend != null) " · Defend $defend" else ""
     // "%+d" formats with an explicit sign (+1 / -1), matching the token's own +/- Reputation icon.
     val reputationText = if (reputation != 0) " · Reputation %+d".format(reputation) else ""
-    return "Armor $armorText · Fame $fame$reputationText"
+    return "Armor $armorText$defendText · Fame $fame$reputationText"
 }
 
 /** Player-facing name of a summoned pile, e.g. "Brown enemy" (used in the zoom's "Summons a …" line). */
@@ -1199,6 +1206,9 @@ internal fun TokenPileId.displayName(): String = when (this) {
 private fun Expansion.displayName(): String = when (this) {
     Expansion.BASE -> "Base game"
     Expansion.LOST_LEGION -> "The Lost Legion"
-    Expansion.SHADES_OF_TEZLA -> "Shades of Tezla"
+    // Shades of Tezla's enemies come in two factions; each is a separately-selectable token set
+    // that mixes into the piles (see Expansion's doc comment), so it gets its own checkbox.
+    Expansion.SHADES_OF_TEZLA_ELEMENTALIST -> "Shades of Tezla: Elementalist"
+    Expansion.SHADES_OF_TEZLA_DARK_CRUSADER -> "Shades of Tezla: Dark Crusader"
     Expansion.APOCALYPSE_DRAGON -> "The Apocalypse Dragon"
 }

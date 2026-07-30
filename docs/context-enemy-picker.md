@@ -47,7 +47,7 @@ A summoned child is **ephemeral**, unlike every other **Draw Log** entry: it isn
 _Avoid_: Drawing the summoned token at reveal time; treating a child like a normal Draw Log entry (it has no independent Defeat state)
 
 **Token Set**:
-The **Enemy Picker**'s per-game choice of which expansions' tokens make up its **Token Pile**s — a setup decision (a scenario may dictate it), not a statement about what the player owns. Changing it necessarily rebuilds every pile and clears the **Draw Log**, so edits are staged in the screen's config section and committed by one "Apply & Reset" action rather than taking effect per checkbox. Distinct from `docs/context-scoring.md`'s **Settings**' eventual global expansion toggles — see that entry.
+The **Enemy Picker**'s per-game choice of which expansions' tokens make up its **Token Pile**s — a setup decision (a scenario may dictate it), not a statement about what the player owns. Changing it necessarily rebuilds every pile and clears the **Draw Log**, so edits are staged in the screen's config section and committed by one "Apply & Reset" action rather than taking effect per checkbox. Each entry is one `Expansion` value; note **Shades of Tezla contributes two** — its Elementalist and Dark Crusader factions are separately-tickable sets that mix into the green/brown/red piles (the only Shades mode the single-axis Token Set can express; the faction-only/separate-pile scenarios are deferred to #189/#190 — see `docs/rules/enemy-tokens.md`'s Shades section). Distinct from `docs/context-scoring.md`'s **Settings**' eventual global expansion toggles — see that entry.
 _Avoid_: Expansion settings, owned expansions (that's **Settings**' question, deliberately kept separate)
 
 **Draw with Replacement**:

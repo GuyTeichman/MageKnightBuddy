@@ -31,6 +31,13 @@ import kotlinx.serialization.Serializable
  * token attribute shown like [fame], not a scoring/game-state field - the Enemy Picker still tracks
  * no Fame or rewards as state (ADR-0006); it just displays what the cardboard shows.
  *
+ * [defend] is the value of the **Defend** ability (Shades of Tezla rulebook, "New Enemy Token
+ * Abilities"): the first enemy attacked in the combat has its Armor raised by this number until the
+ * end of that combat. It's the "one valued defensive ability" [DefensiveAbility]'s doc reserved for
+ * "until a transcribed token needs it" - now that Shades of Tezla faction enemies use it, it lives
+ * here as a nullable number (like [elusiveArmor]) rather than a bare [DefensiveAbility] entry, since
+ * an enum entry can't carry the value. `null` (the default) means the token prints no Defend shield.
+ *
  * `@Serializable` so the whole catalogue decodes straight into `List<EnemyToken>` (ADR-0007).
  */
 @Serializable
@@ -48,4 +55,5 @@ data class EnemyToken(
     val offensiveAbilities: Set<OffensiveAbility> = emptySet(),
     val elusiveArmor: Int? = null,
     val reputation: Int = 0,
+    val defend: Int? = null,
 )
