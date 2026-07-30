@@ -710,7 +710,7 @@ private fun ConfigSection(
  * Zoomed view of a drawn token (or a tapped log entry): its art (or text fallback), name, stat line
  * and attacks, a "?" to open the full ability info window, prev/next with an "x of y" counter when a
  * whole batch was drawn at once, a Summon/Re-summon button when the token has a Summon attack
- * (issue #191), and a Defeat button (D2/D11).
+ * (issue #191), and a Defeat button (D2/D11) that also closes the window (issue #227).
  *
  * [log] is the whole Draw Log so [state]'s indices can be resolved to entries; that lookup also
  * drives the Defeat button's own state (whether *this* entry is already defeated), since the same
@@ -833,7 +833,15 @@ private fun TokenZoomDialog(
                 // confirmButton/dismissButton slots so the pair can be centered as a group.
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onDismiss) { Text("Close") }
-                    Button(onClick = { onToggleDefeated(logIndex, true) }, enabled = !entry.defeated) {
+                    // Defeating also closes the window (issue #227): you almost always want the
+                    // just-defeated enemy's zoom gone immediately, so folding the Close tap into
+                    // Defeat spares the extra click. If this zoom was drilled into from a grid,
+                    // onDismiss falls back to that grid (see onDismiss's own comment) rather than
+                    // closing everything, so the next batch member is still one tap away.
+                    Button(
+                        onClick = { onToggleDefeated(logIndex, true); onDismiss() },
+                        enabled = !entry.defeated,
+                    ) {
                         Text(if (entry.defeated) "Defeated" else "Defeat")
                     }
                 }
