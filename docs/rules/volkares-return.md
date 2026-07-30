@@ -85,8 +85,8 @@ Source: same PDF, p.13. Extracted for the Dummy Player tab's Volkare mode — se
 
 ### Tactic selection
 
-- Solo: the player always chooses first; Volkare then takes a random Tactic from those remaining. Coop: same, players choose first.
-- At the end of each Day/Night, remove the Tactic card that was used from the game — except the one Volkare used, which is never removed.
+- Solo: the player always chooses first; Volkare then takes a random Tactic from those remaining. At the end of each Day/Night, remove the Tactic card the player used from the game — the Tactic Volkare used is never removed.
+- Coop: same pick order (players choose first as a group, Volkare then takes a random Tactic from those remaining), but **no Tactic is ever removed from the game** — this is a genuinely different rule from Solo, not the same removal rule with a different actor. (Verified against `Mage-Knight-Board-Game-Ultimate-Edition-Expansion-Rule-Books-September-2018.pdf` p.13's separate "Tactic Selection (for solo game)"/"Tactic Selection (for coop game)" call-outs — an earlier version of this doc collapsed both into one removal bullet, which was wrong.)
 
 ### Volkare's turn
 

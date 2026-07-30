@@ -15,7 +15,12 @@ sealed interface Scenario {
     // the sealed interface above.
     //
     // displayName is "Conquest", not the rulebook's "Solo Conquest" (docs/rules/solo-conquest.md) -
-    // this app is solo-only, so "Solo" is redundant everywhere it'd appear in the UI (issue #102).
+    // originally because the Score Calculator only ever scored solo play, so "Solo" was redundant
+    // everywhere it'd appear in the UI (issue #102). This entry also now identifies the whole
+    // Conquest scenario family for Tactic pick-order/removal purposes (issue #179) - it covers
+    // Full/Blitz Cooperation's coop Tactic rule too, not just Solo Conquest's, via the Dummy Player
+    // tab's own solo/coop toggle (see ADR-0008) - so "Conquest" is now the more accurate name on
+    // both counts, not just the shorter one.
     // id stays "solo_conquest" (a stable persistence key, not shown to the player). The help
     // dialog's "source" citations (app/src/main/assets/field_help.json) also keep "Solo Conquest" -
     // those ARE user-facing (rendered in HelpButton's Rule details dialog), but they cite the exact
