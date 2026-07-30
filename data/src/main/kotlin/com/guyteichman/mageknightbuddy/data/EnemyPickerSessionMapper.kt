@@ -13,6 +13,12 @@ import com.guyteichman.mageknightbuddy.domain.TokenPileId
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+// Enum names in older saved rows may no longer exist (e.g. "SHADES_OF_TEZLA" before issue #188 split
+// it into two faction entries). Room's decode must tolerate that: an unknown name is dropped rather
+// than thrown on, which would crash the whole load (cf. the #194 migration crash-loop). `entries`
+// is the enum's value list; `find` returns null for a name no longer present.
+private fun expansionOrNull(name: String): Expansion? = Expansion.entries.find { it.name == name }
+
 private fun TokenPile.toDto(): TokenPileDto = TokenPileDto(drawPile = drawPile, discardPile = discardPile)
 private fun TokenPileDto.toDomain(): TokenPile = TokenPile(drawPile = drawPile, discardPile = discardPile)
 
@@ -51,7 +57,8 @@ fun EnemyPickerSession.toEntity(updatedAt: Long = System.currentTimeMillis()): E
  * reverse of [toEntity] above; used after [EnemyPickerSessionDao.get] loads a saved row).
  */
 fun EnemyPickerSessionEntity.toDomain(): EnemyPickerSession = EnemyPickerSession.restore(
-    tokenSet = Json.decodeFromString<List<String>>(tokenSetJson).map { Expansion.valueOf(it) }.toSet(),
+    // mapNotNull drops any expansion name this build no longer knows (see [expansionOrNull]).
+    tokenSet = Json.decodeFromString<List<String>>(tokenSetJson).mapNotNull { expansionOrNull(it) }.toSet(),
     drawWithReplacement = drawWithReplacement,
     piles = pilesJson.toPileMap(),
     drawLog = Json.decodeFromString<List<DrawLogEntryDto>>(drawLogJson).map { it.toDomain() },

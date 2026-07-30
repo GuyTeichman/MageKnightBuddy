@@ -94,6 +94,27 @@ class EnemyPickerSessionMapperTest {
     }
 
     @Test
+    fun `toDomain drops an unknown expansion name instead of crashing`() {
+        // A row saved by an older build can name an Expansion this build no longer has - e.g.
+        // "SHADES_OF_TEZLA" from before it was split into two faction entries (issue #188). A raw
+        // Expansion.valueOf would throw and crash the load (cf. the #194 migration crash-loop), so
+        // an unknown name is silently dropped, keeping the known ones. Built by hand because the
+        // legacy name can't be produced through the current enum/session API.
+        val entity = EnemyPickerSessionEntity(
+            drawWithReplacement = false,
+            tokenSetJson = """["BASE","SHADES_OF_TEZLA","LOST_LEGION"]""",
+            pilesJson = "{}",
+            drawLogJson = "[]",
+            updatedAt = 1L,
+        )
+
+        val restored = entity.toDomain()
+
+        // The two names this build still knows survive; the stale one is gone (not a crash).
+        assertEquals(setOf(Expansion.BASE, Expansion.LOST_LEGION), restored.tokenSet)
+    }
+
+    @Test
     fun `toEntity stamps the given updatedAt onto the entity`() {
         val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
 

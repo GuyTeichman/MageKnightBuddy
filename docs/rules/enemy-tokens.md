@@ -246,10 +246,127 @@ first catalogue token with more than one Summon attack, exercising the multi-sum
 (a four-colour "pay 3 mana → 10 Fame" Altar and two Enemies-With-Treasure tokens). They're deferred
 to the RUIN-pile work (issue #201) along with the base ruins, since the RUIN pile isn't wired into
 the picker yet, the four-colour altar needs a `RuinToken` model change, and the mod ships those
-tokens as 3-D meshes with no croppable face art. Shades of Tezla tokens are also deferred: unlike the
-Lost Legion, they're the Elementalist / Dark Crusader **faction** enemies (two mutually-exclusive
-factions), which the current single-axis Token Set can't represent — that's the possessed-enemy /
-faction-token work tracked separately (#189/#190).
+tokens as 3-D meshes with no croppable face art. The Shades of Tezla enemy tokens are transcribed in
+their own section below.
+
+## Shades of Tezla expansion tokens (issue #188)
+
+Shades of Tezla adds **32 enemy tokens split into two factions** — the **Elementalist** and the
+**Dark Crusader**. Each faction has the same shape: 8 green ("Marauding …"), 4 brown ("… Dungeon
+Monsters") and 4 red ("… Draconum") enemies — no grey/violet/white additions. The green/brown/red
+token backs match the base piles, so a faction's tokens can shuffle straight into those three colour
+piles (which is why those totals rise: GREEN 20→36, BROWN 16→24, RED 14→22 with both factions in).
+
+**Two selectable token sets, not one.** Unlike the Lost Legion, these enemies belong to two factions
+that scenarios use differently: some use one faction, some use both (split by map geography), some
+use neither. The full "faction-only, separate pile per faction" setup needs per-faction piles the
+Enemy Picker's Token Set can't express yet (deferred to the possessed-enemy/faction work, #189/#190).
+What the app *does* model is the rulebook's explicitly-sanctioned looser mode — *"faction enemy
+tokens can be mixed in with the regular enemy tokens … In some scenarios only one faction is used. In
+this case you can mix the other faction's enemy tokens in with the regular enemy tokens if you wish"*
+(Shades of Tezla rules, "Variants for Other Scenarios"). So each faction is its own
+`Expansion.SHADES_OF_TEZLA_ELEMENTALIST` / `Expansion.SHADES_OF_TEZLA_DARK_CRUSADER` — a separately
+tickable Token Set entry that mixes into the piles, exactly like Lost Legion.
+
+**Source & provenance**: transcribed from the individual token faces in each faction's "Marauding …",
+"… Dungeon Monsters" and "… Draconum" bags in the TTS mod (Workshop `1721301081`), **cross-checked
+against the mod's own per-token combat-script stat table** (the "Highly Scripted" mod encodes every
+token's armour/attack/element/abilities in Lua for its combat automation, keyed by token GUID — a
+machine-readable second source, unlike the base/Lost Legion piles which relied on eye-read reference
+sheets). Ability *meanings* for the new keywords are quoted from the official **Shades of Tezla
+rulebook** ("New Enemy Token Abilities"). Still **pending author verification against the physical
+components**, same caveat as the other piles.
+
+**New ability introduced here**:
+
+- **Defend** (`EnemyToken.defend`, a nullable number — the reserved "valued defensive ability" from
+  `DefensiveAbility`'s doc): *"The first enemy that you attack in combat (either in the Ranged phase
+  or the normal attack phase) has its Armor value increased by the value of the Defend ability, until
+  the end of that combat"* (rulebook p.2). Printed as a small numbered shield beside the Armor. Like
+  `elusiveArmor`, it's a number on the token rather than a `DefensiveAbility` enum entry, since the
+  enum can't carry the value. Written in the tables below as "Defend N".
+
+Other keywords are all ones the base/Lost Legion piles already use: **Vampiric** (Dark Crusaders lean
+on it — +1 Armor for the rest of combat per Unit wounded / Wound dealt), Multiple Attacks, Elusive
+(the higher Armor value, shown as `4 (8)` = lower (higher); always exactly **double** the printed
+value on these tokens), Unfortified, Fortified, Arcane Immunity, Swift, Brutal, Poison, Paralyze,
+Cumbersome, Assassination, and the element Resistances. **Summon** here draws from the *same faction's*
+pile (Shrouded Necromancers summons a green faction enemy) — the app models the pile it draws from
+(`GREEN`), not the faction. A faction symbol (a blue leaf for Elementalists, a horned skull for Dark
+Crusaders) prints to the right of the Fame banner; it marks the faction and the faction-reward the
+token grants on defeat, neither of which the Enemy Picker tracks (ADR-0006), so it isn't modelled.
+
+### Elementalist faction
+
+#### Green pile — Marauding Elementalist
+
+8 tokens: 5 types.
+
+| Token | Copies | Armor | Attack | Element | Modifiers | Fame | Resistances / abilities |
+|-------|:------:|:-----:|:------:|---------|-----------|:----:|-------------------------|
+| Elemental Priestesses | 1 | 4     | 3 + 3 | Ice + Fire | Multiple Attacks    | 3 | Fire + Ice Resistance |
+| Elven Protectors      | 2 | 4     | 3     | Physical   | Defend 2            | 2 | Fire Resistance |
+| Crystal Sprites       | 2 | 1 (2) | 1 + 1 | Ice        | Multiple Attacks, Defend 1 | 1 | Elusive; Ice Resistance |
+| Centaur Outriders     | 2 | 5     | 3     | Physical   | Swift               | 2 | — |
+| Cloud Griffons        | 1 | 4 (8) | 4     | Physical   | Swift               | 3 | Unfortified; Elusive |
+
+#### Brown pile — Elementalist Dungeon Monsters
+
+4 tokens: 4 types, 1 copy each.
+
+| Token | Copies | Armor | Attack | Element | Modifiers | Fame | Resistances / abilities |
+|-------|:------:|:-----:|:------:|---------|-----------|:----:|-------------------------|
+| Air Elemental   | 1 | 4 (8) | 3 | Cold Fire | Swift            | 4 | Elusive; Fire + Ice Resistance |
+| Fire Elemental  | 1 | 6     | 7 | Fire      | —                | 4 | Fire Resistance |
+| Water Elemental | 1 | 7     | 6 | Ice       | —                | 4 | Ice Resistance |
+| Earth Elemental | 1 | 5     | 4 | Physical  | Brutal, Cumbersome | 4 | Fortified; Physical Resistance |
+
+#### Red pile — Elementalist Draconum
+
+4 tokens: 2 types, 2 copies each.
+
+| Token | Copies | Armor | Attack | Element | Modifiers | Fame | Resistances / abilities |
+|-------|:------:|:------:|:-----:|---------|-----------|:----:|-------------------------|
+| Savage Dragon    | 2 | 7      | 5 | Physical  | Brutal | 6 | Physical Resistance |
+| Lightning Dragon | 2 | 7 (14) | 6 | Cold Fire | —      | 7 | Elusive; Fire + Ice Resistance |
+
+### Dark Crusader faction
+
+#### Green pile — Marauding Dark Crusader
+
+8 tokens: 5 types.
+
+| Token | Copies | Armor | Attack | Element | Modifiers | Fame | Resistances / abilities |
+|-------|:------:|:-----:|:------:|---------|-----------|:----:|-------------------------|
+| Corrupted Priests     | 1 | 5 | 4         | Cold Fire | Vampiric, Defend 1         | 3 | — |
+| Zombie Horde          | 2 | 5 | 1 + 1 + 1 | Physical  | Multiple Attacks, Cumbersome | 2 | Ice Resistance |
+| Gibbering Ghouls      | 2 | 4 | 4         | Physical  | Vampiric                   | 2 | — |
+| Shrouded Necromancers | 1 | 5 | —         | —         | Summon → Green             | 3 | Fortified |
+| Skeletal Warriors     | 2 | 4 | 3         | Physical  | —                          | 1 | Fire Resistance |
+
+#### Brown pile — Dark Crusader Dungeon Monsters
+
+4 tokens: 4 types, 1 copy each.
+
+| Token | Copies | Armor | Attack | Element | Modifiers | Fame | Resistances / abilities |
+|-------|:------:|:------:|:-----:|---------|-----------|:----:|-------------------------|
+| Blood Demon | 1 | 6      | 6 | Physical | Brutal, Assassination | 5 | Arcane Immunity; Fire Resistance |
+| Pain Wraith | 1 | 4 (8)  | 4 | Physical | Paralyze              | 3 | Elusive |
+| Vampire     | 1 | 5 (10) | 5 | Physical | Vampiric              | 4 | Elusive |
+| Mummy       | 1 | 5      | 4 | Physical | Poison                | 4 | Ice + Physical Resistance |
+
+#### Red pile — Dark Crusader Draconum
+
+4 tokens: 2 types, 2 copies each.
+
+| Token | Copies | Armor | Attack | Element | Modifiers | Fame | Resistances / abilities |
+|-------|:------:|:------:|:-----:|---------|-----------|:----:|-------------------------|
+| Vampire Dragon | 2 | 8 (16) | 8 | Physical | Vampiric               | 7 | Elusive |
+| Death Dragon   | 2 | 9      | 7 | Physical | Paralyze, Assassination | 6 | — |
+
+**Shades of Tezla ruin & faction tokens are out of scope here.** The expansion also adds new location
+tokens (Necropolis, Hidden Valley, Cemetery), faction leaders, faction reward tokens and a faction
+die — none of which are round-enemy tokens, so they're not part of the Enemy Picker's pile model.
 
 ## Ruin tokens (base game)
 
@@ -293,8 +410,8 @@ either. Tracked as issue #201.
 Tracked as GitHub sub-issues of #178:
 
 - Wire the RUIN pile into the Enemy Picker's draw flow, UI, and art (#201)
-- Lost Legion enemy tokens — done (#188); Shades of Tezla enemy tokens still pending (#188), plus
-  Lost Legion ruin tokens deferred to the RUIN-pile work (#201)
+- Lost Legion and Shades of Tezla enemy tokens — done (#188); Lost Legion ruin tokens deferred to the
+  RUIN-pile work (#201), and Shades of Tezla's faction-only/separate-pile mode to #189/#190
 - Apocalypse Dragon — possessed enemies & faction tokens (#189); faction tokens → Score Calculator (#190)
 - Explicit Summon Draw action (#191) — incl. summoned tokens applying their own offensive abilities
 - Multi-pile simultaneous draw & large-batch display (#192)
