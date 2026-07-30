@@ -63,6 +63,8 @@ import com.guyteichman.mageknightbuddy.domain.DrawLogEntry
 import com.guyteichman.mageknightbuddy.domain.EnemyPickerSession
 import com.guyteichman.mageknightbuddy.domain.EnemyToken
 import com.guyteichman.mageknightbuddy.domain.Expansion
+import com.guyteichman.mageknightbuddy.domain.RuinToken
+import com.guyteichman.mageknightbuddy.domain.RuinTokenCatalogue
 import com.guyteichman.mageknightbuddy.domain.TokenCatalogue
 import com.guyteichman.mageknightbuddy.domain.TokenPile
 import com.guyteichman.mageknightbuddy.domain.TokenPileId
@@ -164,6 +166,28 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
     // line and its tap target only render once `currentChildrenOf` is non-empty).
     val onViewSummoned: (List<Int>) -> Unit = { children -> openSummonResult(children) }
 
+    // An Enemies-With-Treasure ruin's drawn enemies (issue #201) are real enemies fought in full, so
+    // - unlike a Summon Draw's children - they open in the *normal* top-level zoom/grid (full stats,
+    // per-enemy Defeat), not the reduced summon dialogs. This closes the ruin's own zoom and shows
+    // the enemies, exactly as `onDraw` opens a fresh draw's result.
+    val openRuinEnemies: (List<Int>) -> Unit = { children ->
+        summonGrid = null; summonZoom = null
+        if (children.size == 1) {
+            gridState = null; zoom = ZoomState(children, 0)
+        } else {
+            zoom = null; gridState = GridState(children)
+        }
+    }
+    // Draws the ruin's prescribed enemies (attaching them under it via the shared summon machinery),
+    // then opens them. Used by the ruin zoom's "Draw its enemies" button.
+    val onDrawRuinEnemies: (Int) -> Unit = { parentIndex ->
+        scope.launch {
+            viewModel.drawRuinEnemies(parentIndex)
+            val children = viewModel.session?.currentChildrenOf(parentIndex) ?: return@launch
+            if (children.isNotEmpty()) openRuinEnemies(children)
+        }
+    }
+
     // The current summoned child of a summoner entry (first one, if a token ever has several
     // Summon attacks) - used to superimpose a small thumbnail of it wherever that summoner is shown
     // at a glance (issue #191). Null for an entry that was never summoned from.
@@ -206,21 +230,39 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
     }
 
     zoom?.let { state ->
-        TokenZoomDialog(
-            state = state,
-            log = session.drawLog,
-            onNavigate = { newIndex -> zoom = state.copy(index = newIndex); summonGrid = null; summonZoom = null },
-            onShowInfo = { token -> infoToken = token },
-            onToggleDefeated = { index, defeated -> scope.launch { viewModel.setDefeated(index, defeated) } },
-            onSummon = onSummon,
-            onViewSummoned = onViewSummoned,
-            currentChildrenOf = { index -> session.currentChildrenOf(index) },
-            // Only clears the detail dialog - if it was opened from the grid, the grid (still set
-            // above) reappears underneath; a top-level zoom (gridState null) just closes. Also
-            // clears any Summon Draw nested under this entry - it only makes sense while this
-            // entry's own zoom is open.
-            onDismiss = { zoom = null; summonGrid = null; summonZoom = null },
-        )
+        val entry = session.drawLog[state.logIndices[state.index]]
+        // A drawn RUIN token gets its own dialog (altar prompt / enemy-draw), never the
+        // armor/attack/fame enemy zoom - the two components print entirely different things.
+        val ruin = RuinTokenCatalogue.byId(entry.tokenId)
+        if (ruin != null) {
+            RuinZoomDialog(
+                ruin = ruin,
+                entry = entry,
+                logIndex = state.logIndices[state.index],
+                currentEnemies = session.currentChildrenOf(state.logIndices[state.index]),
+                enemyName = { childIndex -> TokenCatalogue.byId(session.drawLog[childIndex].tokenId)?.name ?: session.drawLog[childIndex].tokenId },
+                onDrawEnemies = onDrawRuinEnemies,
+                onViewEnemies = openRuinEnemies,
+                onToggleDefeated = { index, defeated -> scope.launch { viewModel.setDefeated(index, defeated) } },
+                onDismiss = { zoom = null; summonGrid = null; summonZoom = null },
+            )
+        } else {
+            TokenZoomDialog(
+                state = state,
+                log = session.drawLog,
+                onNavigate = { newIndex -> zoom = state.copy(index = newIndex); summonGrid = null; summonZoom = null },
+                onShowInfo = { token -> infoToken = token },
+                onToggleDefeated = { index, defeated -> scope.launch { viewModel.setDefeated(index, defeated) } },
+                onSummon = onSummon,
+                onViewSummoned = onViewSummoned,
+                currentChildrenOf = { index -> session.currentChildrenOf(index) },
+                // Only clears the detail dialog - if it was opened from the grid, the grid (still set
+                // above) reappears underneath; a top-level zoom (gridState null) just closes. Also
+                // clears any Summon Draw nested under this entry - it only makes sense while this
+                // entry's own zoom is open.
+                onDismiss = { zoom = null; summonGrid = null; summonZoom = null },
+            )
+        }
     }
 
     // Summon Draw result (nested under `zoom` above, not under `gridState`) - same before/after
@@ -352,6 +394,7 @@ private fun EnemyPickerContent(
                             canDrawOne = !isBusy &&
                                 (session.drawWithReplacement || pile.drawPile.size + pile.discardPile.size > 0),
                             onDrawOne = { onDraw(mapOf(pileId to 1)) },
+                            tapToDrawOnly = pileId == TokenPileId.RUIN,
                         )
                     }
                 }
@@ -421,6 +464,9 @@ private fun PileCard(
     onQuantityChange: (Int) -> Unit,
     canDrawOne: Boolean,
     onDrawOne: () -> Unit,
+    // The RUIN pile is revealed one token at a time (you enter one ruin site), never batched, so it
+    // drops the quantity stepper and keeps only the tap-to-draw-1 shortcut (issue #201).
+    tapToDrawOnly: Boolean = false,
 ) {
     val remaining = pile.drawPile.size
     val drawn = pile.discardPile.size
@@ -449,12 +495,21 @@ private fun PileCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
-            QuantityStepper(
-                quantity = quantity,
-                onQuantityChange = onQuantityChange,
-                // Without replacement, can't draw more than the whole pile (draw + discard) at once.
-                max = if (withReplacement) MAX_BATCH else (remaining + drawn).coerceAtMost(MAX_BATCH),
-            )
+            if (tapToDrawOnly) {
+                // No stepper for the RUIN pile - a subtle hint that its face is the whole control.
+                Text(
+                    "Tap to reveal",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                QuantityStepper(
+                    quantity = quantity,
+                    onQuantityChange = onQuantityChange,
+                    // Without replacement, can't draw more than the whole pile (draw + discard) at once.
+                    max = if (withReplacement) MAX_BATCH else (remaining + drawn).coerceAtMost(MAX_BATCH),
+                )
+            }
         }
     }
 }
@@ -573,21 +628,32 @@ private fun DrawLogRow(
     summonedChild: DrawLogEntry?,
 ) {
     val token = TokenCatalogue.byId(entry.tokenId)
+    // A ruin id resolves in the ruin catalogue instead (a sibling type, not an EnemyToken).
+    val ruin = if (token == null) RuinTokenCatalogue.byId(entry.tokenId) else null
     val summonedChildToken = summonedChild?.let { TokenCatalogue.byId(it.tokenId) }
     // Defeated rows are de-emphasised (dimmed name), since the on-board enemies are what still needs
     // attention.
     val nameColor = if (entry.defeated) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+    val hasLeadingFace = ruin != null || summonedChildToken != null
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (summonedChildToken != null) {
+            // A ruin shows its own hexagonal face; an enemy row instead shows its current Summon
+            // Draw child (if any) as the leading thumbnail.
+            if (ruin != null) {
+                RuinTokenFace(ruin = ruin, size = 32.dp)
+            } else if (summonedChildToken != null) {
                 EnemyTokenFace(token = summonedChildToken, size = 32.dp)
             }
-            Column(Modifier.weight(1f).padding(start = if (summonedChildToken != null) 8.dp else 0.dp)) {
-                Text(token?.name ?: entry.tokenId, style = MaterialTheme.typography.bodyLarge, color = nameColor)
+            Column(Modifier.weight(1f).padding(start = if (hasLeadingFace) 8.dp else 0.dp)) {
+                Text(
+                    token?.name ?: ruin?.let { if (it.isAltar) "Ancient Altar" else "Enemies with Treasure" } ?: entry.tokenId,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = nameColor,
+                )
                 Text(
                     text = entry.pile.displayName() + (if (entry.note.isNotBlank()) " · ${entry.note}" else ""),
                     style = MaterialTheme.typography.bodySmall,
@@ -931,6 +997,87 @@ private fun SummonedChildZoomDialog(
                     }
                 }
                 TextButton(onClick = onDismiss) { Text("Close") }
+            }
+        },
+    )
+}
+
+/**
+ * Zoomed view of a drawn Ruin token (issue #201) - the RUIN pile's counterpart to [TokenZoomDialog],
+ * since a ruin prints no armor/attack/fame block. An **Ancient Altar** shows its mana-payment prompt
+ * and the Fame it grants (derived, never scored - ADR-0006); an **Enemies With Treasure** shows its
+ * draw instruction, its printed [RuinToken.reward] (flavour/reference only), and a one-shot "Draw its
+ * enemies" button that draws the prescribed enemies via [onDrawEnemies] and attaches them under this
+ * ruin. Once drawn, that button is replaced by a tappable "Enemies: …" line ([onViewEnemies]) - a
+ * ruin group is drawn once and stays put (no re-draw). Both kinds carry the same Defeat + Close pair
+ * as the enemy zoom, marking the whole ruin resolved.
+ */
+@Composable
+private fun RuinZoomDialog(
+    ruin: RuinToken,
+    entry: DrawLogEntry,
+    logIndex: Int,
+    currentEnemies: List<Int>,
+    enemyName: (Int) -> String,
+    onDrawEnemies: (Int) -> Unit,
+    onViewEnemies: (List<Int>) -> Unit,
+    onToggleDefeated: (Int, Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {},
+        title = {
+            Text(
+                text = if (ruin.isAltar) "Ancient Altar" else "Enemies with Treasure",
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+            )
+        },
+        text = {
+            Column(
+                Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                RuinTokenFace(ruin = ruin, size = 140.dp)
+
+                if (ruin.isAltar) {
+                    Text(ruin.altarPrompt(), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+                    Text("Gain ${ruin.altarFame()} Fame", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Text(ruin.enemyDrawPrompt(), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+                    // Reward is reference text only (ADR-0006 amended to display, not track it).
+                    ruin.reward?.let { Text("Reward: $it", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center) }
+
+                    if (currentEnemies.isEmpty()) {
+                        Button(onClick = { onDrawEnemies(logIndex) }, enabled = !entry.defeated) {
+                            Text("Draw its enemies")
+                        }
+                    } else {
+                        // A ruin group is one-shot: once its enemies are out, offer to re-open them
+                        // (full stats, per-enemy Defeat) rather than draw a fresh set.
+                        Text(
+                            "Enemies: " + currentEnemies.joinToString { enemyName(it) },
+                            style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.Underline),
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.clickable { onViewEnemies(currentEnemies) },
+                        )
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = onDismiss) { Text("Close") }
+                    // Defeating a ruin (paid the altar / cleared its enemies) closes the window too,
+                    // matching the enemy zoom (issue #227).
+                    Button(
+                        onClick = { onToggleDefeated(logIndex, true); onDismiss() },
+                        enabled = !entry.defeated,
+                    ) {
+                        Text(if (entry.defeated) "Resolved" else "Resolve")
+                    }
+                }
             }
         },
     )
