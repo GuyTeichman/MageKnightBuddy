@@ -28,8 +28,9 @@ the **Token Set** like enemy tokens (via `RuinToken.expansion`). Two kinds:
 
 The printed `reward` is **displayed as reference text but never tracked or scored**
 ([ADR-0006](adr/0006-enemy-picker-owns-pile-state-but-models-no-map.md), amended by issue #201):
-`RuinToken` still tracks only which pile(s) to draw from, plus this flavour string. Exact Lost Legion
-ruin data (pile colours/counts, reward strings) and ruin art are still to be sourced.
+`RuinToken` still tracks only which pile(s) to draw from, plus this flavour string. All ruin *data*
+(base + Lost Legion) is transcribed; only ruin face *art* is still missing (mesh-only in the TTS mod),
+so ruins render a text fallback for now.
 _Avoid_: Enemy Token (different shape entirely - no armor/attack/fame, and an Ancient Altar isn't
 combat at all)
 

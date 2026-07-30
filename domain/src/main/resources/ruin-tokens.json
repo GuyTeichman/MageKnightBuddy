@@ -20,27 +20,27 @@
     "altarColors": ["RED"]
   },
   {
-    "id": "ruin_red_brown",
+    "id": "ruin_brown_red",
     "expansion": "BASE",
-    "enemyPiles": ["RED", "BROWN"],
+    "enemyPiles": ["BROWN", "RED"],
     "reward": "2 Artifacts"
   },
   {
-    "id": "ruin_green_brown",
+    "id": "ruin_green_red",
     "expansion": "BASE",
-    "enemyPiles": ["GREEN", "BROWN"],
-    "reward": "Artifact + Spell"
+    "enemyPiles": ["GREEN", "RED"],
+    "reward": "Artifact + Advanced Action"
   },
   {
     "id": "ruin_grey_white",
     "expansion": "BASE",
     "enemyPiles": ["GREY", "WHITE"],
-    "reward": "Artifact + Advanced Action"
+    "reward": "Artifact + Spell"
   },
   {
-    "id": "ruin_grey_red",
+    "id": "ruin_grey_brown",
     "expansion": "BASE",
-    "enemyPiles": ["GREY", "RED"],
+    "enemyPiles": ["GREY", "BROWN"],
     "reward": "Artifact"
   },
   {
@@ -50,9 +50,9 @@
     "reward": "Unit"
   },
   {
-    "id": "ruin_green_red",
+    "id": "ruin_green_brown",
     "expansion": "BASE",
-    "enemyPiles": ["GREEN", "RED"],
+    "enemyPiles": ["GREEN", "BROWN"],
     "reward": "Artifact"
   },
   {
@@ -62,9 +62,26 @@
     "reward": "Set of 4 crystals"
   },
   {
-    "id": "ruin_red_violet",
+    "id": "ruin_brown_violet",
     "expansion": "BASE",
-    "enemyPiles": ["RED", "VIOLET"],
-    "reward": "Advanced Action + set of 4 crystals"
+    "enemyPiles": ["BROWN", "VIOLET"],
+    "reward": "Spell + set of 4 crystals"
+  },
+  {
+    "id": "ruin_ll_altar_four_color",
+    "expansion": "LOST_LEGION",
+    "altarColors": ["GREEN", "BLUE", "WHITE", "RED"]
+  },
+  {
+    "id": "ruin_ll_green_green_green",
+    "expansion": "LOST_LEGION",
+    "enemyPiles": ["GREEN", "GREEN", "GREEN"],
+    "reward": "Unit"
+  },
+  {
+    "id": "ruin_ll_violet_violet",
+    "expansion": "LOST_LEGION",
+    "enemyPiles": ["VIOLET", "VIOLET"],
+    "reward": "Spell + Advanced Action"
   }
 ]

@@ -242,15 +242,13 @@ first catalogue token with more than one Summon attack, exercising the multi-sum
 | Delphana Masters  | 2 | 8  | 5  | Cold Fire | Assassination, Paralyze  | 9 | Fire + Ice Resistance |
 | Grim Legionnaires | 2 | 10 | 11 | Physical  | —                        | 8 | Unfortified; Arcane Immunity |
 
-**Lost Legion ruin tokens: covered by the model, data still to transcribe (issue #201).** The Lost
-Legion adds 3 hexagonal ruin tokens - a four-colour "pay one of each → 10 Fame" Altar and two
-Enemies-With-Treasure tokens (one draws **three** enemies, confirmed from the rulebook p.20 token
-strip - which is exactly why `enemyPiles` is a variable-length list, not a fixed pair). `RuinToken`
-now models all three shapes (`altarColors` size 4; a 3-element `enemyPiles`); what's still missing is
-the **exact data** - the four altar colours, each EWT token's pile colours/counts, and the reward
-strings - pending a legible source, since the mod ships these as 3-D meshes with no croppable face
-art. See the "Ruin tokens" section below for the model conventions. The Shades of Tezla enemy tokens
-are transcribed in their own section below.
+**Lost Legion ruin tokens: transcribed and wired (issue #201).** The Lost Legion adds 3 hexagonal
+ruin tokens - a four-colour "pay one of each → 10 Fame" Altar and two Enemies-With-Treasure tokens,
+one of which draws **three** enemies (which is exactly why `enemyPiles` is a variable-length list,
+not a fixed pair). Their exact data is in the "Ruin tokens" section's table below, transcribed from
+the rulebook p.20 token strip and the TTS "Enemy Tokens List" reference sheet. Only their face art is
+still missing (mesh-only in the mod). The Shades of Tezla enemy tokens are transcribed in their own
+section below.
 
 ## Shades of Tezla expansion tokens (issue #188)
 
@@ -391,19 +389,31 @@ the Ultimate Edition Walkthrough), a Ruin token is one of two kinds:
   `RuinToken.enemyPiles`, a `List<TokenPileId>` drawn **in order**, where **a pile repeated in the
   list means that many draws from it** (base game's Green+Green = `[GREEN, GREEN]`; Lost Legion adds
   a three-enemy token) - this generalises the old "two badges" reading. The reward is `RuinToken.reward`,
-  **displayed as reference text but never tracked or scored** (ADR-0006, amended by #201); base-game
-  reward strings, reasoned out by hand from the token faces:
+  **displayed as reference text but never tracked or scored** (ADR-0006, amended by #201).
 
-| Piles drawn | Reward |
-|-------------|--------|
-| Red + Brown | 2 Artifacts |
-| Green + Brown | Artifact + Spell |
-| Grey + White | Artifact + Advanced Action |
-| Grey + Red | Artifact |
-| Grey + Violet | Unit |
-| Green + Red | Artifact |
-| Green + Green | Set of 4 crystals |
-| Red + Violet | Advanced Action + set of 4 crystals |
+  The full base + Lost Legion ruin data below was **re-transcribed against ground truth** during #201
+  - the TTS mod's "Enemy Tokens List" reference sheet (which reproduces every token face) cross-checked
+  against the Lost Legion rulebook p.20 token strip. This **corrected two pile-pair errors and several
+  rewards** from the original #187 transcription: the tokens read then as "Grey + Red" and "Red +
+  Violet" are actually **Grey + Brown** and **Brown + Violet** (a tan sword badge, not the red-dragon
+  badge), and "Grey + White" gives a **Spell** (violet card), not an Advanced Action. Reward-icon key:
+  gold goblet = Artifact, violet card = Spell, deed card = Advanced Action, figure = Unit, four gems =
+  set of 4 crystals.
+
+| Piles drawn (badge order) | Reward | Expansion |
+|---------------------------|--------|-----------|
+| Brown + Red | 2 Artifacts | Base |
+| Green + Red | Artifact + Advanced Action | Base |
+| Grey + White | Artifact + Spell | Base |
+| Grey + Brown | Artifact | Base |
+| Grey + Violet | Unit | Base |
+| Green + Brown | Artifact | Base |
+| Green + Green | Set of 4 crystals | Base |
+| Brown + Violet | Spell + set of 4 crystals | Base |
+| Green + Green + Green | Unit | Lost Legion |
+| Violet + Violet | Spell + Advanced Action | Lost Legion |
+
+Lost Legion altar: one crystal each of **Green, Blue, White, Red → 10 Fame** (`altarColors` size 4).
 
 **Wired into the Enemy Picker (issue #201).** `EnemyPickerSession` builds the single RUIN pile from
 `RuinTokenCatalogue` (one copy per ruin, gated by the Token Set), the pile is tap-to-draw-1 in the
@@ -413,11 +423,11 @@ enemies" button (which draws the prescribed enemies via the shared Summon Draw m
 them under the ruin, rendered in full so their defensive abilities show, each independently
 defeatable).
 
-**Still open:** the exact Lost Legion ruin data - the 4-colour altar plus the two Enemies-With-Treasure
-tokens' pile colours/counts and reward strings - is *modelled but not yet transcribed*, pending a
-legible source (the rulebook p.20 token strip and the TTS mod; the mesh-only ruin bag gave no
-croppable face art in #187). No `ruin_*` art is bundled yet either, so ruins currently render a text
-fallback. Both tracked under #201.
+**Still open:** no `ruin_*` face art is bundled yet - the TTS mod ships the ruin tokens as 3-D meshes
+with no croppable 2-D face (confirmed again in #201 by inspecting the mod's "Ancient Ruins" / "Lost
+Legion Ruins" bags), and the reference-sheet hexagons are too small to crop as usable per-token art.
+So ruins currently render a text fallback (their altar prompt / enemy-draw line). The data itself
+(base + Lost Legion) is fully transcribed above.
 
 ## Follow-up work (issue #178)
 

@@ -37,6 +37,14 @@ class RuinTokenCatalogueTest {
     }
 
     @Test
+    fun `the Lost Legion adds three ruins`() {
+        val ll = RuinTokenCatalogue.tokens.filter { it.expansion == Expansion.LOST_LEGION }
+        // 1 four-colour altar + 2 Enemies-With-Treasure tokens (rulebook p.20 token strip).
+        assertEquals(3, ll.size)
+        assertEquals(1, ll.count { it.isAltar })
+    }
+
+    @Test
     fun `every token is either an altar or an enemy draw, never both or neither`() {
         RuinTokenCatalogue.tokens.forEach { token ->
             val hasAltar = token.altarColors != null
@@ -111,10 +119,27 @@ class RuinTokenCatalogueTest {
     }
 
     @Test
-    fun `the red-brown ruin draws red then brown for two artifacts`() {
-        val token = assertNotNull(RuinTokenCatalogue.byId("ruin_red_brown"))
-        assertEquals(listOf(TokenPileId.RED, TokenPileId.BROWN), token.enemyPiles)
-        // Rules-doc table: Red + Brown -> 2 Artifacts.
+    fun `the brown-red ruin draws brown then red for two artifacts`() {
+        val token = assertNotNull(RuinTokenCatalogue.byId("ruin_brown_red"))
+        assertEquals(listOf(TokenPileId.BROWN, TokenPileId.RED), token.enemyPiles)
+        // Ground-truth token strip (rulebook p.20 / TTS reference sheet): Brown + Red -> 2 Artifacts.
         assertEquals("2 Artifacts", token.reward)
+    }
+
+    @Test
+    fun `the Lost Legion four-colour altar pays one of each basic colour`() {
+        val token = assertNotNull(RuinTokenCatalogue.byId("ruin_ll_altar_four_color"))
+        // Rulebook p.20: one crystal each of green, blue, white, red -> 10 Fame (Fame is a UI-derived
+        // value, not stored). Order matches the printed crystal order on the token.
+        assertEquals(listOf(ManaColor.GREEN, ManaColor.BLUE, ManaColor.WHITE, ManaColor.RED), token.altarColors)
+        assertNull(token.enemyPiles)
+    }
+
+    @Test
+    fun `the Lost Legion three-green ruin draws three from Green for a Unit`() {
+        val token = assertNotNull(RuinTokenCatalogue.byId("ruin_ll_green_green_green"))
+        // The token whose existence forced enemyPiles to be a variable-length list: three Green draws.
+        assertEquals(listOf(TokenPileId.GREEN, TokenPileId.GREEN, TokenPileId.GREEN), token.enemyPiles)
+        assertEquals("Unit", token.reward)
     }
 }
