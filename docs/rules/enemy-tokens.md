@@ -242,12 +242,15 @@ first catalogue token with more than one Summon attack, exercising the multi-sum
 | Delphana Masters  | 2 | 8  | 5  | Cold Fire | Assassination, Paralyze  | 9 | Fire + Ice Resistance |
 | Grim Legionnaires | 2 | 10 | 11 | Physical  | —                        | 8 | Unfortified; Arcane Immunity |
 
-**Lost Legion ruin tokens are out of scope here.** The Lost Legion also adds 3 hexagonal ruin tokens
-(a four-colour "pay 3 mana → 10 Fame" Altar and two Enemies-With-Treasure tokens). They're deferred
-to the RUIN-pile work (issue #201) along with the base ruins, since the RUIN pile isn't wired into
-the picker yet, the four-colour altar needs a `RuinToken` model change, and the mod ships those
-tokens as 3-D meshes with no croppable face art. The Shades of Tezla enemy tokens are transcribed in
-their own section below.
+**Lost Legion ruin tokens: covered by the model, data still to transcribe (issue #201).** The Lost
+Legion adds 3 hexagonal ruin tokens - a four-colour "pay one of each → 10 Fame" Altar and two
+Enemies-With-Treasure tokens (one draws **three** enemies, confirmed from the rulebook p.20 token
+strip - which is exactly why `enemyPiles` is a variable-length list, not a fixed pair). `RuinToken`
+now models all three shapes (`altarColors` size 4; a 3-element `enemyPiles`); what's still missing is
+the **exact data** - the four altar colours, each EWT token's pile colours/counts, and the reward
+strings - pending a legible source, since the mod ships these as 3-D meshes with no croppable face
+art. See the "Ruin tokens" section below for the model conventions. The Shades of Tezla enemy tokens
+are transcribed in their own section below.
 
 ## Shades of Tezla expansion tokens (issue #188)
 
@@ -377,15 +380,19 @@ how `EnemyAttack` already tells a numeric attack from a Summon apart, rather tha
 sealed/polymorphic JSON shape for one type). Per the rulebook's "Revealing Ruins" section (also see
 the Ultimate Edition Walkthrough), a Ruin token is one of two kinds:
 
-- **Ancient Altar** (4 tokens): shows three mana crystals of one colour. Pay three mana of that
-  colour to immediately gain 7 Fame; no combat. Base game colours: Green, Blue, White, Red (the
-  Lost Legion expansion adds a 4-colour/10-Fame variant, deferred with the rest of the RUIN pile -
-  issue #201; see the Lost Legion section above).
-- **Enemies With Treasure** (8 tokens): shows two enemy-pile badges (the same pile can appear
-  twice - one base-game token draws both its enemies from Green). Draw one token from each named
-  pile and fight both; if you defeat both, claim the reward printed on the token. The reward isn't
-  modelled in `RuinToken` - the Enemy Picker only tracks pile/draw state, never rewards or Fame
-  (ADR-0006), so reward text is flavour only, listed here for completeness:
+- **Ancient Altar** (4 base tokens): shows three mana crystals of one colour. Pay three mana of that
+  colour to immediately gain 7 Fame; no combat. Base game colours: Green, Blue, White, Red. Modelled
+  as `RuinToken.altarColors`, a `List<ManaColor>` whose **size is the whole distinction** (spelled
+  out here so nothing leans on an unstated convention): **size 1** = pay 3 of that colour → 7 Fame;
+  **size 4** = the Lost Legion pay-one-of-each altar → 10 Fame (see the Lost Legion section above).
+  The Fame is derived from the size for the on-screen prompt, never stored.
+- **Enemies With Treasure** (8 base tokens): shows enemy-pile badges. Draw one token from each named
+  pile and fight them all; if you defeat them, claim the reward printed on the token. Modelled as
+  `RuinToken.enemyPiles`, a `List<TokenPileId>` drawn **in order**, where **a pile repeated in the
+  list means that many draws from it** (base game's Green+Green = `[GREEN, GREEN]`; Lost Legion adds
+  a three-enemy token) - this generalises the old "two badges" reading. The reward is `RuinToken.reward`,
+  **displayed as reference text but never tracked or scored** (ADR-0006, amended by #201); base-game
+  reward strings, reasoned out by hand from the token faces:
 
 | Piles drawn | Reward |
 |-------------|--------|
@@ -398,12 +405,19 @@ the Ultimate Edition Walkthrough), a Ruin token is one of two kinds:
 | Green + Green | Set of 4 crystals |
 | Red + Violet | Advanced Action + set of 4 crystals |
 
-**Not yet wired into the Enemy Picker's draw flow** - `RuinTokenCatalogue` is transcribed and
-validated (mirroring `TokenCatalogue`'s mandatory catalogue-validation test, ADR-0007) but
-`EnemyPickerSession`/the UI don't build or render the RUIN pile yet, since a drawn Ruin token needs
-different UI treatment than a round enemy token (a mana-payment prompt vs. a two-pile draw
-instruction) rather than an armor/attack/fame display, and no art exists for any `ruin_*` id yet
-either. Tracked as issue #201.
+**Wired into the Enemy Picker (issue #201).** `EnemyPickerSession` builds the single RUIN pile from
+`RuinTokenCatalogue` (one copy per ruin, gated by the Token Set), the pile is tap-to-draw-1 in the
+selector, and a drawn ruin gets its own dialog: an Ancient Altar shows its mana prompt + derived
+Fame, an Enemies-With-Treasure ruin shows its draw instruction + reward + a one-shot "Draw its
+enemies" button (which draws the prescribed enemies via the shared Summon Draw machinery and attaches
+them under the ruin, rendered in full so their defensive abilities show, each independently
+defeatable).
+
+**Still open:** the exact Lost Legion ruin data - the 4-colour altar plus the two Enemies-With-Treasure
+tokens' pile colours/counts and reward strings - is *modelled but not yet transcribed*, pending a
+legible source (the rulebook p.20 token strip and the TTS mod; the mesh-only ruin bag gave no
+croppable face art in #187). No `ruin_*` art is bundled yet either, so ruins currently render a text
+fallback. Both tracked under #201.
 
 ## Follow-up work (issue #178)
 
