@@ -35,6 +35,14 @@ class TacticStateTest {
     }
 
     @Test
+    fun `pickPlayer rejects a card outside the 1-6 range`() {
+        val state = TacticState()
+
+        assertFailsWith<IllegalArgumentException> { state.pickPlayer(card = 0, isDay = true) }
+        assertFailsWith<IllegalArgumentException> { state.pickPlayer(card = 7, isDay = true) }
+    }
+
+    @Test
     fun `pickPlayer does not reject a card removed from the inactive pile`() {
         val state = TacticState(removedNightCards = setOf(2))
 

@@ -30,12 +30,18 @@ data class TacticState(
 
     /**
      * Records the real player's Tactic pick for the active pile ([isDay] selects Day vs.
-     * Night). `require` throws [IllegalArgumentException] if [card] is already unavailable -
-     * the UI should only ever offer cards from [unavailableCards]'s complement, so this is a
-     * defensive guard against a caller bug, not an expected user-facing error path.
+     * Night). `require` throws [IllegalArgumentException] if [card] is outside the physical
+     * 1-6 range or already unavailable - the UI should only ever offer legal, available cards,
+     * so both checks are a defensive guard against a caller bug, not an expected user-facing
+     * error path.
      */
     fun pickPlayer(card: Int, isDay: Boolean): TacticState {
+        require(card in 1..6) { "Tactic $card is outside the 1-6 range" }
         require(card !in unavailableCards(isDay)) { "Tactic $card is not available to pick" }
+        // `copy()` is a method every Kotlin `data class` generates for free: it builds a new
+        // instance with just the named property changed, carrying every other property over
+        // unchanged - the class stays immutable, so this returns a new TacticState rather than
+        // mutating the receiver. Same pattern used throughout DummyPlayerSession/VolkareSession.
         return copy(playerPick = card)
     }
 

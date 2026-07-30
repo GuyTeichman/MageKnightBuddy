@@ -20,8 +20,11 @@ package com.guyteichman.mageknightbuddy.domain
  * throws here as a defensive "should never happen" guard, not a real UI path.
  */
 fun tacticRemovalRule(isVolkare: Boolean, isSolo: Boolean, scenario: Scenario): TacticRemovalRule {
+    // Volkare is checked first: its rule is fixed and doesn't follow the general solo/coop split
+    // below (its own pick is never removed, even in solo - PLAYER_ONLY, not BOTH). Checking
+    // isSolo first here previously short-circuited Volkare solo into the wrong BOTH rule.
+    if (isVolkare) return if (isSolo) TacticRemovalRule.EveryRound(RemovalTarget.PLAYER_ONLY) else TacticRemovalRule.Never
     if (isSolo) return TacticRemovalRule.EveryRound(RemovalTarget.BOTH)
-    if (isVolkare) return TacticRemovalRule.Never
 
     return when (scenario) {
         Scenario.SoloConquest -> TacticRemovalRule.EveryRound(RemovalTarget.PLAYER_ONLY)
@@ -59,6 +62,10 @@ fun tacticRemovalRule(isVolkare: Boolean, isSolo: Boolean, scenario: Scenario): 
  */
 fun tacticRemovalTarget(rule: TacticRemovalRule, round: Int, startsAtNight: Boolean): RemovalTarget? {
     val firstDayRound = if (startsAtNight) 2 else 1
+    // `when` over a `sealed interface` is exhaustive: the compiler requires every implementing
+    // type (TacticRemovalRule.EveryRound/FirstDayOnly/FirstTwoRounds/Never) to have its own
+    // branch here, with no `else` needed - if a new removal shape is ever added, this fails to
+    // compile until it's handled here too.
     return when (rule) {
         is TacticRemovalRule.EveryRound -> rule.target
         is TacticRemovalRule.FirstDayOnly -> if (round == firstDayRound) rule.target else null

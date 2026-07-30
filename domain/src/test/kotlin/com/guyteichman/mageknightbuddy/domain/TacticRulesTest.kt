@@ -19,10 +19,14 @@ class TacticRulesTest {
     }
 
     @Test
-    fun `solo Volkare also returns EveryRound BOTH, ignoring scenario`() {
+    fun `solo Volkare removes only the player's card, never Volkare's own, ignoring scenario`() {
         assertEquals(
-            TacticRemovalRule.EveryRound(RemovalTarget.BOTH),
+            TacticRemovalRule.EveryRound(RemovalTarget.PLAYER_ONLY),
             tacticRemovalRule(isVolkare = true, isSolo = true, scenario = Scenario.VolkaresReturn),
+        )
+        assertEquals(
+            TacticRemovalRule.EveryRound(RemovalTarget.PLAYER_ONLY),
+            tacticRemovalRule(isVolkare = true, isSolo = true, scenario = Scenario.VolkaresQuest),
         )
     }
 
