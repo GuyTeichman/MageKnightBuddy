@@ -1,58 +1,70 @@
 [
   {
     "id": "ruin_altar_green",
-    "altarColor": "GREEN"
+    "expansion": "BASE",
+    "altarColors": ["GREEN"]
   },
   {
     "id": "ruin_altar_blue",
-    "altarColor": "BLUE"
+    "expansion": "BASE",
+    "altarColors": ["BLUE"]
   },
   {
     "id": "ruin_altar_white",
-    "altarColor": "WHITE"
+    "expansion": "BASE",
+    "altarColors": ["WHITE"]
   },
   {
     "id": "ruin_altar_red",
-    "altarColor": "RED"
+    "expansion": "BASE",
+    "altarColors": ["RED"]
   },
   {
     "id": "ruin_red_brown",
-    "firstPile": "RED",
-    "secondPile": "BROWN"
+    "expansion": "BASE",
+    "enemyPiles": ["RED", "BROWN"],
+    "reward": "2 Artifacts"
   },
   {
     "id": "ruin_green_brown",
-    "firstPile": "GREEN",
-    "secondPile": "BROWN"
+    "expansion": "BASE",
+    "enemyPiles": ["GREEN", "BROWN"],
+    "reward": "Artifact + Spell"
   },
   {
     "id": "ruin_grey_white",
-    "firstPile": "GREY",
-    "secondPile": "WHITE"
+    "expansion": "BASE",
+    "enemyPiles": ["GREY", "WHITE"],
+    "reward": "Artifact + Advanced Action"
   },
   {
     "id": "ruin_grey_red",
-    "firstPile": "GREY",
-    "secondPile": "RED"
+    "expansion": "BASE",
+    "enemyPiles": ["GREY", "RED"],
+    "reward": "Artifact"
   },
   {
     "id": "ruin_grey_violet",
-    "firstPile": "GREY",
-    "secondPile": "VIOLET"
+    "expansion": "BASE",
+    "enemyPiles": ["GREY", "VIOLET"],
+    "reward": "Unit"
   },
   {
     "id": "ruin_green_red",
-    "firstPile": "GREEN",
-    "secondPile": "RED"
+    "expansion": "BASE",
+    "enemyPiles": ["GREEN", "RED"],
+    "reward": "Artifact"
   },
   {
     "id": "ruin_green_green",
-    "firstPile": "GREEN",
-    "secondPile": "GREEN"
+    "expansion": "BASE",
+    "enemyPiles": ["GREEN", "GREEN"],
+    "reward": "Set of 4 crystals"
   },
   {
     "id": "ruin_red_violet",
-    "firstPile": "RED",
-    "secondPile": "VIOLET"
+    "expansion": "BASE",
+    "enemyPiles": ["RED", "VIOLET"],
+    "reward": "Advanced Action + set of 4 crystals"
   }
 ]
