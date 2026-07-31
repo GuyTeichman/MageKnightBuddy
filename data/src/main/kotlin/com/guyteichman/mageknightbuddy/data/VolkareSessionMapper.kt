@@ -11,6 +11,7 @@ import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.ManaColor
 import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.Scenario
+import com.guyteichman.mageknightbuddy.domain.TacticState
 import com.guyteichman.mageknightbuddy.domain.VolkareCard
 import com.guyteichman.mageknightbuddy.domain.VolkareEvent
 import com.guyteichman.mageknightbuddy.domain.VolkareSession
@@ -65,6 +66,11 @@ private fun VolkareEventDto.toDomain(): VolkareEvent = when (this) {
     is VolkareEventDto.QuestLost -> VolkareEvent.QuestLost(round)
 }
 
+// Maps the domain TacticState to its flat DTO mirror - see DummyPlayerSessionMapper's matching
+// functions (redeclared here since Kotlin `private` top-level functions aren't visible across files).
+private fun TacticState.toDto(): TacticStateDto = TacticStateDto(removedDayCards, removedNightCards, dummyPick, playerPick)
+private fun TacticStateDto.toDomain(): TacticState = TacticState(removedDayCards, removedNightCards, dummyPick, playerPick)
+
 /**
  * Converts a domain session into the Room row that persists it, ready for
  * [VolkareSessionDao.upsert]. [scenario] and [raceLevel] are stored by name/id since Room maps
@@ -89,6 +95,8 @@ fun VolkareSession.toEntity(updatedAt: Long = System.currentTimeMillis()): Volka
     logJson = Json.encodeToString(log.map { it.toDto() }),
     updatedAt = updatedAt,
     startsAtNight = startsAtNight,
+    tacticStateJson = Json.encodeToString(tacticState.toDto()),
+    isSolo = isSolo,
 )
 
 /**
@@ -108,4 +116,6 @@ fun VolkareSessionEntity.toDomain(): VolkareSession = VolkareSession.restore(
     // right subtype for each list entry), then each DTO is converted to its domain event.
     log = Json.decodeFromString<List<VolkareEventDto>>(logJson).map { it.toDomain() },
     startsAtNight = startsAtNight,
+    tacticState = Json.decodeFromString<TacticStateDto>(tacticStateJson).toDomain(),
+    isSolo = isSolo,
 )

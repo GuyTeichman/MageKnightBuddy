@@ -11,6 +11,8 @@ import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
+import com.guyteichman.mageknightbuddy.domain.Scenario
+import com.guyteichman.mageknightbuddy.domain.TacticState
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -25,6 +27,13 @@ private fun CardIdentityDto.toDomain(): CardIdentity = when (this) {
     is CardIdentityDto.SingleColor -> CardIdentity.SingleColor(CardColor.valueOf(color))
     is CardIdentityDto.DualColor -> CardIdentity.DualColor(CardColor.valueOf(colorA), CardColor.valueOf(colorB))
 }
+
+// Maps the domain TacticState to its flat DTO mirror, field-for-field (both shapes are identical -
+// TacticStateDto exists purely so kotlinx.serialization has an @Serializable type to encode).
+private fun TacticState.toDto(): TacticStateDto = TacticStateDto(removedDayCards, removedNightCards, dummyPick, playerPick)
+
+// The reverse of toDto() above.
+private fun TacticStateDto.toDomain(): TacticState = TacticState(removedDayCards, removedNightCards, dummyPick, playerPick)
 
 // `private fun List<CardIdentity>.toJson()` is a Kotlin extension function: it adds a `toJson()`
 // method to the existing `List<CardIdentity>` type (usable as `someList.toJson()`) without
@@ -101,6 +110,9 @@ fun DummyPlayerSession.toEntity(updatedAt: Long = System.currentTimeMillis()): D
     logJson = Json.encodeToString(log.map { it.toDto() }),
     updatedAt = updatedAt,
     startsAtNight = startsAtNight,
+    tacticStateJson = Json.encodeToString(tacticState.toDto()),
+    isSolo = isSolo,
+    scenario = scenario.id,
 )
 
 /**
@@ -126,4 +138,7 @@ fun DummyPlayerSessionEntity.toDomain(): DummyPlayerSession = DummyPlayerSession
     // the right subtype for each list entry), then each DTO is converted to its domain event.
     log = Json.decodeFromString<List<DummyPlayerEventDto>>(logJson).map { it.toDomain() },
     startsAtNight = startsAtNight,
+    tacticState = Json.decodeFromString<TacticStateDto>(tacticStateJson).toDomain(),
+    isSolo = isSolo,
+    scenario = Scenario.fromId(scenario),
 )

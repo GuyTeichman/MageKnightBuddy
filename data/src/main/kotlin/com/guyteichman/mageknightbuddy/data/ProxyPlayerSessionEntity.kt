@@ -14,6 +14,9 @@ import androidx.room.PrimaryKey
  * columns directly). [objectiveCardJson] is nullable - `null` means no current Objective Card
  * (see `CONTEXT.md`'s **Objective Card** entry). Crystal counts flatten into 4 named columns,
  * matching [DummyPlayerSessionEntity]'s convention (Room has no direct `Map` column support).
+ *
+ * [tacticStateJson]/[isSolo]/[scenario] mirror [DummyPlayerSessionEntity]'s fields of the same
+ * name exactly - see that class's doc comment.
  */
 @Entity(tableName = "proxy_player_sessions")
 data class ProxyPlayerSessionEntity(
@@ -33,6 +36,10 @@ data class ProxyPlayerSessionEntity(
     val logJson: String,
     val updatedAt: Long,
     val startsAtNight: Boolean = false,
+    // See DummyPlayerSessionEntity's matching fields for why these defaults are what they are.
+    val tacticStateJson: String = "{}",
+    val isSolo: Boolean = true,
+    val scenario: String = "solo_conquest",
 ) {
     companion object {
         /** The fixed primary key every saved row uses, enforcing the single-slot autosave design above. */
