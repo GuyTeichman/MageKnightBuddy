@@ -5,8 +5,10 @@ import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -68,23 +70,28 @@ internal fun SiteThumbnail(site: Site, size: Dp = 56.dp) {
     }
 }
 
-/** A wide header image for the detail screen: the site's art, or a taller category placeholder. */
+/** A header image for the detail screen: the site's art framed on a tinted panel, or a placeholder. */
 @Composable
 internal fun SiteArtHeader(site: Site, modifier: Modifier = Modifier) {
     val bitmap = rememberSiteBitmap(site)
+    val panel = modifier.fillMaxWidth().height(220.dp).clip(THUMB_SHAPE)
     if (bitmap != null) {
-        Image(
-            bitmap = bitmap,
-            contentDescription = site.name,
-            contentScale = ContentScale.Crop,
-            modifier = modifier.fillMaxWidth().height(200.dp).clip(THUMB_SHAPE),
-        )
+        Box(
+            modifier = panel.background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = site.name,
+                // Fit (not Crop): the card illustrations vary in aspect - wide (Monastery), tall
+                // (Mage Tower), square (the Shades hex tiles) - so Fit shows each one whole,
+                // centered on the panel, rather than cropping its edges.
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize().padding(8.dp),
+            )
+        }
     } else {
-        SiteArtPlaceholder(
-            category = site.category,
-            iconSize = 72.dp,
-            modifier = modifier.fillMaxWidth().height(200.dp).clip(THUMB_SHAPE),
-        )
+        SiteArtPlaceholder(category = site.category, iconSize = 72.dp, modifier = panel)
     }
 }
 
