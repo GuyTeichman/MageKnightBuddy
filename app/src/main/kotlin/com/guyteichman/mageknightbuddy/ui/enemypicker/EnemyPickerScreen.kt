@@ -45,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -298,6 +299,14 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
             onShowInfo = { token -> infoToken = token },
             onDismiss = { summonZoom = null },
         )
+    }
+
+    // Drop a stale open-contents selection if its pile disappears - e.g. an Apply & Reset that
+    // changes the Token Set so this pile no longer exists. Without this, `contentsPileId` would
+    // linger (the guard below just skips rendering) and could re-open the dialog unbidden if that
+    // same pile id later returned.
+    LaunchedEffect(session.piles.keys, contentsPileId) {
+        if (contentsPileId != null && contentsPileId !in session.piles) contentsPileId = null
     }
 
     // The "view draw pile" contents dialog (issue #231). Composed before the info dialogs below so
