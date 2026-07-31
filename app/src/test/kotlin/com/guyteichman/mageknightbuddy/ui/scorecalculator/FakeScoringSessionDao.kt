@@ -13,4 +13,14 @@ class FakeScoringSessionDao : ScoringSessionDao {
     }
 
     override fun getAll(): Flow<List<ScoringSessionEntity>> = flowOf(inserted)
+
+    override suspend fun getAllOnce(): List<ScoringSessionEntity> = inserted.toList()
+
+    override suspend fun insertAll(entities: List<ScoringSessionEntity>) {
+        inserted += entities
+    }
+
+    override suspend fun deleteAll() {
+        inserted.clear()
+    }
 }
