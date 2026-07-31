@@ -3,6 +3,7 @@ package com.guyteichman.mageknightbuddy.ui.dummyplayer
 import androidx.lifecycle.SavedStateHandle
 import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.domain.Knight
+import com.guyteichman.mageknightbuddy.domain.Scenario
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -80,5 +81,27 @@ class ProxyPlayerSetupViewModelTest {
         viewModel.start()
 
         assertEquals(Knight.GOLDYX, repository.restore()?.knight)
+    }
+
+    @Test
+    fun `defaults to solo and Conquest`() {
+        val viewModel = ProxyPlayerSetupViewModel(SavedStateHandle(), ProxyPlayerSessionRepository(FakeProxyPlayerSessionDao()))
+
+        assertTrue(viewModel.isSolo)
+        assertEquals(Scenario.SoloConquest, viewModel.scenario)
+    }
+
+    @Test
+    fun `start threads isSolo and scenario into the saved session`() = runTest {
+        val repository = ProxyPlayerSessionRepository(FakeProxyPlayerSessionDao())
+        val viewModel = ProxyPlayerSetupViewModel(SavedStateHandle(), repository)
+        viewModel.isSolo = false
+        viewModel.scenario = Scenario.ForTheCouncil
+
+        viewModel.start()
+
+        val saved = repository.restore()
+        assertEquals(false, saved?.isSolo)
+        assertEquals(Scenario.ForTheCouncil, saved?.scenario)
     }
 }

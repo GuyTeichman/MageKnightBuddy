@@ -88,6 +88,7 @@ import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.Scenario
+import com.guyteichman.mageknightbuddy.domain.coopTacticScenarios
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
 import com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon
@@ -351,16 +352,13 @@ private fun DummyPlayerSetupScreen(
 }
 
 /**
- * Options for the coop-only Tactic Scenario picker (issue #220): every [Scenario] except
- * [Scenario.VolkaresReturn]/[Scenario.VolkaresQuest] (Volkare-only, has its own separate Scenario
- * field) and [Scenario.SoloConquestChallenge] (no documented coop variant - see `TacticRules.kt`'s
- * `tacticRemovalRule` doc comment). Sorted alphabetically by displayName, matching the Score
- * Calculator's own Scenario picker convention (issue #110).
+ * Options for the coop-only Tactic Scenario picker (issue #220): [coopTacticScenarios] - every
+ * [Scenario] with a real coop Tactic-removal rule, per `TacticRules.kt`'s exhaustive `when` (so
+ * this list can never drift out of sync with a hand-maintained exclusion set - see that val's doc
+ * comment). Sorted alphabetically by displayName, matching the Score Calculator's own Scenario
+ * picker convention (issue #110).
  */
-private val COOP_TACTIC_SCENARIO_OPTIONS: List<Scenario> =
-    Scenario.entries
-        .filterNot { it == Scenario.VolkaresReturn || it == Scenario.VolkaresQuest || it == Scenario.SoloConquestChallenge }
-        .sortedBy { it.displayName }
+private val COOP_TACTIC_SCENARIO_OPTIONS: List<Scenario> = coopTacticScenarios.sortedBy { it.displayName }
 
 /** Human-readable label for a [DummyPlayerMode] - matches the setup screen's own selector chip text. */
 private val DummyPlayerMode.label: String

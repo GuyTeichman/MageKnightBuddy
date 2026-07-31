@@ -74,6 +74,18 @@ fun tacticRemovalTarget(rule: TacticRemovalRule, round: Int, startsAtNight: Bool
     }
 }
 
+/**
+ * Every [Scenario] that has a real coop Tactic-removal rule - i.e. every entry [tacticRemovalRule]
+ * doesn't throw for in its coop branch. The setup screen's coop Scenario picker (issue #220)
+ * builds its option list from this rather than hand-listing an exclusion set, so the two can never
+ * drift apart: if a new [Scenario] is ever added, [tacticRemovalRule]'s exhaustive `when` forces a
+ * decision for it there, and this list picks that decision up automatically instead of needing a
+ * second, easy-to-forget edit at the UI call site.
+ */
+val coopTacticScenarios: List<Scenario> = Scenario.entries.filter { scenario ->
+    runCatching { tacticRemovalRule(isVolkare = false, isSolo = false, scenario = scenario) }.isSuccess
+}
+
 /** Who drafts a Tactic card first this Round. */
 enum class PickOrder { PLAYER_FIRST, DUMMY_FIRST }
 
