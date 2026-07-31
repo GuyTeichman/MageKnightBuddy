@@ -430,11 +430,15 @@ texture (left = the token face, right = the shared rubble back). The base 12 liv
 bag; the 3 Lost Legion ruins live in a *separate* `/Lost Legion/Lost Legion Ruins` bag (found by
 scanning every object sharing the ruin hex `MeshURL`, not just the base bag - an earlier pass looked
 only in "Ruins" and wrongly concluded both that ruins were mesh-only *and* that the LL faces were
-absent). Each face is cut to the **true hexagon silhouette** (flood-fill the yellow surround from the
-corners, thresh≈25 so it stops at the token's edge without bleeding through the same-yellow altar
-interiors) and saved as a transparent square PNG - `app/src/main/assets/enemy-tokens/ruin_*.png`, plus
-`backs/ruin.png` for the shared rubble back. They render with **no** Compose clip (the PNG alpha is the
-hexagon), which is what makes ruins read as hexes next to the round enemy discs. The data itself (base
+absent). Each face is cut to the hexagon by a **single geometric mask**, not by colour: because every ruin
+shares the same mesh/UV, its hexagon sits at the exact same place in the half-texture, so one polygon
+- a regular pointy-top hexagon, vertices `(219,0) (438,125) (438,375) (219,500) (0,375) (0,125)` in
+the 438x500 half - fits all 15 faces and the back. (A first attempt colour-keyed the yellow surround
+via flood-fill; it bled through the same-yellow altar interiors and nibbled some tokens, so it was
+dropped in favour of the coordinate mask.) The masked result is a transparent square PNG -
+`app/src/main/assets/enemy-tokens/ruin_*.png`, plus `backs/ruin.png` for the shared rubble back. They
+render with **no** Compose clip (the PNG alpha is the hexagon), which is what makes ruins read as hexes
+next to the round enemy discs. The data itself (base
 + Lost Legion) is fully transcribed above.
 
 ## Follow-up work (issue #178)
