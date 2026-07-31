@@ -246,8 +246,9 @@ first catalogue token with more than one Summon attack, exercising the multi-sum
 ruin tokens - a four-colour "pay one of each → 10 Fame" Altar and two Enemies-With-Treasure tokens,
 one of which draws **three** enemies (which is exactly why `enemyPiles` is a variable-length list,
 not a fixed pair). Their exact data is in the "Ruin tokens" section's table below, transcribed from
-the rulebook p.20 token strip and the TTS "Enemy Tokens List" reference sheet. Only their face art is
-still missing (mesh-only in the mod). The Shades of Tezla enemy tokens are transcribed in their own
+the rulebook p.20 token strip and the TTS "Enemy Tokens List" reference sheet. Their face art is not
+in the mod's Ruins bag (which holds only the 12 base ruins), so the three Lost Legion ruins keep the
+text fallback. The Shades of Tezla enemy tokens are transcribed in their own
 section below.
 
 ## Shades of Tezla expansion tokens (issue #188)
@@ -423,11 +424,14 @@ enemies" button (which draws the prescribed enemies via the shared Summon Draw m
 them under the ruin, rendered in full so their defensive abilities show, each independently
 defeatable).
 
-**Still open:** no `ruin_*` face art is bundled yet - the TTS mod ships the ruin tokens as 3-D meshes
-with no croppable 2-D face (confirmed again in #201 by inspecting the mod's "Ancient Ruins" / "Lost
-Legion Ruins" bags), and the reference-sheet hexagons are too small to crop as usable per-token art.
-So ruins currently render a text fallback (their altar prompt / enemy-draw line). The data itself
-(base + Lost Legion) is fully transcribed above.
+**Art (base ruins done, #201):** the 12 base ruins *are* bundled as face art. Although the mod's
+"Ruins" bag holds them as 3-D `Custom_Model`s, each model's `DiffuseURL` is a flat two-hex texture
+(left = the token face, right = the shared rubble back). Cropping the left hex out of each gives a
+clean per-token face - that's the 12 `ruin_*.jpg` in `app/src/main/assets/enemy-tokens/`. (An earlier
+pass wrongly concluded the ruins were mesh-only with no croppable 2-D face; the diffuse texture is the
+croppable face.) The 3 Lost Legion ruins are **not** in that bag, so they still render the text
+fallback (their altar prompt / enemy-draw line) until sourced elsewhere. The data itself (base + Lost
+Legion) is fully transcribed above.
 
 ## Follow-up work (issue #178)
 
