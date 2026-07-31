@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Scoreboard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -34,6 +35,7 @@ import com.guyteichman.mageknightbuddy.ui.enemypicker.EnemyPickerTab
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.scoreboard.ScoreboardTab
 import com.guyteichman.mageknightbuddy.ui.scorecalculator.ScoreCalculatorScreen
+import com.guyteichman.mageknightbuddy.ui.sites.SitesTab
 
 /**
  * One entry in the bottom navigation bar. `sealed class` restricts every possible
@@ -45,13 +47,14 @@ private sealed class Tab(val route: String, val labelRes: Int, val icon: ImageVe
     data object ScoreCalculator : Tab("score_calculator", R.string.tab_score_calculator, Icons.Filled.Calculate)
     data object DummyPlayer : Tab("dummy_player", R.string.tab_dummy_player, Icons.Filled.Groups)
     data object EnemyPicker : Tab("enemy_picker", R.string.tab_enemy_picker, Icons.Filled.Casino)
+    data object Sites : Tab("sites", R.string.tab_sites, Icons.Filled.Place)
 }
 
-private val tabs = listOf(Tab.Scoreboard, Tab.ScoreCalculator, Tab.DummyPlayer, Tab.EnemyPicker)
+private val tabs = listOf(Tab.Scoreboard, Tab.ScoreCalculator, Tab.DummyPlayer, Tab.EnemyPicker, Tab.Sites)
 
 /**
- * Top-level app composable: builds the nav graph for the four bottom-nav tabs
- * (Scoreboard, Score Calculator, Dummy Player, Enemies - see docs/design/architecture.md's
+ * Top-level app composable: builds the nav graph for the five bottom-nav tabs
+ * (Scoreboard, Score Calculator, Dummy Player, Enemies, Sites - see docs/design/architecture.md's
  * "Tab roadmap") and wires the bottom navigation bar to it. This is the root of the
  * whole UI tree, set as the content of MainActivity.
  */
@@ -142,6 +145,9 @@ fun MageKnightBuddyApp(
             }
             composable(Tab.EnemyPicker.route) {
                 EnemyPickerTab(repository = enemyPickerRepository)
+            }
+            composable(Tab.Sites.route) {
+                SitesTab()
             }
         }
     }
