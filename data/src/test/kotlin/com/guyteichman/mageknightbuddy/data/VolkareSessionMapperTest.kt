@@ -7,6 +7,7 @@ import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.domain.VolkareCard
 import com.guyteichman.mageknightbuddy.domain.VolkareEvent
 import com.guyteichman.mageknightbuddy.domain.VolkareSession
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -174,5 +175,51 @@ class VolkareSessionMapperTest {
 
         val after = System.currentTimeMillis()
         assertTrue(entity.updatedAt in before..after)
+    }
+
+    @Test
+    fun `toEntity then toDomain round-trips tacticState and isSolo for a solo session using PLAYER_ONLY removal`() {
+        // Unlike Standard/Proxy Player, Volkare's solo removal rule is EveryRound(PLAYER_ONLY), not
+        // BOTH - Volkare's own pick is never removed, even in solo (see TacticRules.kt's
+        // tacticRemovalRule, isVolkare branch). Only the player's explicit pick (2) ends up in
+        // removedDayCards; Volkare's seeded-random pick is discarded either way.
+        val beforeEndRound = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR, woundCount = 0, deckOrder = emptyList())
+            .pickPlayerTactic(2)
+            .pickDummyTactic(random = Random(1))
+        val session = beforeEndRound.endRound()
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+
+        // Independent ground truth (see the first test's comment for why this matters). Both picks
+        // are cleared afterward regardless of removal target - see TacticState.advanceRound's doc
+        // comment.
+        assertEquals(setOf(2), roundTripped.tacticState.removedDayCards)
+        assertEquals(emptySet<Int>(), roundTripped.tacticState.removedNightCards)
+        assertEquals(null, roundTripped.tacticState.dummyPick)
+        assertEquals(null, roundTripped.tacticState.playerPick)
+        assertEquals(true, roundTripped.isSolo)
+    }
+
+    @Test
+    fun `toEntity then toDomain round-trips tacticState and isSolo for a coop session, which never removes a Tactic card`() {
+        // Volkare's coop removal rule is Never (see TacticRules.kt's tacticRemovalRule, isVolkare
+        // branch) - endRound() clears both picks but never adds either to removedDayCards.
+        val session = VolkareSession.start(Scenario.VolkaresQuest, RaceLevel.FAIR, woundCount = 0, deckOrder = emptyList(), isSolo = false)
+            .pickPlayerTactic(6)
+            .pickDummyTactic(random = Random(3))
+            .endRound()
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+
+        // Independent ground truth (see the first test's comment for why this matters).
+        assertEquals(emptySet<Int>(), roundTripped.tacticState.removedDayCards)
+        assertEquals(emptySet<Int>(), roundTripped.tacticState.removedNightCards)
+        assertEquals(null, roundTripped.tacticState.dummyPick)
+        assertEquals(null, roundTripped.tacticState.playerPick)
+        assertEquals(false, roundTripped.isSolo)
     }
 }

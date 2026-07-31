@@ -12,6 +12,8 @@ import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerCard
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
+import com.guyteichman.mageknightbuddy.domain.Scenario
+import com.guyteichman.mageknightbuddy.domain.TacticState
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -40,6 +42,11 @@ private fun ProxyPlayerCardDto.toDomain(): ProxyPlayerCard = when (this) {
     is ProxyPlayerCardDto.UniqueAction -> ProxyPlayerCard.UniqueAction(CardColor.valueOf(color))
     is ProxyPlayerCardDto.AdvancedAction -> ProxyPlayerCard.AdvancedAction(identity.toDomain())
 }
+
+// Maps the domain TacticState to its flat DTO mirror - see DummyPlayerSessionMapper's matching
+// functions (redeclared here since Kotlin `private` top-level functions aren't visible across files).
+private fun TacticState.toDto(): TacticStateDto = TacticStateDto(removedDayCards, removedNightCards, dummyPick, playerPick)
+private fun TacticStateDto.toDomain(): TacticState = TacticState(removedDayCards, removedNightCards, dummyPick, playerPick)
 
 private fun List<ProxyPlayerCard>.toJson(): String = Json.encodeToString(map { it.toDto() })
 private fun String.toProxyPlayerCardList(): List<ProxyPlayerCard> = Json.decodeFromString<List<ProxyPlayerCardDto>>(this).map { it.toDomain() }
@@ -88,6 +95,9 @@ fun ProxyPlayerSession.toEntity(updatedAt: Long = System.currentTimeMillis()): P
     logJson = Json.encodeToString(log.map { it.toDto() }),
     updatedAt = updatedAt,
     startsAtNight = startsAtNight,
+    tacticStateJson = Json.encodeToString(tacticState.toDto()),
+    isSolo = isSolo,
+    scenario = scenario.id,
 )
 
 /** Converts a persisted Room row back into a domain session, via [ProxyPlayerSession.restore] (the reverse of [toEntity] above). */
@@ -108,4 +118,7 @@ fun ProxyPlayerSessionEntity.toDomain(): ProxyPlayerSession = ProxyPlayerSession
     objectiveShields = objectiveShields,
     log = Json.decodeFromString<List<ProxyPlayerEventDto>>(logJson).map { it.toDomain() },
     startsAtNight = startsAtNight,
+    tacticState = Json.decodeFromString<TacticStateDto>(tacticStateJson).toDomain(),
+    isSolo = isSolo,
+    scenario = Scenario.fromId(scenario),
 )

@@ -55,8 +55,13 @@ import androidx.room.RoomDatabase
     // carried over. No further bump, since v11 never shipped.) Bumped 11 -> 12: added the new
     // ScoreCalculatorDraftEntity table (score_calculator_drafts) for the Score Calculator wizard's
     // autosaved in-progress draft (issue #174) - no hand-written migration,
-    // fallbackToDestructiveMigration is fine pre-release, same as every prior bump.
-    version = 12,
+    // fallbackToDestructiveMigration is fine pre-release, same as every prior bump. Bumped 12 -> 13:
+    // added tacticStateJson/isSolo columns to DummyPlayerSessionEntity, ProxyPlayerSessionEntity,
+    // and VolkareSessionEntity, plus a scenario column to the first two (VolkareSessionEntity
+    // already had its own, Return/Quest-only, scenario column) - for the Tactic Card draft
+    // (issue #219, part of #179) - no hand-written migration, fallbackToDestructiveMigration is
+    // fine pre-release, same as every prior bump.
+    version = 13,
     exportSchema = false,
 )
 abstract class MageKnightBuddyDatabase : RoomDatabase() {

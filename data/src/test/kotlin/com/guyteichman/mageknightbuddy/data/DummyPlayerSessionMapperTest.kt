@@ -5,6 +5,8 @@ import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
+import com.guyteichman.mageknightbuddy.domain.Scenario
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -168,5 +170,61 @@ class DummyPlayerSessionMapperTest {
 
         assertEquals(session, roundTripped)
         assertEquals(true, roundTripped.startsAtNight)
+    }
+
+    @Test
+    fun `toEntity then toDomain round-trips tacticState, isSolo, and scenario for a solo session`() {
+        // isSolo defaults to true, and a solo session's Tactic removal rule is EveryRound(BOTH)
+        // unconditionally, regardless of scenario (see TacticRules.kt's tacticRemovalRule) - so
+        // both this round's picks (the player's explicit 3, and whatever the seeded Random drew
+        // for the Dummy Player) are permanently removed from the Day pile once endRound() fires.
+        val beforeEndRound = DummyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+            .pickPlayerTactic(3)
+            .pickDummyTactic(random = Random(1))
+        val dummyPick = beforeEndRound.tacticState.dummyPick
+        val session = beforeEndRound.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+            spellOfferColor = CardColor.BLUE,
+        )
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+
+        // Independent ground truth (see the first test's comment for why this matters): solo's
+        // EveryRound(BOTH) rule removes both this round's picks, and both are cleared afterward
+        // regardless of removal target - see TacticState.advanceRound's doc comment.
+        assertEquals(setOf(3, dummyPick), roundTripped.tacticState.removedDayCards)
+        assertEquals(emptySet<Int>(), roundTripped.tacticState.removedNightCards)
+        assertEquals(null, roundTripped.tacticState.dummyPick)
+        assertEquals(null, roundTripped.tacticState.playerPick)
+        assertEquals(true, roundTripped.isSolo)
+        assertEquals(Scenario.SoloConquest, roundTripped.scenario)
+    }
+
+    @Test
+    fun `toEntity then toDomain round-trips tacticState, isSolo, and scenario for a coop session using PLAYER_ONLY removal`() {
+        // Coop Solo Conquest's removal rule is EveryRound(PLAYER_ONLY) (see TacticRules.kt) - only
+        // the player's pick is permanently removed; the Dummy's pick is simply discarded, so it
+        // never shows up in removedDayCards regardless of what it was.
+        val session = DummyPlayerSession.start(Knight.GOLDYX, deckOrder = emptyList(), isSolo = false, scenario = Scenario.SoloConquest)
+            .pickPlayerTactic(2)
+            .pickDummyTactic(random = Random(7))
+            .endRound(
+                advancedActionOfferColor = CardIdentity.SingleColor(CardColor.RED),
+                spellOfferColor = CardColor.GREEN,
+            )
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+
+        // Independent ground truth (see the first test's comment for why this matters).
+        assertEquals(setOf(2), roundTripped.tacticState.removedDayCards)
+        assertEquals(emptySet<Int>(), roundTripped.tacticState.removedNightCards)
+        assertEquals(null, roundTripped.tacticState.dummyPick)
+        assertEquals(null, roundTripped.tacticState.playerPick)
+        assertEquals(false, roundTripped.isSolo)
+        assertEquals(Scenario.SoloConquest, roundTripped.scenario)
     }
 }

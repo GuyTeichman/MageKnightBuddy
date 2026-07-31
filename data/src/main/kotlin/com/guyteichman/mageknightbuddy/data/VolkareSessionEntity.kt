@@ -21,6 +21,12 @@ import androidx.room.PrimaryKey
  * [VolkareSessionMapper] for the JSON conversion (via [VolkareCardDto]/[VolkareEventDto]).
  *
  * [updatedAt] mirrors [DummyPlayerSessionEntity.updatedAt] - see that property's doc comment.
+ *
+ * [tacticStateJson] and [isSolo] mirror [DummyPlayerSessionEntity]'s fields of the same name -
+ * see that class's doc comment. Unlike [DummyPlayerSessionEntity]/[ProxyPlayerSessionEntity],
+ * there's no separate `scenario` column for Tactic purposes here: [scenario] above (Return/Quest)
+ * already exists for Volkare's own setup, but Volkare's Tactic removal rule never reads it - it's
+ * fixed, keyed only by [isSolo] (see `TacticRules.kt`'s `tacticRemovalRule`, `isVolkare` branch).
  */
 @Entity(tableName = "volkare_sessions")
 data class VolkareSessionEntity(
@@ -37,6 +43,9 @@ data class VolkareSessionEntity(
     val logJson: String,
     val updatedAt: Long,
     val startsAtNight: Boolean = false,
+    // "{}" decodes to a default TacticStateDto - see DummyPlayerSessionEntity's matching field.
+    val tacticStateJson: String = "{}",
+    val isSolo: Boolean = true,
 ) {
     companion object {
         /** The fixed primary key every saved row uses, enforcing the single-slot autosave design above. */

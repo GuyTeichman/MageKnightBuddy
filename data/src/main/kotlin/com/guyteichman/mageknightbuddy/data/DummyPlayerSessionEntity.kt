@@ -25,6 +25,13 @@ import androidx.room.PrimaryKey
  * itself - it exists purely so the setup screen's "Restore Game" flow can compare this session's
  * recency against a saved [com.guyteichman.mageknightbuddy.domain.VolkareSession] without having
  * to deserialize either session's full JSON columns (see [DummyPlayerSessionDao.getUpdatedAt]).
+ *
+ * [tacticStateJson] is the Tactic Card draft state ([com.guyteichman.mageknightbuddy.domain.TacticState]),
+ * stored as JSON for the same reason the other `...Json` columns above are (via [TacticStateDto]).
+ * [isSolo] and [scenario] mirror the domain session's own fields of the same name - [scenario]
+ * holds [com.guyteichman.mageknightbuddy.domain.Scenario.id], same convention
+ * [VolkareSessionEntity.scenario] already uses - and together decide which Tactic removal rule
+ * applies each Round (see `TacticRules.kt`'s `tacticRemovalRule`).
  */
 @Entity(tableName = "dummy_player_sessions")
 data class DummyPlayerSessionEntity(
@@ -44,6 +51,13 @@ data class DummyPlayerSessionEntity(
     val logJson: String,
     val updatedAt: Long,
     val startsAtNight: Boolean = false,
+    // "{}" decodes to a default TacticStateDto (kotlinx.serialization's default Json config omits
+    // default-valued fields on encode, so a freshly-started session's empty tactic state actually
+    // serializes to exactly this). "solo_conquest" mirrors DummyPlayerSession.start's own
+    // Scenario.SoloConquest default.
+    val tacticStateJson: String = "{}",
+    val isSolo: Boolean = true,
+    val scenario: String = "solo_conquest",
 ) {
     companion object {
         /** The fixed primary key every saved row uses, enforcing the single-slot autosave design above. */
