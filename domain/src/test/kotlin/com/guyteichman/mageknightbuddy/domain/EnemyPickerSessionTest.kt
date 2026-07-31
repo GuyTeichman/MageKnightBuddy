@@ -124,21 +124,27 @@ class EnemyPickerSessionTest {
     }
 
     @Test
-    fun `an emptied draw pile replenishes from its shuffled discard`() {
-        // Build the emptied state via the class's own draw() calls (per CLAUDE.md), not by hand.
+    fun `a pile reshuffles the instant its last token is drawn, never sitting empty`() {
+        // Build the state via the class's own draw() calls (per CLAUDE.md), not by hand.
         var session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+        // Draw all 4 green tokens: the 4th draw empties the draw pile, which must reshuffle on
+        // the spot (issue #231 / eager Replenish) rather than resting empty until the next draw.
         repeat(4) { session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle) }
 
-        val emptied = session.piles.getValue(TokenPileId.GREEN)
-        assertEquals(emptyList(), emptied.drawPile)
-        assertEquals(greenOrder, emptied.discardPile)
+        val green = session.piles.getValue(TokenPileId.GREEN)
+        // Discard (all 4, identity-shuffled back to greenOrder) has already become the new draw pile
+        // and the discard is empty again - the "empty draw pile, 4 in discard" resting state that
+        // lazy replenish used to leave behind is now never observable.
+        assertEquals(greenOrder, green.drawPile)
+        assertEquals(emptyList(), green.discardPile)
+        // Every draw is still logged, in draw order (a, a, b, c) - the reshuffle is pile state only.
+        assertEquals(listOf("orc_a", "orc_a", "orc_b", "orc_c"), session.drawLog.map { it.tokenId })
 
-        // The 5th draw must replenish: discard (identity-shuffled to greenOrder) becomes the new
-        // draw pile, then its top ("orc_a") is drawn.
+        // A further draw now simply comes off the reshuffled pile's top ("orc_a").
         session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
-        val replenished = session.piles.getValue(TokenPileId.GREEN)
-        assertEquals(listOf("orc_a", "orc_b", "orc_c"), replenished.drawPile)
-        assertEquals(listOf("orc_a"), replenished.discardPile)
+        val next = session.piles.getValue(TokenPileId.GREEN)
+        assertEquals(listOf("orc_a", "orc_b", "orc_c"), next.drawPile)
+        assertEquals(listOf("orc_a"), next.discardPile)
         assertEquals(5, session.drawLog.size)
     }
 
@@ -272,8 +278,31 @@ class EnemyPickerSessionTest {
         )
         // The summon draw goes through the same pile mechanics as any other draw (ADR-0006).
         val brown = after.piles.getValue(TokenPileId.BROWN)
-        assertEquals(emptyList(), brown.drawPile)
-        assertEquals(listOf("brown_x"), brown.discardPile)
+        // BROWN holds a single copy, so drawing it empties the pile - which eager-Replenishes on
+        // the spot (issue #231): the token is already reshuffled back and the discard is empty.
+        assertEquals(listOf("brown_x"), brown.drawPile)
+        assertEquals(emptyList(), brown.discardPile)
+    }
+
+    @Test
+    fun `a restored pile with an already-empty draw pile still replenishes on the next draw`() {
+        // Simulates a session persisted under the old lazy semantics: draw pile empty, all 4 green
+        // tokens sitting in the discard. The eager reshuffle never produces this state itself, but
+        // restore() must still cope with it (the defensive replenish-on-entry branch).
+        val legacy = EnemyPickerSession.restore(
+            tokenSet = setOf(Expansion.BASE),
+            drawWithReplacement = false,
+            piles = mapOf(TokenPileId.GREEN to TokenPile(drawPile = emptyList(), discardPile = greenOrder)),
+            drawLog = emptyList(),
+        )
+
+        val after = legacy.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
+
+        // Discard (identity-shuffled to greenOrder) replenishes the draw pile, then its top
+        // ("orc_a") is drawn; 3 remain, so no further reshuffle fires.
+        val green = after.piles.getValue(TokenPileId.GREEN)
+        assertEquals(listOf("orc_a", "orc_b", "orc_c"), green.drawPile)
+        assertEquals(listOf("orc_a"), green.discardPile)
     }
 
     @Test
