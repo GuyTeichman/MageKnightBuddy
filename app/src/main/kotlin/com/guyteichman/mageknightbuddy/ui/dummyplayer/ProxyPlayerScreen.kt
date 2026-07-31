@@ -39,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,10 +54,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.CardIdentity
+import com.guyteichman.mageknightbuddy.domain.PickOrder
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerCard
 import com.guyteichman.mageknightbuddy.domain.objectiveLabel
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
+import com.guyteichman.mageknightbuddy.domain.tacticPickOrder
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
 import com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon
@@ -136,6 +139,25 @@ fun ProxyPlayerAiScreen(
     var showEndRoundDialog by remember { mutableStateOf(false) }
     var showSummary by remember { mutableStateOf(false) }
 
+    // Mirrors DummyPlayerScreen.kt's DummyPlayerAiScreen - see its own comments for why this is
+    // derived rather than a toggled boolean, and how the auto-pick effect below decides when the
+    // Proxy Player itself should draw.
+    val tacticState = session?.tacticState
+    val needsTacticPick = tacticState != null && (tacticState.playerPick == null || tacticState.dummyPick == null)
+
+    if (session != null) {
+        LaunchedEffect(session.tacticState) {
+            val pickOrder = tacticPickOrder(isVolkare = false, isSolo = session.isSolo)
+            val dummyShouldGoNow = when (pickOrder) {
+                PickOrder.DUMMY_FIRST -> true
+                PickOrder.PLAYER_FIRST -> session.tacticState.playerPick != null
+            }
+            if (session.tacticState.dummyPick == null && dummyShouldGoNow) {
+                viewModel.pickDummyTactic()
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -164,14 +186,14 @@ fun ProxyPlayerAiScreen(
                 ) {
                     Button(
                         onClick = { scope.launch { viewModel.playTurn() } },
-                        enabled = !session.roundEnded && !viewModel.isBusy,
+                        enabled = !session.roundEnded && !viewModel.isBusy && !needsTacticPick,
                         modifier = Modifier.weight(1f),
                     ) {
                         Text("Play Turn")
                     }
                     OutlinedButton(
                         onClick = { showEndRoundDialog = true },
-                        enabled = !viewModel.isBusy,
+                        enabled = !viewModel.isBusy && !needsTacticPick,
                         modifier = Modifier.weight(1f),
                     ) {
                         Text("End Round")
@@ -351,6 +373,16 @@ fun ProxyPlayerAiScreen(
                     showEndRoundDialog = false
                 }
             },
+        )
+    }
+
+    if (session != null && needsTacticPick) {
+        TacticPickerDialog(
+            isDay = session.isDay,
+            tacticState = session.tacticState,
+            aiLabel = "Proxy Player",
+            enabled = !viewModel.isBusy && session.tacticState.playerPick == null,
+            onPickPlayer = { card -> scope.launch { viewModel.pickPlayerTactic(card) } },
         )
     }
 }
