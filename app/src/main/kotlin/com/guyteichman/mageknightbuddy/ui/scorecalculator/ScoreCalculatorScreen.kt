@@ -273,7 +273,8 @@ private fun wizardPagesFor(scenario: Scenario, knight: Knight): List<WizardPage>
  * @param draftRepository where the wizard's in-progress field values are autosaved (issue #174),
  * so they survive the app being killed while backgrounded rather than just tab switches.
  * @param fieldHelp the bundled "?" help text/citations (see [FieldHelp]), keyed by [WizardPage.helpKeys].
- * @param onDone called after a successful save, to navigate back to the Scoreboard tab.
+ * @param onDone called after a successful save, to pop back to the Scoreboard list (this wizard
+ * is a nested destination inside the Scoreboard tab - see [com.guyteichman.mageknightbuddy.ui.scoreboard.ScoreboardTab]).
  */
 @Composable
 fun ScoreCalculatorScreen(
