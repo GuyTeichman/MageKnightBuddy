@@ -43,4 +43,13 @@ sealed interface VolkareEvent {
      * docs/rules/volkares-quest.md's "Scenario end").
      */
     data class QuestLost(val round: Int) : VolkareEvent
+
+    /**
+     * Recorded each time [VolkareSession.pickPlayerTactic] or [VolkareSession.pickDummyTactic]
+     * records a Tactic Card pick for the active Day/Night pile ([isDay]) - mirrors
+     * [DummyPlayerEvent.TacticPicked]. Volkare's coop mode is always player-first (see
+     * `TacticRules.kt`'s `tacticPickOrder`), so seeing this entry before Volkare's own confirms the
+     * player went first.
+     */
+    data class TacticPicked(val round: Int, val isDay: Boolean, val card: Int, val pickedByPlayer: Boolean) : VolkareEvent
 }

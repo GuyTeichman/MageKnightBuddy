@@ -65,6 +65,7 @@ private fun DummyPlayerEvent.toDto(): DummyPlayerEventDto = when (this) {
         advancedActionOfferColor = advancedActionOfferColor.toDto(),
         spellOfferColor = spellOfferColor.name,
     )
+    is DummyPlayerEvent.TacticPicked -> DummyPlayerEventDto.TacticPicked(round, isDay, card, pickedByPlayer)
 }
 
 // The reverse of toDto() above: DTO variant back to the matching domain event variant.
@@ -81,6 +82,7 @@ private fun DummyPlayerEventDto.toDomain(): DummyPlayerEvent = when (this) {
         advancedActionOfferColor = advancedActionOfferColor.toDomain(),
         spellOfferColor = CardColor.valueOf(spellOfferColor),
     )
+    is DummyPlayerEventDto.TacticPicked -> DummyPlayerEvent.TacticPicked(round, isDay, card, pickedByPlayer)
 }
 
 /**

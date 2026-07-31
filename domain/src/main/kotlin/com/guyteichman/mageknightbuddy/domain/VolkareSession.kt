@@ -135,8 +135,11 @@ data class VolkareSession private constructor(
     /**
      * Advances to the next round. Unlike [DummyPlayerSession.endRound], this has no reshuffle or
      * crystal/offer interaction to apply - for Volkare, "ending round is purely a player
-     * convenience for tracking, not a game mechanic" (issue #128), so this just increments
-     * [round] and logs it.
+     * convenience for tracking, not a game mechanic" (issue #128) as far as Volkare's own deck/
+     * mana goes. It does still matter for Tactic Cards, though: like the other two modes, it
+     * applies whatever Tactic removal this Round triggers and clears both picks for the next
+     * Round (see [TacticState.advanceRound]/`TacticRules.kt`), so calling this is what makes the
+     * next Round's Tactic draft possible at all, not just a display nicety.
      */
     fun endRound(): VolkareSession = copy(
         round = round + 1,
@@ -166,14 +169,23 @@ data class VolkareSession private constructor(
      * Records the real player's Tactic pick for the active Day/Night pile ([isDay]) - mirrors
      * [DummyPlayerSession.pickPlayerTactic]. Volkare's coop mode is always player-first (see
      * `TacticRules.kt`'s `tacticPickOrder`), so this is the pick the player makes before Volkare's.
+     * Also logs a [VolkareEvent.TacticPicked] entry.
      */
-    fun pickPlayerTactic(card: Int): VolkareSession = copy(tacticState = tacticState.pickPlayer(card, isDay))
+    fun pickPlayerTactic(card: Int): VolkareSession = copy(
+        tacticState = tacticState.pickPlayer(card, isDay),
+        log = log + VolkareEvent.TacticPicked(round, isDay, card, pickedByPlayer = true),
+    )
 
     /**
      * Draws Volkare's own Tactic pick at random for the active Day/Night pile ([isDay]) - mirrors
-     * [DummyPlayerSession.pickDummyTactic].
+     * [DummyPlayerSession.pickDummyTactic]. Also logs a [VolkareEvent.TacticPicked] entry.
      */
-    fun pickDummyTactic(random: Random = Random): VolkareSession = copy(tacticState = tacticState.pickDummy(isDay, random))
+    fun pickDummyTactic(random: Random = Random): VolkareSession {
+        val next = tacticState.pickDummy(isDay, random)
+        // pickDummy always sets dummyPick to a freshly-drawn 1-6 value, so this is never null here.
+        val card = requireNotNull(next.dummyPick)
+        return copy(tacticState = next, log = log + VolkareEvent.TacticPicked(round, isDay, card, pickedByPlayer = false))
+    }
 
     companion object {
         /**

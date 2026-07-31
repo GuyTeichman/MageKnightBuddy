@@ -227,4 +227,27 @@ class DummyPlayerSessionMapperTest {
         assertEquals(false, roundTripped.isSolo)
         assertEquals(Scenario.SoloConquest, roundTripped.scenario)
     }
+
+    @Test
+    fun `toEntity then toDomain round-trips TacticPicked log entries for both the player's and the Dummy's picks`() {
+        val session = DummyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+            .pickPlayerTactic(card = 4)
+            .pickDummyTactic(random = Random(0))
+        val dummyPick = requireNotNull(session.tacticState.dummyPick)
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+
+        // Independent ground truth (see the first test's comment for why this matters): a fresh
+        // session logs RoundStarted first, then one TacticPicked entry per pick, in call order.
+        assertEquals(
+            listOf(
+                DummyPlayerEvent.RoundStarted(round = 1),
+                DummyPlayerEvent.TacticPicked(round = 1, isDay = true, card = 4, pickedByPlayer = true),
+                DummyPlayerEvent.TacticPicked(round = 1, isDay = true, card = dummyPick, pickedByPlayer = false),
+            ),
+            roundTripped.log,
+        )
+    }
 }

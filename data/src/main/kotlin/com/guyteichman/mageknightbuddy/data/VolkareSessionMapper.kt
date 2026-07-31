@@ -55,6 +55,7 @@ private fun VolkareEvent.toDto(): VolkareEventDto = when (this) {
     is VolkareEvent.Frenzy -> VolkareEventDto.Frenzy(round)
     is VolkareEvent.RoundEnded -> VolkareEventDto.RoundEnded(round)
     is VolkareEvent.QuestLost -> VolkareEventDto.QuestLost(round)
+    is VolkareEvent.TacticPicked -> VolkareEventDto.TacticPicked(round, isDay, card, pickedByPlayer)
 }
 
 // The reverse of toDto() above: DTO variant back to the matching domain event variant.
@@ -64,6 +65,7 @@ private fun VolkareEventDto.toDomain(): VolkareEvent = when (this) {
     is VolkareEventDto.Frenzy -> VolkareEvent.Frenzy(round)
     is VolkareEventDto.RoundEnded -> VolkareEvent.RoundEnded(round)
     is VolkareEventDto.QuestLost -> VolkareEvent.QuestLost(round)
+    is VolkareEventDto.TacticPicked -> VolkareEvent.TacticPicked(round, isDay, card, pickedByPlayer)
 }
 
 // Maps the domain TacticState to its flat DTO mirror - see DummyPlayerSessionMapper's matching

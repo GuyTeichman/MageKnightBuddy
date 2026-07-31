@@ -222,4 +222,27 @@ class VolkareSessionMapperTest {
         assertEquals(null, roundTripped.tacticState.playerPick)
         assertEquals(false, roundTripped.isSolo)
     }
+
+    @Test
+    fun `toEntity then toDomain round-trips TacticPicked log entries for both the player's and Volkare's picks`() {
+        val session = VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR)
+            .pickPlayerTactic(card = 4)
+            .pickDummyTactic(random = Random(0))
+        val dummyPick = requireNotNull(session.tacticState.dummyPick)
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+
+        // Independent ground truth (see the first test's comment for why this matters): a fresh
+        // session logs RoundStarted first, then one TacticPicked entry per pick, in call order.
+        assertEquals(
+            listOf(
+                VolkareEvent.RoundStarted(round = 1),
+                VolkareEvent.TacticPicked(round = 1, isDay = true, card = 4, pickedByPlayer = true),
+                VolkareEvent.TacticPicked(round = 1, isDay = true, card = dummyPick, pickedByPlayer = false),
+            ),
+            roundTripped.log,
+        )
+    }
 }

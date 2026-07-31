@@ -175,16 +175,26 @@ data class DummyPlayerSession private constructor(
     /**
      * Records the real player's Tactic pick for the active Day/Night pile ([isDay]) - thin
      * wrapper around [TacticState.pickPlayer]; throws [IllegalArgumentException] if [card] isn't
-     * currently available (see that method's own doc comment).
+     * currently available (see that method's own doc comment). Also logs a
+     * [DummyPlayerEvent.TacticPicked] entry.
      */
-    fun pickPlayerTactic(card: Int): DummyPlayerSession = copy(tacticState = tacticState.pickPlayer(card, isDay))
+    fun pickPlayerTactic(card: Int): DummyPlayerSession = copy(
+        tacticState = tacticState.pickPlayer(card, isDay),
+        log = log + DummyPlayerEvent.TacticPicked(round, isDay, card, pickedByPlayer = true),
+    )
 
     /**
      * Draws the Dummy Player's Tactic pick at random for the active Day/Night pile ([isDay]) -
      * thin wrapper around [TacticState.pickDummy]. [random] is injectable for deterministic
-     * tests, same convention as [VolkareSession.playTurn]'s `manaRoll` parameter.
+     * tests, same convention as [VolkareSession.playTurn]'s `manaRoll` parameter. Also logs a
+     * [DummyPlayerEvent.TacticPicked] entry.
      */
-    fun pickDummyTactic(random: Random = Random): DummyPlayerSession = copy(tacticState = tacticState.pickDummy(isDay, random))
+    fun pickDummyTactic(random: Random = Random): DummyPlayerSession {
+        val next = tacticState.pickDummy(isDay, random)
+        // pickDummy always sets dummyPick to a freshly-drawn 1-6 value, so this is never null here.
+        val card = requireNotNull(next.dummyPick)
+        return copy(tacticState = next, log = log + DummyPlayerEvent.TacticPicked(round, isDay, card, pickedByPlayer = false))
+    }
 
     companion object {
         /**

@@ -432,7 +432,12 @@ internal fun VolkareEvent.describe(scenario: Scenario): VolkareLogEntryText = wh
         icon = "⚑",
         title = "Round ended",
         meta = "Round $round",
-        description = listOf(VolkareDescriptionSpan.Words("Tracking convenience only - nothing changes for Volkare.")),
+        // Not "tracking convenience only" any more - VolkareSession.endRound() also applies this
+        // Round's Tactic removal and clears both picks for the next draft (see that method's
+        // updated KDoc), so this description shouldn't claim nothing changes.
+        description = listOf(
+            VolkareDescriptionSpan.Words("Volkare's deck doesn't reshuffle, but this Round's Tactic picks are now resolved for the next draft."),
+        ),
     )
     is VolkareEvent.QuestLost -> VolkareLogEntryText(
         icon = "☠",
@@ -441,6 +446,18 @@ internal fun VolkareEvent.describe(scenario: Scenario): VolkareLogEntryText = wh
         description = listOf(
             VolkareDescriptionSpan.Words(
                 "That was the last card that could still move him toward the portal - his final move takes him into it. You lost this scenario.",
+            ),
+        ),
+    )
+    is VolkareEvent.TacticPicked -> VolkareLogEntryText(
+        icon = "◇",
+        title = "Tactic picked",
+        meta = "Round $round",
+        // Mirrors DummyPlayerEvent.TacticPicked's describe() branch: both picks get their own
+        // entry, so the log's ordering shows which one picked first that Round.
+        description = listOf(
+            VolkareDescriptionSpan.Words(
+                "${if (pickedByPlayer) "You" else "Volkare"} picked ${if (isDay) "Day" else "Night"} Tactic $card.",
             ),
         ),
     )

@@ -1178,6 +1178,19 @@ private fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
             add(DescriptionSpan.Words(" ${spellOfferColor.label}) granted +1 crystal."))
         },
     )
+    is DummyPlayerEvent.TacticPicked -> LogEntryText(
+        icon = "◇",
+        title = "Tactic picked",
+        meta = "Round $round",
+        // Both the player's and the Dummy Player's picks get their own log entry (see
+        // DummyPlayerEvent.TacticPicked's doc comment), so the log's own ordering shows which one
+        // picked first that Round - not just what each pick was.
+        description = listOf(
+            DescriptionSpan.Words(
+                "${if (pickedByPlayer) "You" else "The Dummy Player"} picked ${if (isDay) "Day" else "Night"} Tactic $card.",
+            ),
+        ),
+    )
 }
 
 /**

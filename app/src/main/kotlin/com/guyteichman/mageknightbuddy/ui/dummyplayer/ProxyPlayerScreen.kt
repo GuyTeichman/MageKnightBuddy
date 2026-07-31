@@ -690,6 +690,19 @@ private fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
             }
         },
     )
+
+    is ProxyPlayerEvent.TacticPicked -> LogEntryText(
+        icon = "◇",
+        title = "Tactic picked",
+        meta = "Round $round",
+        // Mirrors DummyPlayerEvent.TacticPicked's describe() branch: both picks get their own
+        // entry, so the log's ordering shows which one picked first that Round.
+        description = listOf(
+            DescriptionSpan.Words(
+                "${if (pickedByPlayer) "You" else "The Proxy Player"} picked ${if (isDay) "Day" else "Night"} Tactic $card.",
+            ),
+        ),
+    )
 }
 
 /**

@@ -497,23 +497,32 @@ class DummyPlayerSessionTest {
     }
 
     @Test
-    fun `pickPlayerTactic records the player's pick for the active Day-Night pile`() {
+    fun `pickPlayerTactic records the player's pick for the active Day-Night pile and logs it`() {
         val session = DummyPlayerSession.start(Knight.CORAL)
 
         val next = session.pickPlayerTactic(card = 3)
 
         assertEquals(3, next.tacticState.playerPick)
         assertEquals(null, next.tacticState.dummyPick)
+        assertEquals(
+            DummyPlayerEvent.TacticPicked(round = 1, isDay = true, card = 3, pickedByPlayer = true),
+            next.log.last(),
+        )
     }
 
     @Test
-    fun `pickDummyTactic records a random pick for the active Day-Night pile`() {
+    fun `pickDummyTactic records a random pick for the active Day-Night pile and logs it`() {
         val session = DummyPlayerSession.start(Knight.CORAL)
 
         val next = session.pickDummyTactic(random = Random(0))
+        val dummyPick = next.tacticState.dummyPick
 
-        assertEquals(true, next.tacticState.dummyPick in 1..6)
+        assertEquals(true, dummyPick in 1..6)
         assertEquals(null, next.tacticState.playerPick)
+        assertEquals(
+            DummyPlayerEvent.TacticPicked(round = 1, isDay = true, card = requireNotNull(dummyPick), pickedByPlayer = false),
+            next.log.last(),
+        )
     }
 
     @Test

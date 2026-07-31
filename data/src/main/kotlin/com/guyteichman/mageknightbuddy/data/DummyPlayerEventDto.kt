@@ -48,4 +48,9 @@ sealed interface DummyPlayerEventDto {
         val advancedActionOfferColor: CardIdentityDto,
         val spellOfferColor: String,
     ) : DummyPlayerEventDto
+
+    /** Mirrors [com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent.TacticPicked]. */
+    @Serializable
+    @SerialName("tactic_picked")
+    data class TacticPicked(val round: Int, val isDay: Boolean, val card: Int, val pickedByPlayer: Boolean) : DummyPlayerEventDto
 }
