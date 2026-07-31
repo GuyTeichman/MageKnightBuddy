@@ -114,8 +114,9 @@ fun ScoreboardTab(
                 repository = repository,
                 draftRepository = draftRepository,
                 fieldHelp = fieldHelp,
-                // On a successful save (or system back), pop back to the list, where the new
-                // row appears at the top.
+                // On a successful save, pop back to the list, where the new row appears at the
+                // top. System back also returns here on its own, since the wizard sits on this
+                // nested NavHost's back stack above the list.
                 onDone = { nestedNavController.popBackStack() },
             )
         }
