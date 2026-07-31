@@ -136,7 +136,9 @@ data class EnemyPickerSession private constructor(
             return shuffle(pile.drawPile).first() to pile
         }
 
-        // Replenish if the draw pile ran out: the discard becomes the new, shuffled pile.
+        // Defensive replenish if the draw pile is *already* empty on entry: normally the eager
+        // reshuffle below keeps that from ever happening, but a session restored from state
+        // persisted under the old lazy semantics can still carry an empty draw pile - so handle it.
         val replenished = if (pile.drawPile.isEmpty()) {
             require(pile.discardPile.isNotEmpty()) { "pile $pileId is completely empty" }
             TokenPile(drawPile = shuffle(pile.discardPile), discardPile = emptyList())
@@ -145,7 +147,16 @@ data class EnemyPickerSession private constructor(
         }
         val drawnId = replenished.drawPile.first()
         // Drawn token leaves the draw pile and lands in the discard immediately (ADR-0006).
-        val next = TokenPile(drawPile = replenished.drawPile.drop(1), discardPile = replenished.discardPile + drawnId)
+        val afterDraw = TokenPile(drawPile = replenished.drawPile.drop(1), discardPile = replenished.discardPile + drawnId)
+        // Eager **Replenish** (issue #231): the moment that draw empties the pile, reshuffle the
+        // discard back into a fresh draw pile so a pile never rests at 0 remaining. Distribution is
+        // identical to reshuffling lazily on the next draw (the just-drawn token is in the discard
+        // either way); this only means the UI never displays an empty pile.
+        val next = if (afterDraw.drawPile.isEmpty() && afterDraw.discardPile.isNotEmpty()) {
+            TokenPile(drawPile = shuffle(afterDraw.discardPile), discardPile = emptyList())
+        } else {
+            afterDraw
+        }
         return drawnId to next
     }
 
