@@ -5,6 +5,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.domain.VolkareSession
+import kotlin.random.Random
 
 /**
  * Backs Volkare mode's AI (turn/round) screen: restores the saved [VolkareSession] on creation and
@@ -23,6 +24,12 @@ class VolkareAiViewModel(repository: VolkareSessionRepository) :
 
     /** Flips the City Revealed flag (Volkare's Return only - see `CONTEXT.md`'s "City Revealed" entry) and autosaves. */
     suspend fun toggleCityRevealed() = mutate { it.toggleCityRevealed() }
+
+    /** Records the real player's Tactic pick for this round and autosaves - see [VolkareSession.pickPlayerTactic]. */
+    suspend fun pickPlayerTactic(card: Int) = mutate { it.pickPlayerTactic(card) }
+
+    /** Draws Volkare's own Tactic pick for this round and autosaves - see [VolkareSession.pickDummyTactic]. */
+    suspend fun pickDummyTactic(random: Random = Random) = mutate { it.pickDummyTactic(random) }
 
     companion object {
         fun factory(repository: VolkareSessionRepository): ViewModelProvider.Factory = viewModelFactory {

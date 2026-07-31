@@ -37,6 +37,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -52,11 +53,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.ManaColor
+import com.guyteichman.mageknightbuddy.domain.PickOrder
 import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.domain.VolkareCard
 import com.guyteichman.mageknightbuddy.domain.VolkareEvent
 import com.guyteichman.mageknightbuddy.domain.VolkareSession
+import com.guyteichman.mageknightbuddy.domain.tacticPickOrder
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.LabelPillPicker
 import com.guyteichman.mageknightbuddy.ui.components.LabeledSwitch
@@ -128,6 +131,27 @@ fun VolkareAiScreen(repository: VolkareSessionRepository, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val session = viewModel.session
 
+    // Mirrors DummyPlayerScreen.kt's DummyPlayerAiScreen/ProxyPlayerScreen.kt's ProxyPlayerAiScreen
+    // - see their own comments. Volkare's the one mode where tacticPickOrder(isVolkare = true, ...)
+    // is always PLAYER_FIRST, solo or coop alike (see TacticRules.kt's doc comment) - written the
+    // same way as the other two screens anyway, rather than hardcoding that here, so this keeps
+    // working unchanged if that rule ever grows an exception.
+    val tacticState = session?.tacticState
+    val needsTacticPick = tacticState != null && (tacticState.playerPick == null || tacticState.dummyPick == null)
+
+    if (session != null) {
+        LaunchedEffect(session.tacticState) {
+            val pickOrder = tacticPickOrder(isVolkare = true, isSolo = session.isSolo)
+            val dummyShouldGoNow = when (pickOrder) {
+                PickOrder.DUMMY_FIRST -> true
+                PickOrder.PLAYER_FIRST -> session.tacticState.playerPick != null
+            }
+            if (session.tacticState.dummyPick == null && dummyShouldGoNow) {
+                viewModel.pickDummyTactic()
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -158,14 +182,14 @@ fun VolkareAiScreen(repository: VolkareSessionRepository, onBack: () -> Unit) {
                         onClick = { scope.launch { viewModel.playTurn() } },
                         // Volkare's Return has no equivalent guard - Frenzy keeps him playable
                         // forever once his deck is empty; only Volkare's Quest can set `lost`.
-                        enabled = !session.lost && !viewModel.isBusy,
+                        enabled = !session.lost && !viewModel.isBusy && !needsTacticPick,
                         modifier = Modifier.weight(1f),
                     ) {
                         Text("Play Turn")
                     }
                     OutlinedButton(
                         onClick = { scope.launch { viewModel.endRound() } },
-                        enabled = !viewModel.isBusy,
+                        enabled = !viewModel.isBusy && !needsTacticPick,
                         modifier = Modifier.weight(1f),
                     ) {
                         Text("End Round")
@@ -218,6 +242,16 @@ fun VolkareAiScreen(repository: VolkareSessionRepository, onBack: () -> Unit) {
                 }
             }
         }
+    }
+
+    if (session != null && needsTacticPick) {
+        TacticPickerDialog(
+            isDay = session.isDay,
+            tacticState = session.tacticState,
+            aiLabel = "Volkare",
+            enabled = !viewModel.isBusy && session.tacticState.playerPick == null,
+            onPickPlayer = { card -> scope.launch { viewModel.pickPlayerTactic(card) } },
+        )
     }
 }
 

@@ -6,6 +6,7 @@ import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.domain.VolkareCard
 import com.guyteichman.mageknightbuddy.domain.VolkareSession
+import kotlin.random.Random
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -156,6 +157,34 @@ class VolkareAiViewModelTest {
         viewModel.toggleCityRevealed()
 
         assertTrue(viewModel.session?.cityRevealed ?: false)
+        assertEquals(viewModel.session, repository.restore())
+    }
+
+    @Test
+    fun `pickPlayerTactic sets the player's pick and autosaves, leaving Volkare's pick untouched`() = runTest {
+        val repository = VolkareSessionRepository(FakeVolkareSessionDao())
+        repository.save(VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR, deckOrder = emptyList()))
+        val viewModel = VolkareAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.pickPlayerTactic(3)
+
+        assertEquals(3, viewModel.session?.tacticState?.playerPick)
+        assertNull(viewModel.session?.tacticState?.dummyPick)
+        assertEquals(viewModel.session, repository.restore())
+    }
+
+    @Test
+    fun `pickDummyTactic sets Volkare's pick and autosaves, leaving the player's pick untouched`() = runTest {
+        val repository = VolkareSessionRepository(FakeVolkareSessionDao())
+        repository.save(VolkareSession.start(Scenario.VolkaresReturn, RaceLevel.FAIR, deckOrder = emptyList()))
+        val viewModel = VolkareAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.pickDummyTactic(Random(0))
+
+        assertTrue(viewModel.session?.tacticState?.dummyPick in 1..6)
+        assertNull(viewModel.session?.tacticState?.playerPick)
         assertEquals(viewModel.session, repository.restore())
     }
 }
