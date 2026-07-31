@@ -45,16 +45,6 @@ Existing pre-standard code is being brought up to this standard via dedicated, s
 
 The repo ships a `Makefile` wrapping the day-to-day dev loop. Run `make help` to list targets; run `make doctor` first on any new machine — it reports the `make` version and shell health plus whether `JAVA_HOME`, `ANDROID_SDK`, and `AVD_NAME` were auto-detected correctly, and every other target depends on those being right. **New machine? See `docs/design/dev-setup.md` for the full setup checklist** (prerequisites, Windows PATH, troubleshooting).
 
-- `make build` — assemble + install the debug APK on whatever device/emulator is connected.
-- `make test` — unit tests (`domain`, `data`).
-- `make lint` — Android Lint.
-- `make clean` — `./gradlew clean`.
-- `make emulator` — boot the AVD (software rendering — avoids a GPU black-window quirk seen on some machines).
-- `make launch` / `make reload` / `make stop` / `make uninstall` — run and iterate on the installed app (`reload` = build + launch in one step).
-- `make screenshot` — grab a screenshot from the connected device/emulator into `screenshots/` (gitignored, timestamped filename).
-- `make logcat` — tail this app's logcat only.
-- `make devices` / `make avds` — list connected devices / AVDs known to the SDK.
-
 `JAVA_HOME` and `ANDROID_SDK` are auto-detected per machine (JBR by scanning common Android Studio install paths; SDK from `local.properties`'s `sdk.dir` — the same value Gradle itself reads), so the Makefile needs no editing between machines. Override either by exporting the env var or passing it inline, e.g. `make build JAVA_HOME=...` or `make emulator AVD_NAME=Other_Avd`.
 
 ### Windows `make` gotcha
@@ -62,5 +52,3 @@ The repo ships a `Makefile` wrapping the day-to-day dev loop. Run `make help` to
 Two hard requirements on every Windows machine — prerequisites, not "already done" state, so don't assume a given machine has them (issue #185 was a machine with neither): `C:\Program Files\Git\usr\bin` (the real `sh.exe`, not the `Git\cmd` shim dir) must be ahead of any other MSYS-based toolchain (Anaconda, MSYS2, Cygwin, Strawberry Perl, ...) on the user `PATH`, and GNU Make must be ≥ 4.0 (GnuWin32's 3.81 has a broken `$(shell)` that makes the Makefile's auto-detection probes return empty intermittently; `make doctor` flags a `3.x` version as unsupported). Skipping either surfaces as a `CreateProcess` error or a `ClassNotFoundException: org.gradle.wrapper.GradleWrapperMain` that looks unrelated to PATH.
 
 See `docs/design/dev-setup.md` for the full setup checklist and troubleshooting table, and the `Makefile`'s `GIT_BIN_DIR`/`GRADLE` comments (around line 55) for the exact mechanism (why `dirname "$(SHELL)"` instead of Make's `$(dir ...)`, the POSIX drive-letter conversion, etc.).
-
-- Package: `com.guyteichman.mageknightbuddy` · minSdk 26 · target/compileSdk 36.
