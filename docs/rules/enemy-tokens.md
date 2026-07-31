@@ -246,9 +246,9 @@ first catalogue token with more than one Summon attack, exercising the multi-sum
 ruin tokens - a four-colour "pay one of each → 10 Fame" Altar and two Enemies-With-Treasure tokens,
 one of which draws **three** enemies (which is exactly why `enemyPiles` is a variable-length list,
 not a fixed pair). Their exact data is in the "Ruin tokens" section's table below, transcribed from
-the rulebook p.20 token strip and the TTS "Enemy Tokens List" reference sheet. Their face art is not
-in the mod's Ruins bag (which holds only the 12 base ruins), so the three Lost Legion ruins keep the
-text fallback. The Shades of Tezla enemy tokens are transcribed in their own
+the rulebook p.20 token strip and the TTS "Enemy Tokens List" reference sheet. Their face art lives
+in a *separate* `/Lost Legion/Lost Legion Ruins` bag in the mod (not the base "Ruins" bag), so all
+three are now bundled too. The Shades of Tezla enemy tokens are transcribed in their own
 section below.
 
 ## Shades of Tezla expansion tokens (issue #188)
@@ -424,14 +424,18 @@ enemies" button (which draws the prescribed enemies via the shared Summon Draw m
 them under the ruin, rendered in full so their defensive abilities show, each independently
 defeatable).
 
-**Art (base ruins done, #201):** the 12 base ruins *are* bundled as face art. Although the mod's
-"Ruins" bag holds them as 3-D `Custom_Model`s, each model's `DiffuseURL` is a flat two-hex texture
-(left = the token face, right = the shared rubble back). Cropping the left hex out of each gives a
-clean per-token face - that's the 12 `ruin_*.jpg` in `app/src/main/assets/enemy-tokens/`. (An earlier
-pass wrongly concluded the ruins were mesh-only with no croppable 2-D face; the diffuse texture is the
-croppable face.) The 3 Lost Legion ruins are **not** in that bag, so they still render the text
-fallback (their altar prompt / enemy-draw line) until sourced elsewhere. The data itself (base + Lost
-Legion) is fully transcribed above.
+**Art (all 15 ruins done, #201):** every ruin - 12 base + 3 Lost Legion - is bundled as face art.
+Although the mod holds ruins as 3-D `Custom_Model`s, each model's `DiffuseURL` is a flat two-hex
+texture (left = the token face, right = the shared rubble back). The base 12 live in the mod's "Ruins"
+bag; the 3 Lost Legion ruins live in a *separate* `/Lost Legion/Lost Legion Ruins` bag (found by
+scanning every object sharing the ruin hex `MeshURL`, not just the base bag - an earlier pass looked
+only in "Ruins" and wrongly concluded both that ruins were mesh-only *and* that the LL faces were
+absent). Each face is cut to the **true hexagon silhouette** (flood-fill the yellow surround from the
+corners, thresh≈25 so it stops at the token's edge without bleeding through the same-yellow altar
+interiors) and saved as a transparent square PNG - `app/src/main/assets/enemy-tokens/ruin_*.png`, plus
+`backs/ruin.png` for the shared rubble back. They render with **no** Compose clip (the PNG alpha is the
+hexagon), which is what makes ruins read as hexes next to the round enemy discs. The data itself (base
++ Lost Legion) is fully transcribed above.
 
 ## Follow-up work (issue #178)
 

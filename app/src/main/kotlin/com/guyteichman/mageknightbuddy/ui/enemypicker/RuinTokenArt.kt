@@ -29,9 +29,11 @@ import com.guyteichman.mageknightbuddy.domain.RuinToken
 
 /**
  * Renders a [RuinToken]'s hexagonal face at [size] - the RUIN pile's counterpart to
- * [EnemyTokenFace]. Ruin art (when bundled at `enemy-tokens/<id>.jpg`, same asset folder and id-key
- * convention as enemy art, ADR-0007) is drawn with only a slight corner rounding rather than the
- * circle-clip enemy faces get, because a ruin token is physically a hexagon, not a round disc.
+ * [EnemyTokenFace]. Ruin art (when bundled at `enemy-tokens/<id>.png`, same asset folder and id-key
+ * convention as enemy art, ADR-0007) is a *transparent PNG whose hexagon silhouette is baked in* -
+ * so it's drawn with **no** clip at all, unlike the circle-clip enemy faces get: a ruin token is
+ * physically a hexagon, not a round disc, and the cutout alpha (not a Compose [androidx.compose.ui.graphics.Shape])
+ * is what gives it that shape. PNG rather than JPG precisely because JPG has no alpha channel.
  * Until a ruin's art is sourced, a readable text fallback stands in (its altar prompt or its
  * enemy-draw line), the same graceful-degradation spirit as [EnemyTokenFace]'s own fallback.
  */
@@ -45,16 +47,17 @@ internal fun RuinTokenFace(ruin: RuinToken, size: Dp = 96.dp) {
         Image(
             bitmap = bitmap,
             contentDescription = ruin.id,
-            modifier = Modifier.size(size).clip(RoundedCornerShape(RUIN_CORNER)),
+            // No clip: the PNG's own transparent hexagon is the shape.
+            modifier = Modifier.size(size),
         )
     } else {
         RuinTextFallback(ruin = ruin, size = size)
     }
 }
 
-/** Loads `enemy-tokens/<id>.jpg` for a ruin id, or null if that ruin's art isn't bundled yet. */
+/** Loads `enemy-tokens/<id>.png` for a ruin id (PNG for its baked hexagon alpha), or null if absent. */
 private fun loadRuinBitmap(context: Context, id: String): ImageBitmap? = try {
-    context.assets.open("enemy-tokens/$id.jpg").use { stream ->
+    context.assets.open("enemy-tokens/$id.png").use { stream ->
         BitmapFactory.decodeStream(stream)?.asImageBitmap()
     }
 } catch (_: Exception) {

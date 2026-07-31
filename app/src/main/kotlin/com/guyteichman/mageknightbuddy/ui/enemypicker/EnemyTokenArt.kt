@@ -68,22 +68,25 @@ private fun loadTokenBitmap(context: Context, id: String): ImageBitmap? = try {
 }
 
 /**
- * Renders a [TokenPileId]'s face-down back art at [size] (issue #198), clipped to a circle same as
- * [EnemyTokenFace] - the source crop is a circle centered on a square, so clipping just trims the
- * square's corners rather than losing any of the circle. Falls back to a colored disc with the
- * pile's name if that pile's back art isn't bundled yet, the same graceful-degradation pattern as
- * [EnemyTokenFace]'s [TokenTextFallback].
+ * Renders a [TokenPileId]'s face-down back art at [size] (issue #198). Round enemy piles are clipped
+ * to a circle same as [EnemyTokenFace] - their source crop is a circle centered on a square, so
+ * clipping just trims the square's corners. The **RUIN pile is the exception**: ruins are hexagonal,
+ * so their back is a transparent-PNG hexagon (like [RuinTokenFace]) and gets **no** clip - the alpha
+ * is the shape. Falls back to a colored disc with the pile's name if that pile's back art isn't
+ * bundled yet, the same graceful-degradation pattern as [EnemyTokenFace]'s [TokenTextFallback].
  */
 @Composable
 internal fun PileBackFace(pileId: TokenPileId, size: Dp = 96.dp) {
     val context = LocalContext.current
     val bitmap = remember(pileId) { loadPileBackBitmap(context, pileId) }
+    // The RUIN back carries its own hexagon alpha; every other pile's back is a round disc.
+    val isHex = pileId == TokenPileId.RUIN
 
     if (bitmap != null) {
         Image(
             bitmap = bitmap,
             contentDescription = pileId.displayName(),
-            modifier = Modifier.size(size).clip(CircleShape),
+            modifier = if (isHex) Modifier.size(size) else Modifier.size(size).clip(CircleShape),
         )
     } else {
         Box(
@@ -103,9 +106,13 @@ internal fun PileBackFace(pileId: TokenPileId, size: Dp = 96.dp) {
     }
 }
 
-/** Loads `enemy-tokens/backs/<pileid>.jpg` from assets, or null if that pile's back art isn't bundled yet. */
+/**
+ * Loads `enemy-tokens/backs/<pileid>.<ext>` from assets, or null if that pile's back art isn't
+ * bundled yet. The RUIN back is a PNG (baked hexagon alpha); the round enemy backs are JPG.
+ */
 private fun loadPileBackBitmap(context: Context, pileId: TokenPileId): ImageBitmap? = try {
-    context.assets.open("enemy-tokens/backs/${pileId.name.lowercase()}.jpg").use { stream ->
+    val ext = if (pileId == TokenPileId.RUIN) "png" else "jpg"
+    context.assets.open("enemy-tokens/backs/${pileId.name.lowercase()}.$ext").use { stream ->
         BitmapFactory.decodeStream(stream)?.asImageBitmap()
     }
 } catch (_: Exception) {
