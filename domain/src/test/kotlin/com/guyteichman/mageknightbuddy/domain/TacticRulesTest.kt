@@ -137,6 +137,34 @@ class TacticRulesTest {
     }
 
     @Test
+    fun `coopTacticScenarios is every Scenario except the 3 excluded from the coop picker`() {
+        // Independent ground truth (not derived from tacticRemovalRule's own logic, per CLAUDE.md's
+        // round-trip-assertion warning): every Scenario entry that has a real coop-branch row in
+        // tacticRemovalRule's `when`, hand-listed from that function's table rather than computed
+        // the same way coopTacticScenarios itself is computed.
+        val expected = listOf(
+            Scenario.SoloConquest,
+            Scenario.FirstReconnaissance,
+            Scenario.ForTheCouncil,
+            Scenario.AgainstTheApocalypse,
+            Scenario.AgainstTheHorsemen,
+            Scenario.AgainstTheDragon,
+            Scenario.FracturedLands,
+            Scenario.ApocalypseIsHere,
+            Scenario.RealmOfTheDead,
+            Scenario.HiddenValley,
+            Scenario.LifeAndDeath,
+            Scenario.LostRelic,
+        )
+
+        assertEquals(expected.toSet(), coopTacticScenarios.toSet())
+        // Excluded 3 must genuinely be absent, not just "expected happens to be missing them".
+        for (excluded in listOf(Scenario.VolkaresReturn, Scenario.VolkaresQuest, Scenario.SoloConquestChallenge)) {
+            assertEquals(false, excluded in coopTacticScenarios, "$excluded should not appear in coopTacticScenarios")
+        }
+    }
+
+    @Test
     fun `tacticPickOrder is player-first for solo, dummy-first for coop, except Volkare coop is player-first too`() {
         assertEquals(PickOrder.PLAYER_FIRST, tacticPickOrder(isVolkare = false, isSolo = true))
         assertEquals(PickOrder.DUMMY_FIRST, tacticPickOrder(isVolkare = false, isSolo = false))

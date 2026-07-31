@@ -15,6 +15,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
+import com.guyteichman.mageknightbuddy.domain.Scenario
 import kotlinx.coroutines.launch
 
 /**
@@ -33,6 +34,19 @@ class ProxyPlayerSetupViewModel(
     // DummyPlayerSetupViewModel's convention.
     var knight: Knight by savedStateHandle.saveable("knight") { mutableStateOf(Knight.entries.first()) }
     var wasRandom: Boolean by savedStateHandle.saveable("wasRandom") { mutableStateOf(false) }
+
+    // Defaults to solo (unchecked toggle), mirroring DummyPlayerSetupViewModel.isSolo.
+    var isSolo: Boolean by savedStateHandle.saveable("isSolo") { mutableStateOf(true) }
+
+    // Stored as the scenario's stable String id, not the Scenario object - see
+    // DummyPlayerSetupViewModel.scenarioId's doc comment for why (issue #212).
+    private var scenarioId: String by savedStateHandle.saveable("scenarioId") { mutableStateOf(Scenario.SoloConquest.id) }
+
+    // Only meaningful in coop mode (!isSolo per issue #220) - the setup screen only shows this
+    // picker then.
+    var scenario: Scenario
+        get() = Scenario.fromId(scenarioId)
+        set(value) { scenarioId = value.id }
 
     // Deliberately NOT saved in savedStateHandle: this reflects on-disk state, so it's re-checked
     // fresh via repository.restore() every time this ViewModel is created rather than cached.
@@ -65,7 +79,15 @@ class ProxyPlayerSetupViewModel(
      * "Starts at night?" checkbox (default false - most scenarios start at day).
      */
     suspend fun start(startsAtNight: Boolean = false) {
-        repository.save(ProxyPlayerSession.start(knight = knight, wasRandom = wasRandom, startsAtNight = startsAtNight))
+        repository.save(
+            ProxyPlayerSession.start(
+                knight = knight,
+                wasRandom = wasRandom,
+                startsAtNight = startsAtNight,
+                isSolo = isSolo,
+                scenario = scenario,
+            ),
+        )
         // hasSavedSession is otherwise only set from the init-block check, which doesn't re-run
         // when returning to this screen via a nested-NavHost back-pop (the ViewModel survives
         // that pop) - so without this, Restore Game stays stale/disabled right after Start.

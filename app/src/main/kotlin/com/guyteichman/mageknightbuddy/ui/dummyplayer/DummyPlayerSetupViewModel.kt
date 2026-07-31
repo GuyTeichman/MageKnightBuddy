@@ -15,6 +15,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
+import com.guyteichman.mageknightbuddy.domain.Scenario
 import kotlinx.coroutines.launch
 
 /**
@@ -33,6 +34,25 @@ class DummyPlayerSetupViewModel(
     // wizard's "every field starts at a sensible value" convention (see architecture.md).
     var knight: Knight by savedStateHandle.saveable("knight") { mutableStateOf(Knight.entries.first()) }
     var wasRandom: Boolean by savedStateHandle.saveable("wasRandom") { mutableStateOf(false) }
+
+    // Defaults to solo (unchecked toggle) - most sessions played through this app so far are solo.
+    var isSolo: Boolean by savedStateHandle.saveable("isSolo") { mutableStateOf(true) }
+
+    // Stored as the scenario's stable String **id**, not the Scenario object itself: Scenario's
+    // members are `data object`s (see domain/Scenario.kt), which are neither Parcelable nor
+    // Serializable, so putting one straight into SavedStateHandle crashes the app the moment
+    // Android parcels saved state on background ("Parcel: unknown type for value ..." - issue
+    // #212). Mirrors VolkareSetupViewModel.scenarioId/ScoreCalculatorViewModel.scenarioId for the
+    // same reason.
+    private var scenarioId: String by savedStateHandle.saveable("scenarioId") { mutableStateOf(Scenario.SoloConquest.id) }
+
+    // Computed property (no backing field of its own): re-derives the Scenario from the stored id
+    // on every read, and writes back through the id on set - so the picker still reads/writes a
+    // Scenario while only a String ever reaches SavedStateHandle. Only meaningful in coop mode
+    // (mode != VOLKARE && !isSolo per issue #220) - the setup screen only shows this picker then.
+    var scenario: Scenario
+        get() = Scenario.fromId(scenarioId)
+        set(value) { scenarioId = value.id }
 
     // Deliberately NOT saved in savedStateHandle: this reflects on-disk state, so it's re-checked
     // fresh via repository.restore() every time this ViewModel is created rather than cached.
@@ -69,7 +89,15 @@ class DummyPlayerSetupViewModel(
      * false - most scenarios start at day).
      */
     suspend fun start(startsAtNight: Boolean = false) {
-        repository.save(DummyPlayerSession.start(knight = knight, wasRandom = wasRandom, startsAtNight = startsAtNight))
+        repository.save(
+            DummyPlayerSession.start(
+                knight = knight,
+                wasRandom = wasRandom,
+                startsAtNight = startsAtNight,
+                isSolo = isSolo,
+                scenario = scenario,
+            ),
+        )
         // hasSavedSession is otherwise only set from the init-block check, which doesn't re-run
         // when returning to this screen via a nested-NavHost back-pop (the ViewModel survives
         // that pop) - so without this, Restore Game stays stale/disabled right after Start.

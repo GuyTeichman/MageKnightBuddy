@@ -2,9 +2,11 @@ package com.guyteichman.mageknightbuddy.ui.dummyplayer
 
 import androidx.lifecycle.SavedStateHandle
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
+import com.guyteichman.mageknightbuddy.domain.Scenario
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,5 +38,27 @@ class DummyPlayerSetupViewModelTest {
         viewModel.start()
 
         assertTrue(viewModel.hasSavedSession)
+    }
+
+    @Test
+    fun `defaults to solo and Conquest`() {
+        val viewModel = DummyPlayerSetupViewModel(SavedStateHandle(), DummyPlayerSessionRepository(FakeDummyPlayerSessionDao()))
+
+        assertTrue(viewModel.isSolo)
+        assertEquals(Scenario.SoloConquest, viewModel.scenario)
+    }
+
+    @Test
+    fun `start threads isSolo and scenario into the saved session`() = runTest {
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        val viewModel = DummyPlayerSetupViewModel(SavedStateHandle(), repository)
+        viewModel.isSolo = false
+        viewModel.scenario = Scenario.AgainstTheHorsemen
+
+        viewModel.start()
+
+        val saved = repository.restore()
+        assertEquals(false, saved?.isSolo)
+        assertEquals(Scenario.AgainstTheHorsemen, saved?.scenario)
     }
 }

@@ -102,4 +102,22 @@ class VolkareSetupViewModelTest {
         assertEquals(5, saved?.deckOrder?.count { it is VolkareCard.Wound })
         assertTrue(viewModel.hasSavedSession)
     }
+
+    @Test
+    fun `defaults to solo`() = runTest {
+        val viewModel = VolkareSetupViewModel(SavedStateHandle(), VolkareSessionRepository(FakeVolkareSessionDao()))
+
+        assertTrue(viewModel.isSolo)
+    }
+
+    @Test
+    fun `start threads isSolo into the saved session`() = runTest {
+        val repository = VolkareSessionRepository(FakeVolkareSessionDao())
+        val viewModel = VolkareSetupViewModel(SavedStateHandle(), repository)
+        viewModel.isSolo = false
+
+        viewModel.start()
+
+        assertEquals(false, repository.restore()?.isSolo)
+    }
 }
