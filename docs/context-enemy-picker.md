@@ -11,16 +11,28 @@ One face-down stack of same-backed tokens the **Enemy Picker** draws from — th
 _Avoid_: Deck (reserved for `docs/context-dummy-player.md`'s Dummy Player's/Volkare's/Proxy Player's card decks — a Token Pile holds cardboard tokens and has entirely different draw rules); Enemy Pile (3 of the piles hold non-enemies)
 
 **Ruin Token**:
-One of the RUIN **Token Pile**'s 12 base-game hexagonal tokens (rulebook "Revealing Ruins" /
-Ultimate Edition Walkthrough), modeled as `RuinToken` - a sibling type to **Enemy Token**, not a
-variant of it, since a Ruin token prints no Armor/Attack/Fame block. Two kinds: an **Ancient Altar**
-(pay three mana of one printed color for 7 Fame immediately, no combat) or an **Enemies With
-Treasure** draw (draw one token each from the two named **Token Pile**s - the same pile can be
-named twice - fight both, and claim the printed reward if you defeat them both). The reward isn't
-modeled: like the rest of the **Enemy Picker**, `RuinToken` tracks only which pile(s) to draw from,
-never Fame or rewards ([ADR-0006](adr/0006-enemy-picker-owns-pile-state-but-models-no-map.md)).
-Not yet wired into the picker's draw flow or UI, and has no art yet either (issue #201) - only the
-catalogue is transcribed so far.
+One of the RUIN **Token Pile**'s hexagonal tokens (12 base game + 3 Lost Legion; rulebook
+"Revealing Ruins" / Ultimate Edition Walkthrough), modeled as `RuinToken` - a sibling type to
+**Enemy Token**, not a variant of it, since a Ruin token prints no Armor/Attack/Fame block. Gated by
+the **Token Set** like enemy tokens (via `RuinToken.expansion`). Two kinds:
+- an **Ancient Altar** (`altarColors`): pay mana for Fame, no combat. A single-colour altar means
+  pay 3 of that colour for 7 Fame; the Lost Legion four-colour altar means pay one of *each* colour
+  for 10 Fame. The list's size (1 or 4) is the whole distinction - the Fame is derived from it for
+  the prompt, never stored.
+- an **Enemies With Treasure** draw (`enemyPiles`): draw one token from each pile in the list, in
+  order, and fight them all; a pile repeated in the list means that many draws from it (base
+  `ruin_green_green` = two from Green), and Lost Legion adds a three-enemy token. The drawn enemies
+  are attached under the ruin via the same **Summon Draw** machinery, but - unlike summoned tokens -
+  they render in full (defensive abilities matter) and can be **partially defeated** (each is its own
+  Draw Log flag; a ruin group is drawn once, never re-drawn).
+
+The printed `reward` is **displayed as reference text but never tracked or scored**
+([ADR-0006](adr/0006-enemy-picker-owns-pile-state-but-models-no-map.md), amended by issue #201):
+`RuinToken` still tracks only which pile(s) to draw from, plus this flavour string. All ruin *data*
+and *art* (base + Lost Legion) is bundled: each face is a **hexagon-shaped transparent PNG**
+(`enemy-tokens/<id>.png`), cropped from the TTS mod's hex-token diffuse textures and cut to the true
+hexagon silhouette (so ruins read as hexes, visibly distinct from the round enemy tokens); the RUIN
+pile back is the same treatment. The text tile remains only as the not-yet-sourced fallback.
 _Avoid_: Enemy Token (different shape entirely - no armor/attack/fame, and an Ancient Altar isn't
 combat at all)
 

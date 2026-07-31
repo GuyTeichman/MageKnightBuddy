@@ -242,12 +242,14 @@ first catalogue token with more than one Summon attack, exercising the multi-sum
 | Delphana Masters  | 2 | 8  | 5  | Cold Fire | Assassination, Paralyze  | 9 | Fire + Ice Resistance |
 | Grim Legionnaires | 2 | 10 | 11 | Physical  | —                        | 8 | Unfortified; Arcane Immunity |
 
-**Lost Legion ruin tokens are out of scope here.** The Lost Legion also adds 3 hexagonal ruin tokens
-(a four-colour "pay 3 mana → 10 Fame" Altar and two Enemies-With-Treasure tokens). They're deferred
-to the RUIN-pile work (issue #201) along with the base ruins, since the RUIN pile isn't wired into
-the picker yet, the four-colour altar needs a `RuinToken` model change, and the mod ships those
-tokens as 3-D meshes with no croppable face art. The Shades of Tezla enemy tokens are transcribed in
-their own section below.
+**Lost Legion ruin tokens: transcribed and wired (issue #201).** The Lost Legion adds 3 hexagonal
+ruin tokens - a four-colour "pay one of each → 10 Fame" Altar and two Enemies-With-Treasure tokens,
+one of which draws **three** enemies (which is exactly why `enemyPiles` is a variable-length list,
+not a fixed pair). Their exact data is in the "Ruin tokens" section's table below, transcribed from
+the rulebook p.20 token strip and the TTS "Enemy Tokens List" reference sheet. Their face art lives
+in a *separate* `/Lost Legion/Lost Legion Ruins` bag in the mod (not the base "Ruins" bag), so all
+three are now bundled too. The Shades of Tezla enemy tokens are transcribed in their own
+section below.
 
 ## Shades of Tezla expansion tokens (issue #188)
 
@@ -377,33 +379,67 @@ how `EnemyAttack` already tells a numeric attack from a Summon apart, rather tha
 sealed/polymorphic JSON shape for one type). Per the rulebook's "Revealing Ruins" section (also see
 the Ultimate Edition Walkthrough), a Ruin token is one of two kinds:
 
-- **Ancient Altar** (4 tokens): shows three mana crystals of one colour. Pay three mana of that
-  colour to immediately gain 7 Fame; no combat. Base game colours: Green, Blue, White, Red (the
-  Lost Legion expansion adds a 4-colour/10-Fame variant, deferred with the rest of the RUIN pile -
-  issue #201; see the Lost Legion section above).
-- **Enemies With Treasure** (8 tokens): shows two enemy-pile badges (the same pile can appear
-  twice - one base-game token draws both its enemies from Green). Draw one token from each named
-  pile and fight both; if you defeat both, claim the reward printed on the token. The reward isn't
-  modelled in `RuinToken` - the Enemy Picker only tracks pile/draw state, never rewards or Fame
-  (ADR-0006), so reward text is flavour only, listed here for completeness:
+- **Ancient Altar** (4 base tokens): shows three mana crystals of one colour. Pay three mana of that
+  colour to immediately gain 7 Fame; no combat. Base game colours: Green, Blue, White, Red. Modelled
+  as `RuinToken.altarColors`, a `List<ManaColor>` whose **size is the whole distinction** (spelled
+  out here so nothing leans on an unstated convention): **size 1** = pay 3 of that colour → 7 Fame;
+  **size 4** = the Lost Legion pay-one-of-each altar → 10 Fame (see the Lost Legion section above).
+  The Fame is derived from the size for the on-screen prompt, never stored.
+- **Enemies With Treasure** (8 base tokens): shows enemy-pile badges. Draw one token from each named
+  pile and fight them all; if you defeat them, claim the reward printed on the token. Modelled as
+  `RuinToken.enemyPiles`, a `List<TokenPileId>` drawn **in order**, where **a pile repeated in the
+  list means that many draws from it** (base game's Green+Green = `[GREEN, GREEN]`; Lost Legion adds
+  a three-enemy token) - this generalises the old "two badges" reading. The reward is `RuinToken.reward`,
+  **displayed as reference text but never tracked or scored** (ADR-0006, amended by #201).
 
-| Piles drawn | Reward |
-|-------------|--------|
-| Red + Brown | 2 Artifacts |
-| Green + Brown | Artifact + Spell |
-| Grey + White | Artifact + Advanced Action |
-| Grey + Red | Artifact |
-| Grey + Violet | Unit |
-| Green + Red | Artifact |
-| Green + Green | Set of 4 crystals |
-| Red + Violet | Advanced Action + set of 4 crystals |
+  The full base + Lost Legion ruin data below was **re-transcribed against ground truth** during #201
+  - the TTS mod's "Enemy Tokens List" reference sheet (which reproduces every token face) cross-checked
+  against the Lost Legion rulebook p.20 token strip. This **corrected two pile-pair errors and several
+  rewards** from the original #187 transcription: the tokens read then as "Grey + Red" and "Red +
+  Violet" are actually **Grey + Brown** and **Brown + Violet** (a tan sword badge, not the red-dragon
+  badge), and "Grey + White" gives a **Spell** (violet card), not an Advanced Action. Reward-icon key:
+  gold goblet = Artifact, violet card = Spell, deed card = Advanced Action, figure = Unit, four gems =
+  set of 4 crystals.
 
-**Not yet wired into the Enemy Picker's draw flow** - `RuinTokenCatalogue` is transcribed and
-validated (mirroring `TokenCatalogue`'s mandatory catalogue-validation test, ADR-0007) but
-`EnemyPickerSession`/the UI don't build or render the RUIN pile yet, since a drawn Ruin token needs
-different UI treatment than a round enemy token (a mana-payment prompt vs. a two-pile draw
-instruction) rather than an armor/attack/fame display, and no art exists for any `ruin_*` id yet
-either. Tracked as issue #201.
+| Piles drawn (badge order) | Reward | Expansion |
+|---------------------------|--------|-----------|
+| Brown + Red | 2 Artifacts | Base |
+| Green + Red | Artifact + Advanced Action | Base |
+| Grey + White | Artifact + Spell | Base |
+| Grey + Brown | Artifact | Base |
+| Grey + Violet | Unit | Base |
+| Green + Brown | Artifact | Base |
+| Green + Green | Set of 4 crystals | Base |
+| Brown + Violet | Spell + set of 4 crystals | Base |
+| Green + Green + Green | Unit | Lost Legion |
+| Violet + Violet | Spell + Advanced Action | Lost Legion |
+
+Lost Legion altar: one crystal each of **Green, Blue, White, Red → 10 Fame** (`altarColors` size 4).
+
+**Wired into the Enemy Picker (issue #201).** `EnemyPickerSession` builds the single RUIN pile from
+`RuinTokenCatalogue` (one copy per ruin, gated by the Token Set), the pile is tap-to-draw-1 in the
+selector, and a drawn ruin gets its own dialog: an Ancient Altar shows its mana prompt + derived
+Fame, an Enemies-With-Treasure ruin shows its draw instruction + reward + a one-shot "Draw its
+enemies" button (which draws the prescribed enemies via the shared Summon Draw machinery and attaches
+them under the ruin, rendered in full so their defensive abilities show, each independently
+defeatable).
+
+**Art (all 15 ruins done, #201):** every ruin - 12 base + 3 Lost Legion - is bundled as face art.
+Although the mod holds ruins as 3-D `Custom_Model`s, each model's `DiffuseURL` is a flat two-hex
+texture (left = the token face, right = the shared rubble back). The base 12 live in the mod's "Ruins"
+bag; the 3 Lost Legion ruins live in a *separate* `/Lost Legion/Lost Legion Ruins` bag (found by
+scanning every object sharing the ruin hex `MeshURL`, not just the base bag - an earlier pass looked
+only in "Ruins" and wrongly concluded both that ruins were mesh-only *and* that the LL faces were
+absent). Each face is cut to the hexagon by a **single geometric mask**, not by colour: because every ruin
+shares the same mesh/UV, its hexagon sits at the exact same place in the half-texture, so one polygon
+- a regular pointy-top hexagon, vertices `(219,0) (438,125) (438,375) (219,500) (0,375) (0,125)` in
+the 438x500 half - fits all 15 faces and the back. (A first attempt colour-keyed the yellow surround
+via flood-fill; it bled through the same-yellow altar interiors and nibbled some tokens, so it was
+dropped in favour of the coordinate mask.) The masked result is a transparent square PNG -
+`app/src/main/assets/enemy-tokens/ruin_*.png`, plus `backs/ruin.png` for the shared rubble back. They
+render with **no** Compose clip (the PNG alpha is the hexagon), which is what makes ruins read as hexes
+next to the round enemy discs. The data itself (base
++ Lost Legion) is fully transcribed above.
 
 ## Follow-up work (issue #178)
 

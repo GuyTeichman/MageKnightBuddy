@@ -25,6 +25,13 @@ class EnemyPickerSessionTest {
 
     private val catalogue = listOf(greenA, greenB, greenC, brownX, legionToken)
 
+    // Ruin fixtures: two BASE ruins (an altar and an Enemies-With-Treasure) plus one Lost Legion
+    // ruin, to exercise the RUIN pile being built from its own catalogue and gated by expansion.
+    private val ruinAltar = RuinToken(id = "ruin_altar_red", expansion = Expansion.BASE, altarColors = listOf(ManaColor.RED))
+    private val ruinEwt = RuinToken(id = "ruin_red_brown", expansion = Expansion.BASE, enemyPiles = listOf(TokenPileId.RED, TokenPileId.BROWN), reward = "2 Artifacts")
+    private val ruinLegion = RuinToken(id = "ruin_ll_altar", expansion = Expansion.LOST_LEGION, altarColors = listOf(ManaColor.RED, ManaColor.BLUE, ManaColor.GREEN, ManaColor.WHITE))
+    private val ruinCatalogue = listOf(ruinAltar, ruinEwt, ruinLegion)
+
     // Expected green draw pile under identity shuffle: copies expanded in catalogue order.
     private val greenOrder = listOf("orc_a", "orc_a", "orc_b", "orc_c")
 
@@ -48,6 +55,33 @@ class EnemyPickerSessionTest {
         // With Lost Legion added, its token joins the green pile (appended, catalogue order).
         val withLegion = EnemyPickerSession.start(catalogue, tokenSet = setOf(Expansion.BASE, Expansion.LOST_LEGION), shuffle = noShuffle)
         assertEquals(greenOrder + "green_ll", withLegion.piles.getValue(TokenPileId.GREEN).drawPile)
+    }
+
+    @Test
+    fun `start builds a RUIN pile of one copy per ruin, gated by the token set`() {
+        // Base-only: the two BASE ruins appear (catalogue order under identity shuffle), one copy
+        // each; the Lost Legion ruin is excluded.
+        val baseOnly = EnemyPickerSession.start(
+            catalogue, tokenSet = setOf(Expansion.BASE), shuffle = noShuffle, ruinCatalogue = ruinCatalogue,
+        )
+        val ruinPile = baseOnly.piles.getValue(TokenPileId.RUIN)
+        assertEquals(listOf("ruin_altar_red", "ruin_red_brown"), ruinPile.drawPile)
+        assertEquals(emptyList(), ruinPile.discardPile)
+
+        // With Lost Legion enabled, its ruin joins the pile (appended, catalogue order).
+        val withLegion = EnemyPickerSession.start(
+            catalogue, tokenSet = setOf(Expansion.BASE, Expansion.LOST_LEGION), shuffle = noShuffle, ruinCatalogue = ruinCatalogue,
+        )
+        assertEquals(
+            listOf("ruin_altar_red", "ruin_red_brown", "ruin_ll_altar"),
+            withLegion.piles.getValue(TokenPileId.RUIN).drawPile,
+        )
+    }
+
+    @Test
+    fun `start without a ruin catalogue builds no RUIN pile`() {
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+        assertFalse(session.piles.containsKey(TokenPileId.RUIN))
     }
 
     @Test

@@ -163,28 +163,34 @@ data class EnemyPickerSession private constructor(
     }
 
     /**
-     * Rebuilds every pile from [catalogue] and clears the [drawLog], keeping the current [tokenSet]
-     * and [drawWithReplacement] - the config section's "Apply & Reset" and the standalone Reset
-     * button both land here. Equivalent to [start] with this session's config.
+     * Rebuilds every pile from [catalogue] (and [ruinCatalogue] for the RUIN pile) and clears the
+     * [drawLog], keeping the current [tokenSet] and [drawWithReplacement] - the config section's
+     * "Apply & Reset" and the standalone Reset button both land here. Equivalent to [start] with this
+     * session's config.
      */
     fun reset(
         catalogue: List<EnemyToken>,
         shuffle: (List<String>) -> List<String> = { it.shuffled() },
-    ): EnemyPickerSession = start(catalogue, tokenSet, drawWithReplacement, shuffle)
+        ruinCatalogue: List<RuinToken> = emptyList(),
+    ): EnemyPickerSession = start(catalogue, tokenSet, drawWithReplacement, shuffle, ruinCatalogue)
 
     companion object {
         /**
-         * Builds the initial [TokenPile] map from [catalogue]: every token whose [EnemyToken.pile]
-         * exists and whose [EnemyToken.expansion] is in [tokenSet] is expanded into
-         * [EnemyToken.copies] entries of its id, and each pile's combined list is `shuffle`d into
-         * its draw pile (discard empty). Piles with no matching tokens are omitted.
+         * Builds the initial [TokenPile] map from the two catalogues: every [EnemyToken] whose
+         * [EnemyToken.expansion] is in [tokenSet] is expanded into [EnemyToken.copies] entries of its
+         * id and grouped into its [EnemyToken.pile]; the [RuinToken]s whose [RuinToken.expansion] is
+         * in [tokenSet] each contribute a single id (ruins are unique - no copy count) to the one
+         * [TokenPileId.RUIN] pile. Each pile's combined list is `shuffle`d into its draw pile (discard
+         * empty). Piles with no matching tokens are omitted - including RUIN, e.g. when no
+         * [ruinCatalogue] is supplied.
          */
         private fun buildPiles(
             catalogue: List<EnemyToken>,
+            ruinCatalogue: List<RuinToken>,
             tokenSet: Set<Expansion>,
             shuffle: (List<String>) -> List<String>,
-        ): Map<TokenPileId, TokenPile> =
-            catalogue
+        ): Map<TokenPileId, TokenPile> {
+            val enemyPiles = catalogue
                 .filter { it.expansion in tokenSet }
                 // groupBy collects tokens into a map keyed by their pile; each value is the list of
                 // tokens in that pile, which we then expand-by-copies and shuffle.
@@ -194,20 +200,31 @@ data class EnemyPickerSession private constructor(
                     TokenPile(drawPile = shuffle(ids))
                 }
 
+            // The RUIN pile comes from its own catalogue (a different token shape); one copy per ruin.
+            val ruinIds = ruinCatalogue.filter { it.expansion in tokenSet }.map { it.id }
+            // `+ (RUIN to ...)` only when there's something to put there, so an empty RUIN pile is
+            // omitted just like any other empty pile above.
+            return if (ruinIds.isEmpty()) enemyPiles
+            else enemyPiles + (TokenPileId.RUIN to TokenPile(drawPile = shuffle(ruinIds)))
+        }
+
         /**
          * Begins a fresh session. [tokenSet] defaults to base game only and [drawWithReplacement]
          * to false (the rules-correct default). [shuffle] defaults to a real shuffle; tests pass a
          * deterministic one (e.g. identity) the same way [VolkareSession.start] takes `deckOrder`.
+         * [ruinCatalogue] populates the [TokenPileId.RUIN] pile; omit it (the default) to build a
+         * session with no RUIN pile at all.
          */
         fun start(
             catalogue: List<EnemyToken>,
             tokenSet: Set<Expansion> = setOf(Expansion.BASE),
             drawWithReplacement: Boolean = false,
             shuffle: (List<String>) -> List<String> = { it.shuffled() },
+            ruinCatalogue: List<RuinToken> = emptyList(),
         ): EnemyPickerSession = EnemyPickerSession(
             tokenSet = tokenSet,
             drawWithReplacement = drawWithReplacement,
-            piles = buildPiles(catalogue, tokenSet, shuffle),
+            piles = buildPiles(catalogue, ruinCatalogue, tokenSet, shuffle),
             drawLog = emptyList(),
         )
 
