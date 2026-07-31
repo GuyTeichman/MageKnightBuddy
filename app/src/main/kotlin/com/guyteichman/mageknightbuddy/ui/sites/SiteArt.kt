@@ -5,10 +5,8 @@ import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -70,24 +68,25 @@ internal fun SiteThumbnail(site: Site, size: Dp = 56.dp) {
     }
 }
 
-/** A header image for the detail screen: the site's art framed on a tinted panel, or a placeholder. */
+/** A header image for the detail screen: the site's icon framed at a modest size on a tinted panel. */
 @Composable
 internal fun SiteArtHeader(site: Site, modifier: Modifier = Modifier) {
     val bitmap = rememberSiteBitmap(site)
-    val panel = modifier.fillMaxWidth().height(220.dp).clip(THUMB_SHAPE)
+    val panel = modifier.fillMaxWidth().height(200.dp).clip(THUMB_SHAPE)
     if (bitmap != null) {
         Box(
             modifier = panel.background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
+            // The art is a small (~150px) quick-reference icon, so show it at a fixed modest size
+            // framed on the panel rather than stretched full-bleed - blowing 150px up to fill a
+            // 200dp header would just blur it. The assets are square cream tiles, so a square box
+            // and its own rounded corners read as a framed emblem centered on the panel.
             Image(
                 bitmap = bitmap,
                 contentDescription = site.name,
-                // Fit (not Crop): the card illustrations vary in aspect - wide (Monastery), tall
-                // (Mage Tower), square (the Shades hex tiles) - so Fit shows each one whole,
-                // centered on the panel, rather than cropping its edges.
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize().padding(8.dp),
+                modifier = Modifier.size(168.dp).clip(RoundedCornerShape(12.dp)),
             )
         }
     } else {

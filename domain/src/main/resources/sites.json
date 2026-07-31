@@ -246,6 +246,7 @@
       { "heading": "Eternal Night", "body": "During the Day, Night rules apply in a graveyard." },
       { "heading": "Imbued With Magic", "body": "At Night, if you start your turn in a graveyard, then you gain a black mana crystal." },
       { "heading": "Movement", "body": "The move cost of the Graveyard space is determined by the terrain type shown on the space it covers (just like a Ruins tile). The fact that Night rules apply while in a graveyard does not affect the Move cost of the terrain it is in (so to move into a forest space that has a graveyard in it will still cost 3 Move points during the Day)." }
-    ]
+    ],
+    "art": "graveyard_tile.jpg"
   }
 ]
