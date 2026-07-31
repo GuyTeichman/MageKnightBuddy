@@ -33,7 +33,13 @@ import com.guyteichman.mageknightbuddy.ui.dummyplayer.DummyPlayerTab
 import com.guyteichman.mageknightbuddy.ui.enemypicker.EnemyPickerTab
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.scoreboard.ScoreboardTab
+import com.guyteichman.mageknightbuddy.ui.settings.SettingsScreen
 import com.guyteichman.mageknightbuddy.ui.sites.SitesTab
+
+// The Settings destination's route. Not a [Tab]: it's reached via the shared settings gear on each
+// tab's top bar (see SettingsAction), and registered in the NavHost outside the bottom-nav `tabs`
+// list so it never appears as a navigation-bar item.
+private const val SETTINGS_ROUTE = "settings"
 
 /**
  * One entry in the bottom navigation bar. `sealed class` restricts every possible
@@ -126,6 +132,7 @@ fun MageKnightBuddyApp(
                     repository = repository,
                     draftRepository = draftRepository,
                     fieldHelp = fieldHelp,
+                    onOpenSettings = { navController.navigate(SETTINGS_ROUTE) },
                 )
             }
             composable(Tab.DummyPlayer.route) {
@@ -134,13 +141,25 @@ fun MageKnightBuddyApp(
                     volkareRepository = volkareRepository,
                     proxyPlayerRepository = proxyPlayerRepository,
                     fieldHelp = fieldHelp,
+                    onOpenSettings = { navController.navigate(SETTINGS_ROUTE) },
                 )
             }
             composable(Tab.EnemyPicker.route) {
-                EnemyPickerTab(repository = enemyPickerRepository)
+                EnemyPickerTab(
+                    repository = enemyPickerRepository,
+                    onOpenSettings = { navController.navigate(SETTINGS_ROUTE) },
+                )
             }
             composable(Tab.Sites.route) {
-                SitesTab()
+                SitesTab(onOpenSettings = { navController.navigate(SETTINGS_ROUTE) })
+            }
+            // Settings lives outside the bottom-nav `tabs` list (see SETTINGS_ROUTE): a normal
+            // pushed destination, so its back arrow pops back to whichever tab opened it.
+            composable(SETTINGS_ROUTE) {
+                SettingsScreen(
+                    repository = repository,
+                    onBack = { navController.popBackStack() },
+                )
             }
         }
     }

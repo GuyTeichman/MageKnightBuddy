@@ -97,6 +97,7 @@ import com.guyteichman.mageknightbuddy.ui.components.LabeledDropdown
 import com.guyteichman.mageknightbuddy.ui.components.LabeledSwitch
 import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.components.swatch
+import com.guyteichman.mageknightbuddy.ui.settings.SettingsAction
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.help.HelpButton
 import kotlinx.coroutines.launch
@@ -130,6 +131,7 @@ fun DummyPlayerTab(
     volkareRepository: VolkareSessionRepository,
     proxyPlayerRepository: ProxyPlayerSessionRepository,
     fieldHelp: Map<String, FieldHelp>,
+    onOpenSettings: () -> Unit,
 ) {
     val nestedNavController = rememberNavController()
 
@@ -139,6 +141,7 @@ fun DummyPlayerTab(
                 repository = repository,
                 volkareRepository = volkareRepository,
                 proxyPlayerRepository = proxyPlayerRepository,
+                onOpenSettings = onOpenSettings,
                 // Both Start and Restore Game land on the same AI-screen route - once a session
                 // exists (freshly started or restored), the AI screen just loads whatever's saved.
                 onStart = { nestedNavController.navigate(DUMMY_PLAYER_AI_ROUTE) },
@@ -178,6 +181,7 @@ fun DummyPlayerTab(
  * [onRandomSelected] below), so toggling Standard/Proxy Player afterward keeps showing the same
  * Knight instead of jumping to whichever ViewModel wasn't just edited.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DummyPlayerSetupScreen(
     repository: DummyPlayerSessionRepository,
@@ -189,6 +193,7 @@ private fun DummyPlayerSetupScreen(
     onRestoreVolkare: () -> Unit,
     onStartProxyPlayer: () -> Unit,
     onRestoreProxyPlayer: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     val viewModel: DummyPlayerSetupViewModel = viewModel(factory = DummyPlayerSetupViewModel.factory(repository))
     val volkareViewModel: VolkareSetupViewModel = viewModel(factory = VolkareSetupViewModel.factory(volkareRepository))
@@ -212,11 +217,20 @@ private fun DummyPlayerSetupScreen(
         restorePreview = loadRestoreGamePreview(repository, volkareRepository, proxyPlayerRepository)
     }
 
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Dummy Player") },
+                // The shared settings gear, present on every tab's top bar so Settings is reachable
+                // from anywhere without its own bottom-nav tab (see SettingsAction).
+                actions = { SettingsAction(onClick = onOpenSettings) },
+            )
+        },
+    ) { padding ->
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Dummy Player")
 
         // Top-level choice: Volkare has no Knight at all, so it's a peer of "a Knight" as a whole,
         // not of Standard/Proxy Player individually (those are 2 depths of the same Knight-backed
@@ -348,6 +362,7 @@ private fun DummyPlayerSetupScreen(
         ) {
             Text("Restore Game")
         }
+    }
     }
 }
 

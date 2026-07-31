@@ -45,6 +45,7 @@ import com.guyteichman.mageknightbuddy.domain.ScoringSession
 import com.guyteichman.mageknightbuddy.domain.breakdown
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.scorecalculator.ScoreCalculatorScreen
+import com.guyteichman.mageknightbuddy.ui.settings.SettingsAction
 
 private const val SCOREBOARD_LIST_ROUTE = "scoreboard_list"
 
@@ -76,6 +77,7 @@ fun ScoreboardTab(
     repository: ScoringSessionRepository,
     draftRepository: ScoreCalculatorDraftRepository,
     fieldHelp: Map<String, FieldHelp>,
+    onOpenSettings: () -> Unit,
 ) {
     // A NavController scoped to this tab's own nested graph - distinct from whatever
     // NavController drives the app's top-level tab switching.
@@ -93,6 +95,7 @@ fun ScoreboardTab(
                 sessions = sessions,
                 onRowClick = { index -> nestedNavController.navigate("scoreboard_details/$index") },
                 onScoreNewScenario = { nestedNavController.navigate(SCOREBOARD_SCORE_ROUTE) },
+                onOpenSettings = onOpenSettings,
             )
         }
         composable(
@@ -131,8 +134,17 @@ private fun ScoreboardListScreen(
     sessions: List<ScoringSession>,
     onRowClick: (Int) -> Unit,
     onScoreNewScenario: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Scoreboard") },
+                // The shared settings gear, present on every tab's top bar so Settings is reachable
+                // from anywhere without its own bottom-nav tab (see SettingsAction).
+                actions = { SettingsAction(onClick = onOpenSettings) },
+            )
+        },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onScoreNewScenario,

@@ -46,6 +46,7 @@ import androidx.navigation.navArgument
 import com.guyteichman.mageknightbuddy.domain.Site
 import com.guyteichman.mageknightbuddy.domain.SiteCatalogue
 import com.guyteichman.mageknightbuddy.domain.SiteExpansion
+import com.guyteichman.mageknightbuddy.ui.settings.SettingsAction
 
 private const val SITES_LIST_ROUTE = "sites_list"
 
@@ -65,7 +66,7 @@ private const val SITES_DETAIL_ROUTE = "sites_detail/{id}"
  * unlike the other tabs this needs no ViewModel or repository: it reads [SiteCatalogue.sites] directly.
  */
 @Composable
-fun SitesTab() {
+fun SitesTab(onOpenSettings: () -> Unit) {
     // A NavController scoped to this tab's own nested graph, distinct from the app's tab-switching one.
     val nestedNavController = rememberNavController()
 
@@ -73,6 +74,7 @@ fun SitesTab() {
         composable(SITES_LIST_ROUTE) {
             SitesListScreen(
                 onSiteClick = { id -> nestedNavController.navigate("sites_detail/$id") },
+                onOpenSettings = onOpenSettings,
             )
         }
         composable(
@@ -94,8 +96,9 @@ fun SitesTab() {
  * The list screen: a search field pinned above a scrolling list of matching sites. Search query and
  * the filtered result are hoisted here; tapping a row hands its id up to [onSiteClick].
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SitesListScreen(onSiteClick: (String) -> Unit) {
+private fun SitesListScreen(onSiteClick: (String) -> Unit, onOpenSettings: () -> Unit) {
     // rememberSaveable keeps the typed query across configuration changes (rotation) and across
     // tab switches (the top-level nav saves/restores this tab's state), so returning to Sites keeps
     // whatever was being searched.
@@ -105,35 +108,46 @@ private fun SitesListScreen(onSiteClick: (String) -> Unit) {
     // unrelated recomposition. The catalogue itself is static, so it's the only input that varies.
     val results = remember(query) { SiteCatalogue.sites.searchedAndSorted(query) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            singleLine = true,
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            // A clear (X) button only while there's something to clear.
-            trailingIcon = {
-                if (query.isNotEmpty()) {
-                    IconButton(onClick = { query = "" }) {
-                        Icon(Icons.Filled.Clear, contentDescription = "Clear search")
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Sites") },
+                // The shared settings gear, present on every tab's top bar so Settings is reachable
+                // from anywhere without its own bottom-nav tab (see SettingsAction).
+                actions = { SettingsAction(onClick = onOpenSettings) },
+            )
+        },
+    ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                // A clear (X) button only while there's something to clear.
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { query = "" }) {
+                            Icon(Icons.Filled.Clear, contentDescription = "Clear search")
+                        }
                     }
-                }
-            },
-            placeholder = { Text("Search sites") },
-        )
+                },
+                placeholder = { Text("Search sites") },
+            )
 
-        if (results.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No sites match “$query”")
-            }
-        } else {
-            // LazyColumn only composes the rows on screen, so the whole catalogue isn't laid out at once.
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                // key = each site's id so Compose reuses the right row across filtering, rather than
-                // re-composing by position when the result set changes.
-                items(results, key = { it.id }) { site ->
-                    SiteRow(site = site, onClick = { onSiteClick(site.id) })
+            if (results.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No sites match “$query”")
+                }
+            } else {
+                // LazyColumn only composes the rows on screen, so the whole catalogue isn't laid out at once.
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    // key = each site's id so Compose reuses the right row across filtering, rather than
+                    // re-composing by position when the result set changes.
+                    items(results, key = { it.id }) { site ->
+                        SiteRow(site = site, onClick = { onSiteClick(site.id) })
+                    }
                 }
             }
         }
