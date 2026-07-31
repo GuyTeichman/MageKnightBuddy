@@ -12,21 +12,27 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -276,6 +282,9 @@ private fun wizardPagesFor(scenario: Scenario, knight: Knight): List<WizardPage>
  * @param onDone called after a successful save, to pop back to the Scoreboard list (this wizard
  * is a nested destination inside the Scoreboard tab - see [com.guyteichman.mageknightbuddy.ui.scoreboard.ScoreboardTab]).
  */
+// @OptIn: TopAppBar is still an experimental Material3 API (same opt-in the Scoreboard's
+// breakdown screen uses).
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScoreCalculatorScreen(
     repository: ScoringSessionRepository,
@@ -303,33 +312,59 @@ fun ScoreCalculatorScreen(
     // fine here (unlike the wizard fields above) because a dismissed confirmation dialog isn't
     // something that needs to survive a tab switch.
     var showResetConfirmation by remember { mutableStateOf(false) }
+    // Same plain-Compose pattern as showResetConfirmation, but for the "close this wizard and go
+    // back to the Scoreboard" flow (the top-bar X and system back both route through it).
+    var showExitConfirmation by remember { mutableStateOf(false) }
 
-    // imePadding() shrinks this Box by however tall the soft keyboard currently is, so the
-    // wizard's navigation row (and the reset FAB) stay above the keyboard instead of being
-    // covered by it (issue #173). The scrollable field area inside gives up the space, and
-    // Compose scrolls the focused text field back into view on its own.
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .imePadding(),
-    ) {
-        WizardContent(
-            viewModel = viewModel,
-            wizardPages = wizardPages,
-            currentPage = currentPage,
-            fieldHelp = fieldHelp,
-            scope = scope,
-            onDone = onDone,
-        )
+    // Intercept the system back gesture/button so it prompts before discarding, instead of
+    // silently popping the wizard off the Scoreboard tab's back stack and losing a part-entered
+    // session. Routes through the same confirmation as the top-bar close button below.
+    BackHandler { showExitConfirmation = true }
 
-        ExtendedFloatingActionButton(
-            onClick = { showResetConfirmation = true },
-            icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-            text = { Text("New scoring session") },
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Score new scenario") },
+                // A close (X) affordance for abandoning the entry and returning to the Scoreboard
+                // list - the wizard is a create flow pushed onto that tab's nested NavHost, so it
+                // needs a visible way out besides finishing on the last page (issue #248).
+                navigationIcon = {
+                    IconButton(onClick = { showExitConfirmation = true }) {
+                        Icon(Icons.Filled.Close, contentDescription = "Cancel scoring")
+                    }
+                },
+            )
+        },
+    ) { topBarPadding ->
+        // imePadding() shrinks this Box by however tall the soft keyboard currently is, so the
+        // wizard's navigation row (and the reset FAB) stay above the keyboard instead of being
+        // covered by it (issue #173). The scrollable field area inside gives up the space, and
+        // Compose scrolls the focused text field back into view on its own. padding(topBarPadding)
+        // keeps the content clear of the new TopAppBar.
+        Box(
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 88.dp, end = 16.dp),
-        )
+                .fillMaxSize()
+                .padding(topBarPadding)
+                .imePadding(),
+        ) {
+            WizardContent(
+                viewModel = viewModel,
+                wizardPages = wizardPages,
+                currentPage = currentPage,
+                fieldHelp = fieldHelp,
+                scope = scope,
+                onDone = onDone,
+            )
+
+            ExtendedFloatingActionButton(
+                onClick = { showResetConfirmation = true },
+                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                text = { Text("New scoring session") },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 88.dp, end = 16.dp),
+            )
+        }
     }
 
     if (showResetConfirmation) {
@@ -348,6 +383,30 @@ fun ScoreCalculatorScreen(
             dismissButton = {
                 TextButton(onClick = { showResetConfirmation = false }) {
                     Text("Cancel")
+                }
+            },
+        )
+    }
+
+    if (showExitConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmation = false },
+            title = { Text("Discard this entry?") },
+            text = { Text("Any unsaved progress on this scoring session will be lost.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    // reset() also blanks the persisted draft, so the abandoned entry isn't
+                    // restored the next time the wizard is opened - keeping "will be lost" honest.
+                    viewModel.reset()
+                    showExitConfirmation = false
+                    onDone()
+                }) {
+                    Text("Discard")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitConfirmation = false }) {
+                    Text("Keep editing")
                 }
             },
         )
