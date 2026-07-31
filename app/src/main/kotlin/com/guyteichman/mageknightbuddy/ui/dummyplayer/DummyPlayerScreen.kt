@@ -87,10 +87,13 @@ import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
+import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
 import com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon
 import com.guyteichman.mageknightbuddy.ui.components.LabeledCheckbox
+import com.guyteichman.mageknightbuddy.ui.components.LabeledDropdown
+import com.guyteichman.mageknightbuddy.ui.components.LabeledSwitch
 import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.components.swatch
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
@@ -259,6 +262,38 @@ private fun DummyPlayerSetupScreen(
             StandardOrProxyPlayerSelector(mode = mode, onModeSelected = { mode = it })
         }
 
+        // Shown regardless of which mode is selected above (issue #220/#179) - every mode's Tactic
+        // Card removal rule depends on solo vs. coop (see TacticRules.kt's tacticRemovalRule).
+        // Reads viewModel.isSolo (Standard's) as the single display source and writes to all 3
+        // ViewModels together, the same "one physical control, keep every ViewModel in sync" idiom
+        // onKnightSelected/onRandomSelected above already use for Knight - so switching modes never
+        // shows a stale value from whichever ViewModel wasn't just edited.
+        LabeledSwitch(
+            label = "Cooperative play?",
+            checked = viewModel.isSolo.not(),
+            onCheckedChange = { checked ->
+                viewModel.isSolo = !checked
+                proxyPlayerViewModel.isSolo = !checked
+                volkareViewModel.isSolo = !checked
+            },
+        )
+
+        // Coop-only Scenario picker (issue #220): Volkare has its own, unrelated Return/Quest
+        // Scenario field (see VolkareSetupFields above), so this only applies to Standard/Proxy
+        // Player. Synced across both the same way the Knight picker above is, for the same reason.
+        if (mode != DummyPlayerMode.VOLKARE && !viewModel.isSolo) {
+            LabeledDropdown(
+                label = "Scenario",
+                options = COOP_TACTIC_SCENARIO_OPTIONS,
+                selected = viewModel.scenario,
+                displayName = { it.displayName },
+                onSelected = { selected ->
+                    viewModel.scenario = selected
+                    proxyPlayerViewModel.scenario = selected
+                },
+            )
+        }
+
         // Shown regardless of which mode is selected above - most Mage Knight scenarios start at
         // day (Round 1), so this defaults unchecked. Day/night for any later Round is then just
         // derived from the Round number (see isDayRound), not tracked turn-by-turn.
@@ -314,6 +349,18 @@ private fun DummyPlayerSetupScreen(
         }
     }
 }
+
+/**
+ * Options for the coop-only Tactic Scenario picker (issue #220): every [Scenario] except
+ * [Scenario.VolkaresReturn]/[Scenario.VolkaresQuest] (Volkare-only, has its own separate Scenario
+ * field) and [Scenario.SoloConquestChallenge] (no documented coop variant - see `TacticRules.kt`'s
+ * `tacticRemovalRule` doc comment). Sorted alphabetically by displayName, matching the Score
+ * Calculator's own Scenario picker convention (issue #110).
+ */
+private val COOP_TACTIC_SCENARIO_OPTIONS: List<Scenario> =
+    Scenario.entries
+        .filterNot { it == Scenario.VolkaresReturn || it == Scenario.VolkaresQuest || it == Scenario.SoloConquestChallenge }
+        .sortedBy { it.displayName }
 
 /** Human-readable label for a [DummyPlayerMode] - matches the setup screen's own selector chip text. */
 private val DummyPlayerMode.label: String

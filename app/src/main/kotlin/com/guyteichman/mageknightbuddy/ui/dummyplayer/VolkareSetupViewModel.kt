@@ -49,6 +49,12 @@ class VolkareSetupViewModel(
     var raceLevel: RaceLevel by savedStateHandle.saveable("raceLevel") { mutableStateOf(RaceLevel.FAIR) }
         private set
 
+    // Defaults to solo (unchecked toggle), mirroring DummyPlayerSetupViewModel.isSolo. No separate
+    // Scenario field here - Volkare's own scenario above (Return/Quest) already drives Tactic
+    // removal (see TacticRules.kt's isVolkare branch), unrelated to the coop-only Scenario picker
+    // Standard/Proxy Player show.
+    var isSolo: Boolean by savedStateHandle.saveable("isSolo") { mutableStateOf(true) }
+
     // Starts at the (scenario, raceLevel) table default; pickScenario/pickRaceLevel reset it back
     // to that default whenever either pill changes, but setWoundCount (a direct edit) can diverge
     // from it - see woundCountIsCustom.
@@ -102,7 +108,13 @@ class VolkareSetupViewModel(
      */
     suspend fun start(startsAtNight: Boolean = false) {
         repository.save(
-            VolkareSession.start(scenario = scenario, raceLevel = raceLevel, woundCount = woundCount, startsAtNight = startsAtNight),
+            VolkareSession.start(
+                scenario = scenario,
+                raceLevel = raceLevel,
+                woundCount = woundCount,
+                startsAtNight = startsAtNight,
+                isSolo = isSolo,
+            ),
         )
         hasSavedSession = true
     }
