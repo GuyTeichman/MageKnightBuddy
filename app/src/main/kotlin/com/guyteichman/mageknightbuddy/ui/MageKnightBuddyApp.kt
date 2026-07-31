@@ -3,7 +3,6 @@ package com.guyteichman.mageknightbuddy.ui
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Place
@@ -34,7 +33,6 @@ import com.guyteichman.mageknightbuddy.ui.dummyplayer.DummyPlayerTab
 import com.guyteichman.mageknightbuddy.ui.enemypicker.EnemyPickerTab
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.scoreboard.ScoreboardTab
-import com.guyteichman.mageknightbuddy.ui.scorecalculator.ScoreCalculatorScreen
 import com.guyteichman.mageknightbuddy.ui.sites.SitesTab
 
 /**
@@ -43,20 +41,22 @@ import com.guyteichman.mageknightbuddy.ui.sites.SitesTab
  * them all is guaranteed by the compiler to be exhaustive.
  */
 private sealed class Tab(val route: String, val labelRes: Int, val icon: ImageVector) {
+    // Scoreboard hosts the Score Calculator wizard inside its own nested NavHost (reached via
+    // the "Score new scenario" FAB), so scoring is no longer a separate bottom-nav tab.
     data object Scoreboard : Tab("scoreboard", R.string.tab_scoreboard, Icons.Filled.Scoreboard)
-    data object ScoreCalculator : Tab("score_calculator", R.string.tab_score_calculator, Icons.Filled.Calculate)
     data object DummyPlayer : Tab("dummy_player", R.string.tab_dummy_player, Icons.Filled.Groups)
     data object EnemyPicker : Tab("enemy_picker", R.string.tab_enemy_picker, Icons.Filled.Casino)
     data object Sites : Tab("sites", R.string.tab_sites, Icons.Filled.Place)
 }
 
-private val tabs = listOf(Tab.Scoreboard, Tab.ScoreCalculator, Tab.DummyPlayer, Tab.EnemyPicker, Tab.Sites)
+private val tabs = listOf(Tab.Scoreboard, Tab.DummyPlayer, Tab.EnemyPicker, Tab.Sites)
 
 /**
- * Top-level app composable: builds the nav graph for the five bottom-nav tabs
- * (Scoreboard, Score Calculator, Dummy Player, Enemies, Sites - see docs/design/architecture.md's
- * "Tab roadmap") and wires the bottom navigation bar to it. This is the root of the
- * whole UI tree, set as the content of MainActivity.
+ * Top-level app composable: builds the nav graph for the four bottom-nav tabs
+ * (Scoreboard, Dummy Player, Enemies, Sites - see docs/design/architecture.md's
+ * "Tab roadmap") and wires the bottom navigation bar to it. Scoring lives inside the
+ * Scoreboard tab now, not as its own tab. This is the root of the whole UI tree, set as
+ * the content of MainActivity.
  */
 @Composable
 fun MageKnightBuddyApp(
@@ -124,15 +124,8 @@ fun MageKnightBuddyApp(
             composable(Tab.Scoreboard.route) {
                 ScoreboardTab(
                     repository = repository,
-                    onScoreNewScenario = { navigateToTab(Tab.ScoreCalculator.route) },
-                )
-            }
-            composable(Tab.ScoreCalculator.route) {
-                ScoreCalculatorScreen(
-                    repository = repository,
                     draftRepository = draftRepository,
                     fieldHelp = fieldHelp,
-                    onDone = { navigateToTab(Tab.Scoreboard.route) },
                 )
             }
             composable(Tab.DummyPlayer.route) {
