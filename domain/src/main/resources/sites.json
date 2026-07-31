@@ -1,0 +1,231 @@
+[
+  {
+    "id": "crystal_mines",
+    "name": "Crystal Mines",
+    "category": "RESOURCE_SITE",
+    "expansion": "BASE",
+    "sections": [
+      { "heading": "Mining", "body": "If you end your turn on a mine, gain one mana crystal of the color that the mine produces to your Inventory." }
+    ]
+  },
+  {
+    "id": "magical_glade",
+    "name": "Magical Glade",
+    "category": "RESOURCE_SITE",
+    "expansion": "BASE",
+    "sections": [
+      { "heading": "Healing Essence", "body": "If you end your turn on a magical glade, you can throw away one Wound card from your hand or discard pile. This is not the same as Healing and the effect cannot be combined with other Healing effects." },
+      { "heading": "Imbued With Magic", "body": "If you start your turn on a magical glade during the Day, you gain a gold mana token. If you start your turn on a magical glade during the Night, you gain a black mana token." }
+    ]
+  },
+  {
+    "id": "marauding_orcs",
+    "name": "Marauding Orcs",
+    "category": "RAMPAGING_ENEMY",
+    "expansion": "BASE",
+    "sections": [
+      { "heading": "When Revealed", "body": "Place a green Orc enemy token face up on this space." },
+      { "heading": "Effect", "body": "No one can enter a space that is occupied by an Orc enemy token. Orcs can be provoked into combat by a player who moves from one space adjacent to them to another space adjacent to them." },
+      { "heading": "Action", "body": "You can challenge Orcs from an adjacent space as your action." },
+      { "heading": "Reward", "body": "If you defeat the Orcs, discard their token and gain Reputation +1." }
+    ]
+  },
+  {
+    "id": "draconum",
+    "name": "Draconum",
+    "category": "RAMPAGING_ENEMY",
+    "expansion": "BASE",
+    "sections": [
+      { "heading": "When Revealed", "body": "Place a red Draconum enemy token face up on this space." },
+      { "heading": "Effect", "body": "No one can enter a space that is occupied by a Draconum enemy token. Draconum can be provoked into combat by a player who moves from one space adjacent to it to another space adjacent to it." },
+      { "heading": "Action", "body": "You can challenge a Draconum from an adjacent space as your action." },
+      { "heading": "Reward", "body": "If you defeat the Draconum, discard its token and gain Reputation +2." }
+    ]
+  },
+  {
+    "id": "village",
+    "name": "Village",
+    "category": "SETTLEMENT",
+    "expansion": "BASE",
+    "sections": [
+      { "heading": "Recruiting", "body": "Units with the village icon can be recruited here." },
+      { "heading": "Healing", "body": "You can buy 1 point of Healing for 3 Influence here." },
+      { "heading": "Plundering", "body": "You can plunder a village during another player's turn. You can only plunder a village once between each of your turns. If you do, draw two cards and get Reputation -1." }
+    ]
+  },
+  {
+    "id": "monastery",
+    "name": "Monastery",
+    "category": "SETTLEMENT",
+    "expansion": "BASE",
+    "sections": [
+      { "heading": "Recruiting", "body": "Units with the monastery icon can be recruited here." },
+      { "heading": "Healing", "body": "You can buy 1 point of Healing for 2 Influence here." },
+      { "heading": "Training", "body": "When a monastery is revealed, put the top card of the Advanced Actions deck face up in the Units offer. Advanced Actions in the Units offer can be bought at any monastery for 6 Influence." },
+      { "heading": "Burning a Monastery", "body": "You can try to burn a monastery as your action for the turn. If you do, you get Reputation -3. Draw a random violet enemy token to fight. Your Units cannot be used in this combat. If you defeat the enemy, mark the space with a Shield token and get an Artifact as your reward. The monastery is now destroyed." }
+    ]
+  },
+  {
+    "id": "mage_tower",
+    "name": "Mage Tower",
+    "category": "FORTIFIED_SITE",
+    "expansion": "BASE",
+    "sections": [
+      { "heading": "When Revealed", "body": "Place a violet enemy token face down on this space. The token is revealed during the Day if a player is adjacent to it." },
+      { "heading": "While Unconquered", "body": "Can be assaulted and you get Reputation -1. The defending enemy is fortified. If successfully assaulted, mark it with a Shield token and gain a Spell as your reward." },
+      { "heading": "While Conquered", "body": "Any player can recruit Units and buy Spells here. Spells can be bought for 7 Influence plus a mana that is the same color as the Spell being bought." }
+    ]
+  },
+  {
+    "id": "keep",
+    "name": "Keep",
+    "category": "FORTIFIED_SITE",
+    "expansion": "BASE",
+    "sections": [
+      { "heading": "When Revealed", "body": "Place a grey enemy token face down on this space. This token is revealed during the Day if a player is adjacent to it." },
+      { "heading": "Unconquered Keep", "body": "Can be assaulted and you get Reputation -1. The defending enemies are fortified. If successfully assaulted, mark it with a Shield token. You now own that keep." },
+      { "heading": "Other Players' Keeps", "body": "Can be assaulted and you get Reputation -1. If the owner is not present, draw a random grey enemy token as the defenders. They are fortified. If successful, you get half Fame (rounded up) for defeating the defenders and you replace the owner's Shield token with one of your own." },
+      { "heading": "Your Keep", "body": "You can recruit Units with the keep icon here. If you end your turn on or adjacent to a keep you own, your Hand limit is 1 higher for each Keep you own." }
+    ]
+  },
+  {
+    "id": "monster_den",
+    "name": "Monster Den",
+    "category": "ADVENTURE_SITE",
+    "expansion": "BASE",
+    "sections": [
+      { "heading": "While Unconquered", "body": "You may enter a monster den as your action for the turn. If you do, draw a brown enemy token to fight. If you fail to defeat it, leave the enemy token face up on the space. Next time a player chooses to enter the den, he fights this token." },
+      { "heading": "Reward", "body": "If you defeat the enemy, mark the space as conquered with your Shield token and get two random mana crystals as your reward. Roll a mana die two times to determine their color. If gold is rolled, you choose the color you gain; if black is rolled you get Fame +1 instead of a crystal." }
+    ]
+  },
+  {
+    "id": "spawning_grounds",
+    "name": "Spawning Grounds",
+    "category": "ADVENTURE_SITE",
+    "expansion": "BASE",
+    "sections": [
+      { "heading": "While Unconquered", "body": "You may enter the spawning grounds as your action for the turn. If you do, draw two brown enemy tokens and fight them. If you fail to defeat them both, any undefeated tokens remain face up on the space and any defeated enemies are replaced with a new face down brown enemy token - next time a player chooses to enter the grounds, he reveals and fights these tokens." },
+      { "heading": "Reward", "body": "If you defeat both enemies, mark the space as conquered with your Shield token and gain an Artifact and three random mana crystals as your reward. Roll a mana die three times to determine their color. If gold is rolled, you choose the color you gain; if black is rolled you get Fame +1 instead of a crystal." }
+    ]
+  },
+  {
+    "id": "dungeon",
+    "name": "Dungeon",
+    "category": "ADVENTURE_SITE",
+    "expansion": "BASE",
+    "sections": [
+      { "heading": "While Unconquered", "body": "You can enter a dungeon as your action for the turn. If you do, reveal a brown enemy token and fight it. Night rules apply for this combat and Units cannot be used. If you defeat the enemy, mark the space with a Shield token and roll a mana die to determine your reward. For gold or black, gain a Spell; otherwise, gain an Artifact." },
+      { "heading": "While Conquered", "body": "You can enter a conquered dungeon to fight a random brown enemy token with the same limitations (Night and no Units). If you defeat it, you get no reward (other than the Fame) and you do not mark the space with a Shield token." }
+    ]
+  },
+  {
+    "id": "tomb",
+    "name": "Tomb",
+    "category": "ADVENTURE_SITE",
+    "expansion": "BASE",
+    "sections": [
+      { "heading": "While Unconquered", "body": "You can enter a tomb as your action for the turn. If you do, draw a red Draconum enemy token to fight. Night rules apply for this combat, and Units cannot be used. If you defeat the enemy, mark the tomb with a Shield token and gain one Spell and one Artifact as your reward. Otherwise, discard the enemy token." },
+      { "heading": "While Conquered", "body": "You can enter a conquered tomb to fight a random red enemy token with the same limitations (Night and no Units). If you defeat it, you get no reward (other than the Fame) and you do not mark the space with a Shield token." }
+    ]
+  },
+  {
+    "id": "ancient_ruins",
+    "name": "Ancient Ruins",
+    "category": "ADVENTURE_SITE",
+    "expansion": "BASE",
+    "sections": [
+      { "heading": "When Revealed", "body": "Place a yellow token face up if it is Day, face down if it is Night. A face down token is revealed at the start of the next Day Round, or if someone enters the space." },
+      { "heading": "While Unconquered", "body": "You can enter the ancient ruins as your action for the turn. There will either be an altar there, or enemies to fight." },
+      { "heading": "Altar", "body": "You can pay 3 mana of the color shown on the yellow token as tribute to the altar. If you do, mark the space with a Shield token and gain 7 Fame as your reward." },
+      { "heading": "Enemies", "body": "Draw the enemies depicted on the yellow token and fight them. Any undefeated enemies remain on the space and can be fought later. If you defeat the last enemy here, mark the space with a Shield token and get the reward depicted on the yellow token." }
+    ]
+  },
+  {
+    "id": "walls",
+    "name": "Walls",
+    "category": "TERRAIN_FEATURE",
+    "expansion": "LOST_LEGION",
+    "sections": [
+      { "heading": "Movement", "body": "To cross a wall on the map, you have to pay 1 extra Move point. Terrain discounts cannot negate this extra cost. Walls have no effect on movement invoked directly by an effect (Flight, etc.)." },
+      { "heading": "Combat", "body": "When challenging rampaging enemies across a wall, consider the enemies to be fortified (walls count as site fortifications). When attacking another player or Volkare across a wall, consider the target to be fortified. When assaulting a fortified site across a wall, consider the garrison to be double fortified." },
+      { "heading": "Provoking", "body": "Your move does not provoke rampaging enemies if the target space of that move is separated from the enemy by a wall (i.e. rampaging enemies never attack you across a wall)." }
+    ]
+  },
+  {
+    "id": "deep_mines",
+    "name": "Deep Mines",
+    "category": "RESOURCE_SITE",
+    "expansion": "LOST_LEGION",
+    "sections": [
+      { "heading": "Mining", "body": "If you end your turn on a mine, choose and gain one mana crystal of one of the colors that the mine produces to your Inventory. Deep mines work exactly like crystal mines, except you choose among the depicted colors (one of two colors in desert and forest, or any of the four basic colors in the swamp) instead of a fixed color." }
+    ]
+  },
+  {
+    "id": "refugee_camp",
+    "name": "Refugee Camp",
+    "category": "SETTLEMENT",
+    "expansion": "LOST_LEGION",
+    "sections": [
+      { "heading": "Recruiting", "body": "You can interact to recruit Units here. For purposes of recruiting, you may consider this to be any of the depicted sites. Units that require more advanced sites for recruitment have their cost increased. For Units that can be recruited on multiple sites, choose the cheapest price." }
+    ]
+  },
+  {
+    "id": "maze",
+    "name": "Maze",
+    "category": "ADVENTURE_SITE",
+    "expansion": "LOST_LEGION",
+    "sections": [
+      { "heading": "Entering", "body": "You may enter a maze as your action. If you do so, you may choose one ready unwounded Unit to accompany you. You cannot use any Unit other than the chosen one during the entire action. Then choose a path and fight." },
+      { "heading": "Choosing Path", "body": "Pay 2, 4, or 6 Move. (Move points left from the Move phase cannot be used for this.)" },
+      { "heading": "Combat", "body": "Draw and fight a brown (Dungeon Monster) enemy token. Whether you defeat it or not, discard it afterwards (next time, a new token will be drawn)." },
+      { "heading": "Reward", "body": "If you defeat it, claim your reward according to the amount of Move points you have paid: two crystals of your choice, a Spell, or an Artifact. Put your Shield on the corresponding spot on the map to mark this path as conquered." },
+      { "heading": "Partially Conquered", "body": "Another player may enter the maze, but will have to choose another path. No player may successfully conquer the same maze twice, and each path may be conquered only once." }
+    ]
+  },
+  {
+    "id": "labyrinth",
+    "name": "Labyrinth",
+    "category": "ADVENTURE_SITE",
+    "expansion": "LOST_LEGION",
+    "sections": [
+      { "heading": "Entering", "body": "You may enter a labyrinth as your action. If you do so, you may choose one ready unwounded Unit to accompany you. You cannot use any Unit other than the chosen one during the entire action. Then choose a path and fight." },
+      { "heading": "Choosing Path", "body": "Pay 2, 4, or 6 Move. (Move points left from the Move phase cannot be used for this.)" },
+      { "heading": "Combat", "body": "Draw and fight a red Draconum enemy token. Whether you defeat it or not, discard it afterwards (next time, a new token will be drawn)." },
+      { "heading": "Reward", "body": "If you defeat it, claim your reward according to the amount of Move points you have paid: two crystals of your choice, a Spell, or an Artifact. In all three cases, you also gain an Advanced Action. Put your Shield on the map to mark this path as conquered." },
+      { "heading": "Partially Conquered", "body": "Another player may enter the labyrinth, but will have to choose another path. No player may successfully conquer the same labyrinth twice, and each path may be conquered only once." }
+    ]
+  },
+  {
+    "id": "hidden_valley_tile",
+    "name": "Hidden Valley Tile",
+    "category": "SPECIAL_TILE",
+    "expansion": "SHADES_OF_TEZLA",
+    "sections": [
+      { "heading": "Healing Essence", "body": "If you end your turn on a Hidden Valley Tile, you can throw away one Wound card from your hand or discard pile. This is not the same as Healing and the effect cannot be combined with other Healing effects." },
+      { "heading": "Imbued With Magic", "body": "If you start your turn on a Hidden Valley Tile during the Day, you gain a gold mana token. If you start your turn on a Hidden Valley Tile during the Night, you gain a black mana token." },
+      { "heading": "Movement", "body": "The move cost of the Hidden Valley space is 2." }
+    ]
+  },
+  {
+    "id": "necropolis_tile",
+    "name": "Necropolis Tile",
+    "category": "SPECIAL_TILE",
+    "expansion": "SHADES_OF_TEZLA",
+    "sections": [
+      { "heading": "Eternal Night", "body": "During the Day, Night rules apply in a Necropolis Tile." },
+      { "heading": "Imbued With Magic", "body": "At Night, if you start your turn on a Necropolis Tile, then you gain a black mana crystal." },
+      { "heading": "Movement", "body": "The move cost of the Necropolis space is 2." }
+    ]
+  },
+  {
+    "id": "graveyard_tile",
+    "name": "Graveyard Tile",
+    "category": "SPECIAL_TILE",
+    "expansion": "SHADES_OF_TEZLA",
+    "sections": [
+      { "heading": "Eternal Night", "body": "During the Day, Night rules apply in a graveyard." },
+      { "heading": "Imbued With Magic", "body": "At Night, if you start your turn in a graveyard, then you gain a black mana crystal." },
+      { "heading": "Movement", "body": "The move cost of the Graveyard space is determined by the terrain type shown on the space it covers (just like a Ruins tile). The fact that Night rules apply while in a graveyard does not affect the Move cost of the terrain it is in (so to move into a forest space that has a graveyard in it will still cost 3 Move points during the Day)." }
+    ]
+  }
+]
