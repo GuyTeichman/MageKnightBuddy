@@ -33,6 +33,14 @@ package com.guyteichman.mageknightbuddy.domain
  * machinery but is `ephemeral = false`: it is a real, independently-defeatable enemy that stays on
  * the board until beaten, exactly like a normal draw. Normal (parentless) draws are always
  * `ephemeral = false`.
+ *
+ * [possessedTokenId] is set only for an Apocalypse Dragon **possessed enemy** (see
+ * docs/rules/apocalypse-dragon.md and `CONTEXT.md`'s "Possessed Enemy"): it names the
+ * [PossessedToken] paired with this entry's circular [tokenId], so the two together render as one
+ * composite enemy showing summed stats ([PossessedEnemy.combine]). The entry's [pile] stays the
+ * *circular* enemy's colour pile - the possessed pile is drawn as a companion, not the entry's own
+ * pile. `null` for every ordinary (non-possessed) draw. One composite is one entry: it is defeated
+ * with a single [defeated] flag, never split into two rows.
  */
 data class DrawLogEntry(
     val tokenId: String,
@@ -42,4 +50,5 @@ data class DrawLogEntry(
     val note: String = "",
     val parentIndex: Int? = null,
     val ephemeral: Boolean = false,
+    val possessedTokenId: String? = null,
 )

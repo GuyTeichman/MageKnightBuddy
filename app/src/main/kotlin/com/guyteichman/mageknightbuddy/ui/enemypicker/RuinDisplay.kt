@@ -69,8 +69,10 @@ internal fun TokenPileId.colorName(): String = when (this) {
     TokenPileId.RED -> "Red"
     TokenPileId.WHITE -> "White"
     TokenPileId.RUIN -> "Ruin"
-    // Faction reward piles never appear in a ruin's Enemies-With-Treasure draw line (ruins draw only
-    // from the enemy colour piles), but this when is exhaustive, so give them their faction names.
+    // Neither the possessed pile nor the faction reward piles ever appear in a ruin's
+    // Enemies-With-Treasure draw line (ruins draw only from the enemy colour piles), but this when is
+    // exhaustive, so they're only here to satisfy it.
+    TokenPileId.POSSESSED -> "Possessed"
     TokenPileId.ELEMENTALIST_REWARDS -> "Elementalist"
     TokenPileId.DARK_CRUSADER_REWARDS -> "Dark Crusader"
     TokenPileId.APOCALYPSE_CULT_REWARDS -> "Apocalypse Cult"

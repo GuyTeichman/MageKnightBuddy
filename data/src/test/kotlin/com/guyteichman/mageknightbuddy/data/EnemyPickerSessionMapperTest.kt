@@ -6,6 +6,7 @@ import com.guyteichman.mageknightbuddy.domain.EnemyPickerSession
 import com.guyteichman.mageknightbuddy.domain.EnemyToken
 import com.guyteichman.mageknightbuddy.domain.Expansion
 import com.guyteichman.mageknightbuddy.domain.FactionRewardToken
+import com.guyteichman.mageknightbuddy.domain.PossessedToken
 import com.guyteichman.mageknightbuddy.domain.TokenPile
 import com.guyteichman.mageknightbuddy.domain.TokenPileId
 import kotlin.test.Test
@@ -22,6 +23,12 @@ class EnemyPickerSessionMapperTest {
 
     private val rewardElem = FactionRewardToken(id = "reward_elem_a", expansion = Expansion.SHADES_OF_TEZLA_ELEMENTALIST, pile = TokenPileId.ELEMENTALIST_REWARDS, name = "Elem A", effectText = "Heal 1.", copies = 2)
     private val factionRewardCatalogue = listOf(rewardElem)
+
+    // Two possessed tokens so a single possessed draw leaves the pile non-empty (no eager replenish),
+    // keeping the round-trip's expected pile state simple to reason about.
+    private val poss1 = PossessedToken(id = "poss_1", expansion = Expansion.APOCALYPSE_DRAGON, copies = 1, armorDelta = 2, psychicAttack = 3)
+    private val poss2 = PossessedToken(id = "poss_2", expansion = Expansion.APOCALYPSE_DRAGON, copies = 1, attackDelta = 1)
+    private val possessedCatalogue = listOf(poss1, poss2)
 
     @Test
     fun `toEntity then toDomain round-trips a session with drawn and defeated log entries`() {
@@ -128,6 +135,35 @@ class EnemyPickerSessionMapperTest {
             roundTripped.drawLog.single(),
         )
         assertTrue(Expansion.SHADES_OF_TEZLA_ELEMENTALIST in roundTripped.tokenSet)
+    }
+
+    @Test
+    fun `toEntity then toDomain round-trips a possessed enemy's possessedTokenId and the POSSESSED pile`() {
+        // Realistic state via the session's own possessed draw, not hand-built (per CLAUDE.md).
+        val session = EnemyPickerSession.start(
+            catalogue,
+            tokenSet = setOf(Expansion.BASE, Expansion.APOCALYPSE_DRAGON),
+            shuffle = noShuffle,
+            possessedCatalogue = possessedCatalogue,
+        ).draw(mapOf(TokenPileId.GREEN to 1), batchId = 3L, possessed = true, shuffle = noShuffle)
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+
+        // Independent ground truth (not read off `session`): green [orc_a, orc_a, orc_b] draws the
+        // first orc_a; the possessed pile [poss_1, poss_2] pairs poss_1 with it, so the entry carries
+        // both ids and poss_1 lands in the POSSESSED discard while poss_2 stays on the draw pile.
+        assertEquals(
+            DrawLogEntry(tokenId = "orc_a", pile = TokenPileId.GREEN, batchId = 3L, possessedTokenId = "poss_1"),
+            roundTripped.drawLog.single(),
+        )
+        // The possessedTokenId specifically, called out since it's the new field.
+        assertEquals("poss_1", roundTripped.drawLog.single().possessedTokenId)
+        assertEquals(
+            TokenPile(drawPile = listOf("poss_2"), discardPile = listOf("poss_1")),
+            roundTripped.piles.getValue(TokenPileId.POSSESSED),
+        )
     }
 
     @Test

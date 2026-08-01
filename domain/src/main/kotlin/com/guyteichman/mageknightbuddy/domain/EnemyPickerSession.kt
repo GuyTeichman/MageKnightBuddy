@@ -50,14 +50,29 @@ data class EnemyPickerSession private constructor(
      * [shuffle] is the injected randomness (default: a real shuffle); it is used both to Replenish
      * and to pick under replacement. Draws never touch a pile absent from [draws], and never touch
      * existing [drawLog] entries' flags.
+     *
+     * When [possessed] is true this is an Apocalypse Dragon **possessed** draw: every circular enemy
+     * drawn is paired with one token pulled from the [TokenPileId.POSSESSED] pile (recorded on the
+     * entry's [DrawLogEntry.possessedTokenId]), so each drawn enemy is a composite possessed enemy.
+     * [draws] may then only name colour piles - never [TokenPileId.RUIN] or [TokenPileId.POSSESSED].
+     * The circular enemy is held **on the board** like any draw (issue #251, tracked by its entry);
+     * the possessed companion, which has no independent on-board/defeat tracking, is cycled straight
+     * to the POSSESSED discard. See docs/rules/apocalypse-dragon.md.
      */
     fun draw(
         draws: Map<TokenPileId, Int>,
         batchId: Long = System.currentTimeMillis(),
+        possessed: Boolean = false,
         shuffle: (List<String>) -> List<String> = { it.shuffled() },
     ): EnemyPickerSession {
         require(draws.isNotEmpty()) { "draws must not be empty" }
         require(draws.values.all { it >= 1 }) { "every requested count must be >= 1, was $draws" }
+        // A possessed draw pairs each *circular* enemy with a possessed token, so it may only target
+        // the colour piles - never RUIN (a ruin is not an enemy) or POSSESSED (that pile is the
+        // companion, never a primary draw target). See docs/rules/apocalypse-dragon.md.
+        require(!possessed || draws.keys.none { it == TokenPileId.RUIN || it == TokenPileId.POSSESSED }) {
+            "a possessed draw can only target circular enemy piles, was $draws"
+        }
 
         var updatedPiles = piles
         val newEntries = ArrayList<DrawLogEntry>()
@@ -73,7 +88,31 @@ data class EnemyPickerSession private constructor(
                 // discardImmediately = false: a normal draw holds the token on the board (issue #251).
                 val (drawnId, next) = drawOneFrom(pileId, pile, shuffle, discardImmediately = false)
                 pile = next
-                newEntries += DrawLogEntry(tokenId = drawnId, pile = pileId, batchId = batchId)
+                // For a possessed draw, pair this circular enemy with a token drawn from the
+                // POSSESSED pile (its own draw/replenish rules), recording its id on the entry so the
+                // pair renders as one composite. POSSESSED is a different map key than the colour
+                // pile we write back after the loop, so updating it here in-place is safe.
+                //
+                // discardImmediately = true: unlike the circular enemy above (held on the board),
+                // the possessed companion has no independent on-board/defeat tracking - the
+                // composite's #251 lifecycle runs through the *circular* token in its colour pile via
+                // [setDefeated], which never touches the POSSESSED pile. So the companion is cycled
+                // straight to the POSSESSED discard here (draw -> discard -> replenish), the same as
+                // before #251; holding it on the board instead would strand it in neither pile and
+                // eventually empty the POSSESSED pile.
+                val possessedTokenId = if (possessed) {
+                    val (pid, possessedNext) = drawOneFrom(
+                        TokenPileId.POSSESSED, updatedPiles.getValue(TokenPileId.POSSESSED), shuffle,
+                        discardImmediately = true,
+                    )
+                    updatedPiles = updatedPiles + (TokenPileId.POSSESSED to possessedNext)
+                    pid
+                } else {
+                    null
+                }
+                newEntries += DrawLogEntry(
+                    tokenId = drawnId, pile = pileId, batchId = batchId, possessedTokenId = possessedTokenId,
+                )
             }
 
             // `updatedPiles + (pileId to pile)` returns a new map with just this pile replaced -
@@ -281,8 +320,9 @@ data class EnemyPickerSession private constructor(
         catalogue: List<EnemyToken>,
         shuffle: (List<String>) -> List<String> = { it.shuffled() },
         ruinCatalogue: List<RuinToken> = emptyList(),
+        possessedCatalogue: List<PossessedToken> = emptyList(),
         factionRewardCatalogue: List<FactionRewardToken> = emptyList(),
-    ): EnemyPickerSession = start(catalogue, tokenSet, drawWithReplacement, shuffle, ruinCatalogue, factionRewardCatalogue)
+    ): EnemyPickerSession = start(catalogue, tokenSet, drawWithReplacement, shuffle, ruinCatalogue, possessedCatalogue, factionRewardCatalogue)
 
     companion object {
         /**
@@ -291,14 +331,16 @@ data class EnemyPickerSession private constructor(
          * id and grouped into its [EnemyToken.pile]; every [FactionRewardToken] in [tokenSet] is
          * expanded the same way into its [FactionRewardToken.pile] (issue #252); and the [RuinToken]s
          * in [tokenSet] each contribute a single id (ruins are unique - no copy count) to the one
-         * [TokenPileId.RUIN] pile. Each pile's combined list is `shuffle`d into its draw pile (discard
-         * empty). Piles with no matching tokens are omitted - including RUIN and every reward pile,
-         * e.g. when no [ruinCatalogue]/[factionRewardCatalogue] is supplied or that faction's
-         * expansion isn't ticked.
+         * [TokenPileId.RUIN] pile; and the [PossessedToken]s in [tokenSet] are expanded by copy count
+         * into the [TokenPileId.POSSESSED] pile (docs/rules/apocalypse-dragon.md). Each pile's
+         * combined list is `shuffle`d into its draw pile (discard empty). Piles with no matching
+         * tokens are omitted - including RUIN, POSSESSED and every reward pile, e.g. when their
+         * catalogue isn't supplied or that expansion isn't ticked.
          */
         private fun buildPiles(
             catalogue: List<EnemyToken>,
             ruinCatalogue: List<RuinToken>,
+            possessedCatalogue: List<PossessedToken>,
             factionRewardCatalogue: List<FactionRewardToken>,
             tokenSet: Set<Expansion>,
             shuffle: (List<String>) -> List<String>,
@@ -327,20 +369,28 @@ data class EnemyPickerSession private constructor(
 
             // The RUIN pile comes from its own catalogue (a different token shape); one copy per ruin.
             val ruinIds = ruinCatalogue.filter { it.expansion in tokenSet }.map { it.id }
-            // `+ (RUIN to ...)` only when there's something to put there, so an empty RUIN pile is
-            // omitted just like any other empty pile above.
-            val nonRuin = enemyPiles + factionPiles
-            return if (ruinIds.isEmpty()) nonRuin
-            else nonRuin + (TokenPileId.RUIN to TokenPile(drawPile = shuffle(ruinIds)))
+            // The POSSESSED pile expands each possessed token by its copy count, like enemy tokens
+            // (possessed_03 has three copies).
+            val possessedIds = possessedCatalogue
+                .filter { it.expansion in tokenSet }
+                .flatMap { token -> List(token.copies) { token.id } }
+
+            // Enemy + faction reward piles merge cleanly (their pile ids are disjoint); then add the
+            // RUIN and POSSESSED single-key piles only when non-empty, so an absent pile is omitted
+            // just like any empty colour pile above.
+            var piles = enemyPiles + factionPiles
+            if (ruinIds.isNotEmpty()) piles = piles + (TokenPileId.RUIN to TokenPile(drawPile = shuffle(ruinIds)))
+            if (possessedIds.isNotEmpty()) piles = piles + (TokenPileId.POSSESSED to TokenPile(drawPile = shuffle(possessedIds)))
+            return piles
         }
 
         /**
          * Begins a fresh session. [tokenSet] defaults to base game only and [drawWithReplacement]
          * to false (the rules-correct default). [shuffle] defaults to a real shuffle; tests pass a
          * deterministic one (e.g. identity) the same way [VolkareSession.start] takes `deckOrder`.
-         * [ruinCatalogue] populates the [TokenPileId.RUIN] pile and [factionRewardCatalogue] the four
-         * faction reward piles (issue #252); omit either (the default) to build a session without
-         * those piles at all.
+         * [ruinCatalogue] populates the [TokenPileId.RUIN] pile, [possessedCatalogue] the
+         * [TokenPileId.POSSESSED] pile, and [factionRewardCatalogue] the four faction reward piles
+         * (issue #252); omit any (the default) to build a session without those piles.
          */
         fun start(
             catalogue: List<EnemyToken>,
@@ -348,11 +398,12 @@ data class EnemyPickerSession private constructor(
             drawWithReplacement: Boolean = false,
             shuffle: (List<String>) -> List<String> = { it.shuffled() },
             ruinCatalogue: List<RuinToken> = emptyList(),
+            possessedCatalogue: List<PossessedToken> = emptyList(),
             factionRewardCatalogue: List<FactionRewardToken> = emptyList(),
         ): EnemyPickerSession = EnemyPickerSession(
             tokenSet = tokenSet,
             drawWithReplacement = drawWithReplacement,
-            piles = buildPiles(catalogue, ruinCatalogue, factionRewardCatalogue, tokenSet, shuffle),
+            piles = buildPiles(catalogue, ruinCatalogue, possessedCatalogue, factionRewardCatalogue, tokenSet, shuffle),
             drawLog = emptyList(),
         )
 

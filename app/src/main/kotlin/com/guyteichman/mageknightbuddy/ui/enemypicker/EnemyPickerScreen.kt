@@ -69,6 +69,10 @@ import com.guyteichman.mageknightbuddy.domain.EnemyToken
 import com.guyteichman.mageknightbuddy.domain.Expansion
 import com.guyteichman.mageknightbuddy.domain.FactionRewardToken
 import com.guyteichman.mageknightbuddy.domain.FactionRewardTokenCatalogue
+import com.guyteichman.mageknightbuddy.domain.PossessedEnemy
+import com.guyteichman.mageknightbuddy.domain.PossessedEnemyStats
+import com.guyteichman.mageknightbuddy.domain.PossessedToken
+import com.guyteichman.mageknightbuddy.domain.PossessedTokenCatalogue
 import com.guyteichman.mageknightbuddy.domain.RuinToken
 import com.guyteichman.mageknightbuddy.domain.RuinTokenCatalogue
 import com.guyteichman.mageknightbuddy.domain.TokenCatalogue
@@ -151,9 +155,11 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
     // Shared by the DrawBar's staged multi-pile draw and #198's per-card tap-to-draw-1 shortcut -
     // both just fire a `draws` map through the same viewModel.draw() call and open the same
     // zoom/grid result, so there is exactly one place that decides what a draw's result opens.
-    val onDraw: (Map<TokenPileId, Int>) -> Unit = { draws ->
+    // [possessed] (the Apocalypse Dragon toggle) pairs each drawn circular with a possessed token;
+    // it's false for the per-card tap shortcut, which is always an ordinary single enemy.
+    val onDraw: (Map<TokenPileId, Int>, Boolean) -> Unit = { draws, possessed ->
         scope.launch {
-            viewModel.draw(draws)
+            viewModel.draw(draws, possessed)
             // mutate() has published the new session by the time draw() returns, so the last
             // `total` log entries (draws only ever append) are exactly what was just drawn,
             // across every pile in `draws` (D12's TokenPileId.entries order).
@@ -453,7 +459,7 @@ private fun EnemyPickerContent(
     session: EnemyPickerSession,
     isBusy: Boolean,
     onOpenSettings: () -> Unit,
-    onDraw: (Map<TokenPileId, Int>) -> Unit,
+    onDraw: (Map<TokenPileId, Int>, Boolean) -> Unit,
     onOpenToken: (Int) -> Unit,
     onOpenBatch: (List<Int>) -> Unit,
     onOpenDefeatDialog: (Int) -> Unit,
@@ -469,15 +475,24 @@ private fun EnemyPickerContent(
     // below, since losing this on rotation is a minor inconvenience, not lost game state.
     var quantities by remember { mutableStateOf<Map<TokenPileId, Int>>(emptyMap()) }
     val totalQuantity = quantities.values.sum()
+    // The Apocalypse Dragon "possess this draw" toggle: only meaningful when the POSSESSED pile
+    // exists (AD in the Token Set). Staged like `quantities` - a plain remember, since losing it on
+    // rotation is a minor inconvenience, not game state.
+    var possess by remember { mutableStateOf(false) }
+    val possessedAvailable = TokenPileId.POSSESSED in session.piles
+    // Fold availability in here (rather than writing state mid-compose) so a stale `true` left over
+    // after AD is removed from the set never actually possesses a draw.
+    val effectivePossess = possess && possessedAvailable
 
     Scaffold(
         topBar = { EnemyPickerTopBar(onOpenSettings = onOpenSettings) },
         bottomBar = {
             DrawBar(
                 total = totalQuantity,
+                possessed = effectivePossess,
                 enabled = !isBusy && totalQuantity > 0,
                 onDraw = {
-                    onDraw(quantities.filterValues { it > 0 })
+                    onDraw(quantities.filterValues { it > 0 }, effectivePossess)
                     quantities = emptyMap()
                 },
             )
@@ -495,6 +510,10 @@ private fun EnemyPickerContent(
                     // a trailing lone card (D14 - today, Ruin) fills the whole row's width instead.
                     row.forEach { pileId ->
                         val pile = session.piles.getValue(pileId)
+                        // The POSSESSED pile is never drawn on its own (it's consumed by a possessed
+                        // draw of circular enemies), so its card is display-only: no stepper, no
+                        // tap-to-draw-1.
+                        val displayOnly = pileId == TokenPileId.POSSESSED
                         PileCard(
                             modifier = Modifier.weight(1f),
                             pileId = pileId,
@@ -509,15 +528,39 @@ private fun EnemyPickerContent(
                             // doesn't read or reset `quantities`, just fires its own one-entry draw.
                             // Same "anything left to draw" check the stepper's own `max` already
                             // makes: with replacement a pile never runs out; without, only disabled
-                            // once the pile is entirely empty (draw + discard both zero).
-                            canDrawOne = !isBusy &&
+                            // once the pile is entirely empty (draw + discard both zero). Never for
+                            // the display-only POSSESSED pile.
+                            canDrawOne = !isBusy && !displayOnly &&
                                 (session.drawWithReplacement || pile.drawPile.size + pile.discardPile.size > 0),
-                            onDrawOne = { onDraw(mapOf(pileId to 1)) },
+                            onDrawOne = { onDraw(mapOf(pileId to 1), false) },
                             onViewContents = { onOpenContents(pileId) },
                             // Ruins and faction reward tokens are revealed one at a time (one ruin
                             // site / one earned reward), so both drop the batch stepper (issue #252).
                             tapToDrawOnly = pileId == TokenPileId.RUIN || pileId.isFactionReward,
+                            displayOnly = displayOnly,
                         )
+                    }
+                }
+            }
+
+            // The Apocalypse Dragon possess toggle (issue #189): shown only when the POSSESSED pile
+            // exists. When on, the next Draw pairs every staged circular enemy with a possessed token
+            // to form composite possessed enemies (docs/rules/apocalypse-dragon.md).
+            if (possessedAvailable) {
+                item(key = "possess-toggle") {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            LabeledSwitch(
+                                label = "Possess this draw",
+                                checked = possess,
+                                onCheckedChange = { possess = it },
+                            )
+                            Text(
+                                "Each enemy in the next draw is paired with a possessed token (Apocalypse Dragon).",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
@@ -560,14 +603,21 @@ private fun EnemyPickerTopBar(onOpenSettings: () -> Unit) {
  * change.
  */
 @Composable
-private fun DrawBar(total: Int, enabled: Boolean, onDraw: () -> Unit) {
+private fun DrawBar(total: Int, possessed: Boolean, enabled: Boolean, onDraw: () -> Unit) {
     BottomAppBar {
         Button(
             onClick = onDraw,
             enabled = enabled,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         ) {
-            Text(if (total == 0) "Draw" else "Draw $total")
+            // The label reflects the possess toggle so it's clear the whole batch will be possessed.
+            Text(
+                when {
+                    total == 0 -> "Draw"
+                    possessed -> "Draw $total possessed"
+                    else -> "Draw $total"
+                },
+            )
         }
     }
 }
@@ -595,6 +645,9 @@ private fun PileCard(
     // The RUIN pile is revealed one token at a time (you enter one ruin site), never batched, so it
     // drops the quantity stepper and keeps only the tap-to-draw-1 shortcut (issue #201).
     tapToDrawOnly: Boolean = false,
+    // The POSSESSED pile is never drawn on its own - it's consumed alongside a possessed circular
+    // draw (the possess toggle), so its card is a pure display: count + composition, no draw control.
+    displayOnly: Boolean = false,
 ) {
     // Everything drawable now or after a Replenish: the draw pile plus the discard (defeated tokens
     // reshuffle back in). On-board tokens are held out and never re-drawable, so they aren't counted
@@ -635,7 +688,14 @@ private fun PileCard(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.clickable(onClick = onViewContents),
             )
-            if (tapToDrawOnly) {
+            if (displayOnly) {
+                // POSSESSED: not drawn on its own, so a hint stands in for the missing control.
+                Text(
+                    "Drawn with enemies",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else if (tapToDrawOnly) {
                 // No stepper for the RUIN pile - a subtle hint that its face is the whole control.
                 Text(
                     "Tap to reveal",
@@ -827,10 +887,12 @@ private fun DrawLogRow(
     val ruin = if (token == null) RuinTokenCatalogue.byId(entry.tokenId) else null
     val reward = if (token == null && ruin == null) FactionRewardTokenCatalogue.byId(entry.tokenId) else null
     val summonedChildToken = summonedChild?.let { TokenCatalogue.byId(it.tokenId) }
+    // A possessed enemy (Apocalypse Dragon) shows its composite face as the leading thumbnail.
+    val possessed = entry.possessedToken()
     // Defeated/spent rows are de-emphasised (dimmed name), since the on-board enemies are what still
     // needs attention.
     val nameColor = if (entry.defeated) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
-    val hasLeadingFace = ruin != null || reward != null || summonedChildToken != null
+    val hasLeadingFace = ruin != null || reward != null || summonedChildToken != null || (possessed != null && token != null)
     // A reward token's "defeated" flag means "spent", so its toggle reads differently.
     val doneDesc = when {
         reward != null -> if (entry.defeated) "Spent" else "Mark spent"
@@ -848,6 +910,8 @@ private fun DrawLogRow(
                 RuinTokenFace(ruin = ruin, size = 32.dp)
             } else if (reward != null) {
                 FactionRewardTokenFace(token = reward, size = 32.dp)
+            } else if (possessed != null && token != null) {
+                PossessedEnemyFace(circular = token, possessed = possessed, size = 32.dp)
             } else if (summonedChildToken != null) {
                 EnemyTokenFace(token = summonedChildToken, size = 32.dp)
             }
@@ -858,7 +922,9 @@ private fun DrawLogRow(
                     color = nameColor,
                 )
                 Text(
-                    text = entry.pile.displayName() + (if (entry.note.isNotBlank()) " · ${entry.note}" else ""),
+                    text = entry.pile.displayName() +
+                        (if (possessed != null) " · Possessed" else "") +
+                        (if (entry.note.isNotBlank()) " · ${entry.note}" else ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -901,7 +967,13 @@ private fun DrawLogBatchRow(group: DrawLogGroup, log: List<DrawLogEntry>, onOpen
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 entries.take(BATCH_ROW_THUMBNAIL_CAP).forEach { entry ->
-                    TokenCatalogue.byId(entry.tokenId)?.let { token -> EnemyTokenFace(token = token, size = 32.dp) }
+                    val token = TokenCatalogue.byId(entry.tokenId)
+                    val possessed = entry.possessedToken()
+                    if (token != null) {
+                        // A possessed batch member shows its composite face, matching the grid/zoom.
+                        if (possessed != null) PossessedEnemyFace(circular = token, possessed = possessed, size = 32.dp)
+                        else EnemyTokenFace(token = token, size = 32.dp)
+                    }
                 }
                 if (entries.size > BATCH_ROW_THUMBNAIL_CAP) {
                     Text(
@@ -1038,20 +1110,36 @@ private fun TokenZoomDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                // A possessed enemy (Apocalypse Dragon): resolve the possessed token so the face
+                // superimposes the circular enemy on it and the stats below are the *summed* values
+                // (never the deltas). Null for an ordinary draw. See docs/rules/apocalypse-dragon.md.
+                val possessed = entry.possessedToken()
+                val stats = if (token != null && possessed != null) PossessedEnemy.combine(token, possessed) else null
                 if (token != null) {
-                    EnemyTokenFaceWithSummon(
-                        token = token,
-                        size = 140.dp,
-                        // Left side, not the default corner (D-issue #191 follow-up note): that's
-                        // where a printed Summon attack shows its pile-color icon, so the current
-                        // child's own face standing in that exact spot reads as "this is who's
-                        // actually fighting" rather than a decorative badge. All current children are
-                        // passed (not just the first) so a double-summoner shows both over its two slots.
-                        summonedChildren = currentChildren.mapNotNull { TokenCatalogue.byId(log[it].tokenId) },
-                        alignment = Alignment.CenterStart,
-                    )
-                    Text(token.statLine(), style = MaterialTheme.typography.titleMedium)
-                    token.attacks.forEach { attack ->
+                    if (possessed != null) {
+                        PossessedEnemyFace(circular = token, possessed = possessed, size = 140.dp)
+                        Text(
+                            "Possessed enemy",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    } else {
+                        EnemyTokenFaceWithSummon(
+                            token = token,
+                            size = 140.dp,
+                            // Left side, not the default corner (D-issue #191 follow-up note): that's
+                            // where a printed Summon attack shows its pile-color icon, so the current
+                            // child's own face standing in that exact spot reads as "this is who's
+                            // actually fighting" rather than a decorative badge. All current children are
+                            // passed (not just the first) so a double-summoner shows both over its two slots.
+                            summonedChildren = currentChildren.mapNotNull { TokenCatalogue.byId(log[it].tokenId) },
+                            alignment = Alignment.CenterStart,
+                        )
+                    }
+                    // Stat line and attacks show the summed values when possessed, the token's own otherwise.
+                    Text(stats?.statLine() ?: token.statLine(), style = MaterialTheme.typography.titleMedium)
+                    (stats?.attacks ?: token.attacks).forEach { attack ->
                         if (attack.isSummon) {
                             // A summon has no attack value - it draws a replacement from another pile.
                             Text("Summons a ${attack.summons?.summonName() ?: "token"}")
@@ -1059,12 +1147,30 @@ private fun TokenZoomDialog(
                             Text("Attack ${attack.value} · ${attack.element.displayName()}")
                         }
                     }
+                    // The possessed token's added Psychic Attack (elementless; ignores offensive abilities).
+                    stats?.psychicAttack?.let { psychic ->
+                        Text(
+                            "Psychic Attack $psychic",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
                     // Offensive abilities (Brutal, Swift, ...) are whole-token, so they're shown once
                     // beneath the attack(s) rather than tacked onto each. Full text is in the "?" window.
                     if (token.offensiveAbilities.isNotEmpty()) {
                         Text(
                             token.offensiveAbilities.joinToString { it.describe().first },
                             style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    // Every possessed enemy rewards a Faction token when defeated - a faction-agnostic
+                    // reminder here (the faction is named by the scenario and tracked by the separate
+                    // faction-token feature, not the picker).
+                    if (possessed != null) {
+                        Text(
+                            "Reward: a Faction token",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -1173,12 +1279,23 @@ private fun SummonedChildZoomDialog(
                     // *does* (its attacks, its offensive abilities), not what it withstands; the
                     // full reference (including Armor/Fame/resistances) is still one "?" tap away
                     // via TokenInfoDialog for whoever wants it.
-                    token.attacks.forEach { attack ->
+                    // If a *possessed* summoner drew this child, the possessed Attack delta applies to
+                    // this token's topmost attack instead of the summoner's (rulebook p.7), so the
+                    // number shown is the summed one.
+                    val summonDelta = summonDeltaFor(entry, log)
+                    PossessedEnemy.withTopmostAttackDelta(token.attacks, summonDelta).forEach { attack ->
                         if (attack.isSummon) {
                             Text("Summons a ${attack.summons?.summonName() ?: "token"}")
                         } else {
                             Text("Attack ${attack.value} · ${attack.element.displayName()}")
                         }
+                    }
+                    if (summonDelta != 0) {
+                        Text(
+                            "Topmost attack modified by possession (%+d)".format(summonDelta),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
                     }
                     if (token.offensiveAbilities.isNotEmpty()) {
                         Text(
@@ -1517,9 +1634,15 @@ private fun TokenGridCell(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (token != null) {
-                // The grid/log cell keeps a single small corner badge even for a double-summoner -
-                // both children are still reachable via the row's "Summoned: …" line and the zoom.
-                EnemyTokenFaceWithSummon(token = token, size = 72.dp, summonedChildren = listOfNotNull(summonedChild))
+                val possessed = entry.possessedToken()
+                if (possessed != null) {
+                    // A possessed enemy shows its composite face (circular over the possessed token).
+                    PossessedEnemyFace(circular = token, possessed = possessed, size = 72.dp)
+                } else {
+                    // The grid/log cell keeps a single small corner badge even for a double-summoner -
+                    // both children are still reachable via the row's "Summoned: …" line and the zoom.
+                    EnemyTokenFaceWithSummon(token = token, size = 72.dp, summonedChildren = listOfNotNull(summonedChild))
+                }
             }
             Text(
                 text = token?.name ?: entry.tokenId,
@@ -1641,12 +1764,15 @@ private fun PileContentsDialog(
 ) {
     val isRuin = pileId == TokenPileId.RUIN
     val isReward = pileId.isFactionReward
-    // Name resolver for the sort, drawn from whichever catalogue this pile uses. A ruin has no
-    // single "name" field, so it's labelled by kind (its two variants), matching the Draw Log rows.
+    val isPossessed = pileId == TokenPileId.POSSESSED
+    // Name resolver for the sort, drawn from whichever catalogue this pile uses. A ruin has no single
+    // "name" field (labelled by kind), a reward carries its own name, and a possessed token has none
+    // either (labelled by its modifier summary, "+2 Armor · +3 Psychic").
     val nameOf: (String) -> String = { id ->
         when {
             isRuin -> RuinTokenCatalogue.byId(id)?.let { if (it.isAltar) "Ancient Altar" else "Enemies with Treasure" } ?: id
             isReward -> FactionRewardTokenCatalogue.byId(id)?.name ?: id
+            isPossessed -> PossessedTokenCatalogue.byId(id)?.summary() ?: id
             else -> TokenCatalogue.byId(id)?.name ?: id
         }
     }
@@ -1682,10 +1808,14 @@ private fun PileContentsDialog(
                             group = group,
                             isRuin = isRuin,
                             isReward = isReward,
+                            isPossessed = isPossessed,
                             onOpen = {
+                                // Possessed tokens have no detail dialog (they're modifiers, not
+                                // enemies), so their cells just display.
                                 when {
                                     isRuin -> RuinTokenCatalogue.byId(group.tokenId)?.let(onOpenRuinInfo)
                                     isReward -> FactionRewardTokenCatalogue.byId(group.tokenId)?.let(onOpenRewardInfo)
+                                    isPossessed -> Unit
                                     else -> TokenCatalogue.byId(group.tokenId)?.let(onOpenEnemyInfo)
                                 }
                             },
@@ -1703,10 +1833,11 @@ private fun PileContentsDialog(
  * render the hexagonal [RuinTokenFace]; everything else the round [EnemyTokenFace].
  */
 @Composable
-private fun PileContentsCell(group: PileTokenGroup, isRuin: Boolean, isReward: Boolean, onOpen: () -> Unit) {
-    val token = if (isRuin || isReward) null else TokenCatalogue.byId(group.tokenId)
+private fun PileContentsCell(group: PileTokenGroup, isRuin: Boolean, isReward: Boolean, isPossessed: Boolean, onOpen: () -> Unit) {
+    val token = if (isRuin || isReward || isPossessed) null else TokenCatalogue.byId(group.tokenId)
     val ruin = if (isRuin) RuinTokenCatalogue.byId(group.tokenId) else null
     val reward = if (isReward) FactionRewardTokenCatalogue.byId(group.tokenId) else null
+    val possessed = if (isPossessed) PossessedTokenCatalogue.byId(group.tokenId) else null
     Column(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1717,6 +1848,7 @@ private fun PileContentsCell(group: PileTokenGroup, isRuin: Boolean, isReward: B
                 token != null -> EnemyTokenFace(token = token, size = 72.dp)
                 ruin != null -> RuinTokenFace(ruin = ruin, size = 72.dp)
                 reward != null -> FactionRewardTokenFace(token = reward, size = 72.dp)
+                possessed != null -> PossessedTokenFace(possessed = possessed, size = 72.dp)
                 else -> Text(group.tokenId, style = MaterialTheme.typography.labelSmall)
             }
             if (group.count > 1) {
@@ -1875,6 +2007,35 @@ private fun EnemyToken.statLine(): String {
     return "Armor $armorText$defendText · Fame $fame$reputationText"
 }
 
+/** The possessed token paired with this entry (an Apocalypse Dragon composite), or null for an ordinary draw. */
+private fun DrawLogEntry.possessedToken(): PossessedToken? = possessedTokenId?.let { PossessedTokenCatalogue.byId(it) }
+
+/**
+ * "Armor X · Fame Y" summary for a possessed enemy's *summed* stats (docs/rules/apocalypse-dragon.md)
+ * - the composite counterpart to [EnemyToken.statLine]. Shows both Armor values as "lower/higher"
+ * when the circular enemy is Elusive (its higher value is boosted by the same Armor delta). The
+ * attack(s) and Psychic Attack are listed separately in the zoom, so - like [EnemyToken.statLine] -
+ * they're left off this line.
+ */
+private fun PossessedEnemyStats.statLine(): String {
+    val armorText = if (elusiveArmor != null) "$armor/$elusiveArmor" else "$armor"
+    return "Armor $armorText · Fame $fame"
+}
+
+/**
+ * The possessed Attack delta a summoned child inherits from its summoner, or 0. When a **possessed
+ * summoner**'s topmost attack is a Summon, its Attack delta modifies the *summoned* token's topmost
+ * attack instead (rulebook p.7); this resolves that delta from the child's parent entry so the child
+ * zoom can apply it via [PossessedEnemy.withTopmostAttackDelta]. Returns 0 for any child whose parent
+ * isn't a possessed summoner.
+ */
+private fun summonDeltaFor(entry: DrawLogEntry, log: List<DrawLogEntry>): Int {
+    val parent = entry.parentIndex?.let { log.getOrNull(it) } ?: return 0
+    val parentToken = TokenCatalogue.byId(parent.tokenId) ?: return 0
+    val possessed = parent.possessedToken() ?: return 0
+    return PossessedEnemy.combine(parentToken, possessed).summonAttackDelta
+}
+
 /** Player-facing name of a summoned pile, e.g. "Brown enemy" (used in the zoom's "Summons a …" line). */
 private fun TokenPileId.summonName(): String = when (this) {
     TokenPileId.BROWN -> "Brown enemy"
@@ -1890,6 +2051,7 @@ internal fun TokenPileId.displayName(): String = when (this) {
     TokenPileId.RED -> "Red enemies"
     TokenPileId.WHITE -> "White enemies"
     TokenPileId.RUIN -> "Ruins"
+    TokenPileId.POSSESSED -> "Possessed"
     TokenPileId.ELEMENTALIST_REWARDS -> "Elementalist rewards"
     TokenPileId.DARK_CRUSADER_REWARDS -> "Dark Crusader rewards"
     TokenPileId.APOCALYPSE_CULT_REWARDS -> "Apocalypse Cult rewards"
