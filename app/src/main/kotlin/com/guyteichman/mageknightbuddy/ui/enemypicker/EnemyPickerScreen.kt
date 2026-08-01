@@ -72,6 +72,7 @@ import com.guyteichman.mageknightbuddy.domain.RuinTokenCatalogue
 import com.guyteichman.mageknightbuddy.domain.TokenCatalogue
 import com.guyteichman.mageknightbuddy.domain.TokenPile
 import com.guyteichman.mageknightbuddy.domain.TokenPileId
+import com.guyteichman.mageknightbuddy.ui.settings.SettingsAction
 import com.guyteichman.mageknightbuddy.ui.components.LabeledCheckbox
 import com.guyteichman.mageknightbuddy.ui.components.LabeledSwitch
 import kotlinx.coroutines.launch
@@ -86,7 +87,7 @@ import kotlinx.coroutines.launch
  * - the picker models no map (ADR-0006), so the log is the memory of what's still on the board.
  */
 @Composable
-fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
+fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () -> Unit) {
     val viewModel: EnemyPickerViewModel = viewModel(factory = EnemyPickerViewModel.factory(repository))
     val scope = rememberCoroutineScope()
 
@@ -207,6 +208,7 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
     EnemyPickerContent(
         session = session,
         isBusy = viewModel.isBusy,
+        onOpenSettings = onOpenSettings,
         onDraw = onDraw,
         onOpenToken = { index -> zoom = ZoomState(listOf(index), 0); summonGrid = null; summonZoom = null },
         // Reopening a batch from the Draw Log (#203/D18) is fully identical to the grid a fresh
@@ -377,6 +379,7 @@ private data class GridState(val logIndices: List<Int>)
 private fun EnemyPickerContent(
     session: EnemyPickerSession,
     isBusy: Boolean,
+    onOpenSettings: () -> Unit,
     onDraw: (Map<TokenPileId, Int>) -> Unit,
     onOpenToken: (Int) -> Unit,
     onOpenBatch: (List<Int>) -> Unit,
@@ -394,7 +397,7 @@ private fun EnemyPickerContent(
     val totalQuantity = quantities.values.sum()
 
     Scaffold(
-        topBar = { EnemyPickerTopBar() },
+        topBar = { EnemyPickerTopBar(onOpenSettings = onOpenSettings) },
         bottomBar = {
             DrawBar(
                 total = totalQuantity,
@@ -465,8 +468,10 @@ private fun EnemyPickerContent(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EnemyPickerTopBar() {
-    TopAppBar(title = { Text("Enemies") })
+private fun EnemyPickerTopBar(onOpenSettings: () -> Unit) {
+    // The shared settings gear, present on every tab's top bar so Settings is reachable from
+    // anywhere without its own bottom-nav tab (see SettingsAction).
+    TopAppBar(title = { Text("Enemies") }, actions = { SettingsAction(onClick = onOpenSettings) })
 }
 
 /**

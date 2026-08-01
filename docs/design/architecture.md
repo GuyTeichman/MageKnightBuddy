@@ -31,7 +31,7 @@ A **paginated wizard** — one page per scoring category, in rulebook order, wit
 
 To leave *without* saving, the wizard's top bar has an **X (close)** button; it and the system back gesture both prompt "Discard this entry?" before popping back to the list, and confirming clears the in-progress draft so the next run starts fresh (issue #248). This matters because the wizard is now a nested screen inside the Scoreboard tab rather than its own bottom-nav tab, so an explicit way out is needed.
 
-Every field defaults to a sensible value (0 / false / first item) rather than starting blank — there is no required-input validation and Next is always enabled. Every field tied to a rulebook mechanic has a "?" button opening a dialog with beginner-friendly help text, sourced from a JSON file (`app/src/main/assets/field_help.json`) bundled with the app. Each entry always stores both the explanation and its rulebook page citation; whether the citation is shown is a single decision point in the rendering code, not a user-facing setting (a real toggle would need a Settings screen, which is still out of scope — see below). Shared field-widget composables (`NumberField`, `LabeledCheckbox`, `LabeledSwitch`, `LabeledDropdown`, `NumberPillPicker` for small fixed-range counts, `ReputationTrackPicker`, `UnitLevelRow`) live in `app/.../ui/components/`, reused across every scenario's pages.
+Every field defaults to a sensible value (0 / false / first item) rather than starting blank — there is no required-input validation and Next is always enabled. Every field tied to a rulebook mechanic has a "?" button opening a dialog with beginner-friendly help text, sourced from a JSON file (`app/src/main/assets/field_help.json`) bundled with the app. Each entry always stores both the explanation and its rulebook page citation; whether the citation is shown is a single decision point in the rendering code, not a user-facing setting (a real toggle would need Settings work — the help-citation toggle specifically is still out of scope, even though a minimal Settings screen now exists for Backup & Restore; see below). Shared field-widget composables (`NumberField`, `LabeledCheckbox`, `LabeledSwitch`, `LabeledDropdown`, `NumberPillPicker` for small fixed-range counts, `ReputationTrackPicker`, `UnitLevelRow`) live in `app/.../ui/components/`, reused across every scenario's pages.
 
 This is a **post-game wizard only** — it does not track anything live during play. That's a deliberately separate, harder problem (would require mirroring full game state) and isn't in scope.
 
@@ -42,9 +42,17 @@ This is a **post-game wizard only** — it does not track anything live during p
 3. Tapping a row pushes a full-screen breakdown (via a nested `NavHost` scoped to this tab, with a back arrow): two columns, Category and Score, one row per individual scoring rule (Fame, the six Standard Achievements categories, Greatest Quester, and the five Solo Conquest bonuses — 13 rows) plus a Total row.
 4. Player name is stored on every `ScoringSession` already (see `docs/context-scoring.md`) but not yet shown on the Scoreboard table or breakdown — deferred until the shape of "compare multiple players" is actually decided.
 
+## Settings & Backup
+
+A minimal **Settings** screen (issue #121, [ADR-0009](../adr/0009-saf-json-backup-instead-of-drive-api.md)) holds a single **Backup & Restore** section — the rest of Settings is still out of scope (see below). It's not a bottom-nav tab: every tab's top app bar carries a shared settings gear (`SettingsAction`) that pushes the Settings screen as a full-screen destination registered outside the `tabs` list, so it's reachable from anywhere without spending a nav-bar slot (the Score wizard, being a sub-screen of the Scoreboard tab rather than a tab, reaches it by backing out to the list, like the score breakdown does).
+
+- **Back up** writes a JSON snapshot to a file the user picks via the Storage Access Framework (Google Drive, local storage, anywhere — no Google APIs or sign-in; see the ADR). Only finished `ScoringSession`s are included, not the single-slot in-progress autosaves.
+- **Restore** reads a picked file, decodes + validates it (`BackupCodec` in `data/`, JVM-tested), and — only after a confirmation dialog showing how many local records will be swapped for how many from the backup — **replaces all** local scoring records. A malformed or newer-format file is refused with a message, never wiping local data.
+- The backup format is versioned independently of the Room schema (`BackupCodec.FORMAT_VERSION`), so the two evolve without dragging each other; see the ADR for why SAF + JSON was chosen over the native Google Drive API and over copying the raw SQLite file.
+
 ## Explicitly out of scope for now
 
 - Live/in-game tracking during the Score Calculator flow.
-- The Settings screen itself (expansion/variant toggles, help-citation visibility) — Greatest Quester is scored unconditionally in the meantime; see `docs/context-scoring.md`.
+- Most of the Settings screen. A minimal Settings screen now exists, but *only* to host Backup & Restore (see "Settings & Backup" below, issue #121). Its other intended contents — expansion/variant toggles, help-citation visibility — remain out of scope, and Greatest Quester is scored unconditionally in the meantime; see `docs/context-scoring.md`.
 - Surfacing Player name on the Scoreboard, and any actual multi-player comparison view.
 - Global Scoreboard (stub) — see `docs/context-scoring.md`; not designed.

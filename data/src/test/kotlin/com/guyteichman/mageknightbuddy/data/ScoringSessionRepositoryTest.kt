@@ -73,4 +73,68 @@ class ScoringSessionRepositoryTest {
         assertEquals(session, result.single())
         assertEquals(Outcome.LOST, result.single().outcome)
     }
+
+    @Test
+    fun `exportAll returns a snapshot of every saved session, newest first`() = runTest {
+        // Build the starting state through the repository's own save(), not by hand-inserting rows.
+        val older = session(knight = Knight.TOVAK, playedAt = Instant.parse("2026-07-10T00:00:00Z"))
+        val newer = session(knight = Knight.GOLDYX, playedAt = Instant.parse("2026-07-20T00:00:00Z"))
+        repository.save(older)
+        repository.save(newer)
+
+        val exported = repository.exportAll()
+
+        assertEquals(listOf(newer, older), exported)
+    }
+
+    @Test
+    fun `replaceAll discards existing records and installs exactly the given set`() = runTest {
+        // Two pre-existing records, saved the normal way.
+        repository.save(session(knight = Knight.TOVAK, playedAt = Instant.parse("2026-07-10T00:00:00Z")))
+        repository.save(session(knight = Knight.GOLDYX, playedAt = Instant.parse("2026-07-11T00:00:00Z")))
+
+        // Restore a completely different single-record backup over them.
+        val restored = session(knight = Knight.ARYTHEA, playedAt = Instant.parse("2026-07-25T00:00:00Z"))
+        repository.replaceAll(listOf(restored))
+
+        // Both live (getAll) and snapshot (exportAll) reads reflect only the restored set - the two
+        // originals are gone, not merged.
+        assertEquals(listOf(restored), repository.getAll().first())
+        assertEquals(listOf(restored), repository.exportAll())
+    }
+
+    @Test
+    fun `replaceAll with an empty list clears the whole history`() = runTest {
+        repository.save(session(knight = Knight.TOVAK, playedAt = Instant.parse("2026-07-10T00:00:00Z")))
+
+        repository.replaceAll(emptyList())
+
+        assertEquals(emptyList(), repository.exportAll())
+    }
+
+    // Minimal Solo Conquest session builder, varying only the fields the tests above distinguish on.
+    private fun session(knight: Knight, playedAt: Instant) = ScoringSession.create(
+        scenario = Scenario.SoloConquest,
+        knight = knight,
+        playerName = null,
+        input = SoloConquestScoringInput(
+            fame = 10,
+            standardAchievements = StandardAchievements(
+                spellsInDeck = 0,
+                advancedActionsInDeck = 0,
+                units = (1..4).map { level -> UnitTally(level = level, healthyCount = 0, woundedCount = 0) },
+                shieldsOnAdventureSites = 0,
+                artifacts = 0,
+                crystalsInInventory = 0,
+                shieldsOnConquerSites = 0,
+                woundsInDeck = 0,
+            ),
+            citiesConquered = 0,
+            roundsFinishedEarly = 0,
+            cardsRemainingInDummyDeck = 0,
+            endOfRoundAnnounced = true,
+            questPoints = 0,
+        ),
+        playedAt = playedAt,
+    )
 }
