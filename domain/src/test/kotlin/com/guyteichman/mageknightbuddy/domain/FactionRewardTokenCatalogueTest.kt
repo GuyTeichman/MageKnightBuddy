@@ -69,7 +69,7 @@ class FactionRewardTokenCatalogueTest {
 
     @Test
     fun `the uniform discard-for-Fame line is stripped from every effect text`() {
-        // That parenthetical is identical on all 24 tokens, so it lives in the rules doc + UI footer,
+        // That parenthetical is identical on all 24 token types (48 tokens), so it lives in the rules doc + UI footer,
         // never in the per-token effectText (see FactionRewardToken's doc). Guard against it creeping
         // back into the catalogue.
         FactionRewardTokenCatalogue.tokens.forEach { token ->

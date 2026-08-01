@@ -252,24 +252,24 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
     // The held-faction-rewards grid (issue #252), opened from the pinned Draw Log entry. Composed
     // before `zoom` below so a reward's effect zoom (opened by tapping a cell) stacks on top of it,
     // and dismissing that zoom falls back to this grid - the same before/after trick the enemy
-    // grid/zoom pair uses. Derives its held list live from the session, so spending a token (which
-    // flips its defeated flag) drops it out of the grid on the next recomposition.
-    if (heldRewardsOpen) {
-        val heldIndices = session.drawLog.indices.filter {
-            session.drawLog[it].pile.isFactionReward && !session.drawLog[it].defeated
-        }
-        if (heldIndices.isEmpty()) {
-            // Spending the last held token empties the grid - close it rather than show nothing.
-            heldRewardsOpen = false
-        } else {
-            HeldRewardsDialog(
-                heldIndices = heldIndices,
-                log = session.drawLog,
-                onOpenDetail = { index -> zoom = ZoomState(listOf(index), 0); summonGrid = null; summonZoom = null },
-                onSpend = { index -> scope.launch { viewModel.setDefeated(index, true) } },
-                onDismiss = { heldRewardsOpen = false },
-            )
-        }
+    // grid/zoom pair uses. `heldRewardIndices` is derived live from the session, so spending a token
+    // (which flips its defeated flag) drops it out of the grid on the next recomposition.
+    val heldRewardIndices = session.drawLog.indices.filter {
+        session.drawLog[it].pile.isFactionReward && !session.drawLog[it].defeated
+    }
+    // If the grid is open but the last held token was just spent, close it - as a side effect
+    // (LaunchedEffect) rather than a state write during composition.
+    LaunchedEffect(heldRewardsOpen, heldRewardIndices.isEmpty()) {
+        if (heldRewardsOpen && heldRewardIndices.isEmpty()) heldRewardsOpen = false
+    }
+    if (heldRewardsOpen && heldRewardIndices.isNotEmpty()) {
+        HeldRewardsDialog(
+            heldIndices = heldRewardIndices,
+            log = session.drawLog,
+            onOpenDetail = { index -> zoom = ZoomState(listOf(index), 0); summonGrid = null; summonZoom = null },
+            onSpend = { index -> scope.launch { viewModel.setDefeated(index, true) } },
+            onDismiss = { heldRewardsOpen = false },
+        )
     }
 
     zoom?.let { state ->
@@ -1785,8 +1785,8 @@ private const val MAX_BATCH = 20
 /**
  * The line printed on **every** faction reward token (issue #252): it can always be cashed in instead
  * of used. Held once here rather than in each token's [FactionRewardToken.effectText] (it's identical
- * across all 24), and shown as a footer under whichever reward is on screen. Not scored - the player
- * takes the Fame/Influence themselves (ADR-0006).
+ * across all 24 token types / 48 tokens), and shown as a footer under whichever reward is on screen. Not
+ * scored - the player takes the Fame/Influence themselves (ADR-0006).
  */
 private const val FACTION_REWARD_DISCARD_FOOTER = "Or discard during interactions for 1 Fame or 3 Influence."
 

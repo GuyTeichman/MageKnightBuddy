@@ -18,7 +18,7 @@ import kotlinx.serialization.Serializable
  * resolved** (ADR-0006), exactly like [RuinToken.reward]: the Enemy Picker draws the token and shows
  * you what it does, but the player applies the effect themselves. The universal *"may be discarded
  * during interactions for 1 Fame, or 3 Influence"* line printed on **every** reward token is
- * deliberately *not* stored here (it's identical across all 24 tokens); it's documented once in the
+ * deliberately *not* stored here (it's identical across all 24 token types / 48 tokens); documented once in the
  * rules doc and shown as a fixed footer by the UI, so [effectText] holds only what differs per token.
  *
  * `@Serializable` so the whole catalogue decodes straight into `List<FactionRewardToken>` from
