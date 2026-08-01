@@ -68,23 +68,29 @@ internal fun SiteThumbnail(site: Site, size: Dp = 56.dp) {
     }
 }
 
-/** A wide header image for the detail screen: the site's art, or a taller category placeholder. */
+/** A header image for the detail screen: the site's icon framed at a modest size on a tinted panel. */
 @Composable
 internal fun SiteArtHeader(site: Site, modifier: Modifier = Modifier) {
     val bitmap = rememberSiteBitmap(site)
+    val panel = modifier.fillMaxWidth().height(200.dp).clip(THUMB_SHAPE)
     if (bitmap != null) {
-        Image(
-            bitmap = bitmap,
-            contentDescription = site.name,
-            contentScale = ContentScale.Crop,
-            modifier = modifier.fillMaxWidth().height(200.dp).clip(THUMB_SHAPE),
-        )
+        Box(
+            modifier = panel.background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center,
+        ) {
+            // The art is a small (~150px) quick-reference icon, so show it at a fixed modest size
+            // framed on the panel rather than stretched full-bleed - blowing 150px up to fill a
+            // 200dp header would just blur it. The assets are square cream tiles, so a square box
+            // and its own rounded corners read as a framed emblem centered on the panel.
+            Image(
+                bitmap = bitmap,
+                contentDescription = site.name,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.size(168.dp).clip(RoundedCornerShape(12.dp)),
+            )
+        }
     } else {
-        SiteArtPlaceholder(
-            category = site.category,
-            iconSize = 72.dp,
-            modifier = modifier.fillMaxWidth().height(200.dp).clip(THUMB_SHAPE),
-        )
+        SiteArtPlaceholder(category = site.category, iconSize = 72.dp, modifier = panel)
     }
 }
 
