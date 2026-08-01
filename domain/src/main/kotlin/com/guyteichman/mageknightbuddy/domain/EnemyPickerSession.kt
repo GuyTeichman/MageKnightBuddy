@@ -183,21 +183,25 @@ data class EnemyPickerSession private constructor(
         catalogue: List<EnemyToken>,
         shuffle: (List<String>) -> List<String> = { it.shuffled() },
         ruinCatalogue: List<RuinToken> = emptyList(),
-    ): EnemyPickerSession = start(catalogue, tokenSet, drawWithReplacement, shuffle, ruinCatalogue)
+        factionRewardCatalogue: List<FactionRewardToken> = emptyList(),
+    ): EnemyPickerSession = start(catalogue, tokenSet, drawWithReplacement, shuffle, ruinCatalogue, factionRewardCatalogue)
 
     companion object {
         /**
-         * Builds the initial [TokenPile] map from the two catalogues: every [EnemyToken] whose
+         * Builds the initial [TokenPile] map from the three catalogues: every [EnemyToken] whose
          * [EnemyToken.expansion] is in [tokenSet] is expanded into [EnemyToken.copies] entries of its
-         * id and grouped into its [EnemyToken.pile]; the [RuinToken]s whose [RuinToken.expansion] is
+         * id and grouped into its [EnemyToken.pile]; every [FactionRewardToken] in [tokenSet] is
+         * expanded the same way into its [FactionRewardToken.pile] (issue #252); and the [RuinToken]s
          * in [tokenSet] each contribute a single id (ruins are unique - no copy count) to the one
          * [TokenPileId.RUIN] pile. Each pile's combined list is `shuffle`d into its draw pile (discard
-         * empty). Piles with no matching tokens are omitted - including RUIN, e.g. when no
-         * [ruinCatalogue] is supplied.
+         * empty). Piles with no matching tokens are omitted - including RUIN and every reward pile,
+         * e.g. when no [ruinCatalogue]/[factionRewardCatalogue] is supplied or that faction's
+         * expansion isn't ticked.
          */
         private fun buildPiles(
             catalogue: List<EnemyToken>,
             ruinCatalogue: List<RuinToken>,
+            factionRewardCatalogue: List<FactionRewardToken>,
             tokenSet: Set<Expansion>,
             shuffle: (List<String>) -> List<String>,
         ): Map<TokenPileId, TokenPile> {
@@ -211,20 +215,34 @@ data class EnemyPickerSession private constructor(
                     TokenPile(drawPile = shuffle(ids))
                 }
 
+            // Faction reward piles build identically to the enemy piles above (gate by expansion,
+            // group by pile, expand copies, shuffle) - a reward token carries the same pile/copies/
+            // expansion trio. Their pile ids are disjoint from the enemy colours and RUIN, so the
+            // maps merge cleanly.
+            val factionPiles = factionRewardCatalogue
+                .filter { it.expansion in tokenSet }
+                .groupBy { it.pile }
+                .mapValues { (_, tokens) ->
+                    val ids = tokens.flatMap { token -> List(token.copies) { token.id } }
+                    TokenPile(drawPile = shuffle(ids))
+                }
+
             // The RUIN pile comes from its own catalogue (a different token shape); one copy per ruin.
             val ruinIds = ruinCatalogue.filter { it.expansion in tokenSet }.map { it.id }
             // `+ (RUIN to ...)` only when there's something to put there, so an empty RUIN pile is
             // omitted just like any other empty pile above.
-            return if (ruinIds.isEmpty()) enemyPiles
-            else enemyPiles + (TokenPileId.RUIN to TokenPile(drawPile = shuffle(ruinIds)))
+            val nonRuin = enemyPiles + factionPiles
+            return if (ruinIds.isEmpty()) nonRuin
+            else nonRuin + (TokenPileId.RUIN to TokenPile(drawPile = shuffle(ruinIds)))
         }
 
         /**
          * Begins a fresh session. [tokenSet] defaults to base game only and [drawWithReplacement]
          * to false (the rules-correct default). [shuffle] defaults to a real shuffle; tests pass a
          * deterministic one (e.g. identity) the same way [VolkareSession.start] takes `deckOrder`.
-         * [ruinCatalogue] populates the [TokenPileId.RUIN] pile; omit it (the default) to build a
-         * session with no RUIN pile at all.
+         * [ruinCatalogue] populates the [TokenPileId.RUIN] pile and [factionRewardCatalogue] the four
+         * faction reward piles (issue #252); omit either (the default) to build a session without
+         * those piles at all.
          */
         fun start(
             catalogue: List<EnemyToken>,
@@ -232,10 +250,11 @@ data class EnemyPickerSession private constructor(
             drawWithReplacement: Boolean = false,
             shuffle: (List<String>) -> List<String> = { it.shuffled() },
             ruinCatalogue: List<RuinToken> = emptyList(),
+            factionRewardCatalogue: List<FactionRewardToken> = emptyList(),
         ): EnemyPickerSession = EnemyPickerSession(
             tokenSet = tokenSet,
             drawWithReplacement = drawWithReplacement,
-            piles = buildPiles(catalogue, ruinCatalogue, tokenSet, shuffle),
+            piles = buildPiles(catalogue, ruinCatalogue, factionRewardCatalogue, tokenSet, shuffle),
             drawLog = emptyList(),
         )
 

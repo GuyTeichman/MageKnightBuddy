@@ -12,6 +12,8 @@ import com.guyteichman.mageknightbuddy.data.EnemyPickerSessionRepository
 import com.guyteichman.mageknightbuddy.domain.EnemyPickerSession
 import com.guyteichman.mageknightbuddy.domain.EnemyToken
 import com.guyteichman.mageknightbuddy.domain.Expansion
+import com.guyteichman.mageknightbuddy.domain.FactionRewardToken
+import com.guyteichman.mageknightbuddy.domain.FactionRewardTokenCatalogue
 import com.guyteichman.mageknightbuddy.domain.RuinToken
 import com.guyteichman.mageknightbuddy.domain.RuinTokenCatalogue
 import com.guyteichman.mageknightbuddy.domain.TokenCatalogue
@@ -29,13 +31,15 @@ import kotlinx.coroutines.launch
  * this ViewModel doesn't extend the restore-only base, but it repeats the same [isBusy] double-tap
  * guard + autosave shape.
  *
- * [catalogue] and [ruinCatalogue] are injected (defaults: the real [TokenCatalogue] /
- * [RuinTokenCatalogue]) so pile builds/resets are testable with fixture catalogues.
+ * [catalogue], [ruinCatalogue] and [factionRewardCatalogue] are injected (defaults: the real
+ * [TokenCatalogue] / [RuinTokenCatalogue] / [FactionRewardTokenCatalogue]) so pile builds/resets are
+ * testable with fixture catalogues.
  */
 class EnemyPickerViewModel(
     private val repository: EnemyPickerSessionRepository,
     private val catalogue: List<EnemyToken> = TokenCatalogue.tokens,
     private val ruinCatalogue: List<RuinToken> = RuinTokenCatalogue.tokens,
+    private val factionRewardCatalogue: List<FactionRewardToken> = FactionRewardTokenCatalogue.tokens,
 ) : ViewModel() {
 
     var session: EnemyPickerSession? by mutableStateOf(null)
@@ -48,7 +52,8 @@ class EnemyPickerViewModel(
         viewModelScope.launch {
             // Restore the saved game, or create + persist a fresh default one on first ever launch.
             session = repository.restore()
-                ?: EnemyPickerSession.start(catalogue, ruinCatalogue = ruinCatalogue).also { repository.save(it) }
+                ?: EnemyPickerSession.start(catalogue, ruinCatalogue = ruinCatalogue, factionRewardCatalogue = factionRewardCatalogue)
+                    .also { repository.save(it) }
         }
     }
 
@@ -87,7 +92,7 @@ class EnemyPickerViewModel(
     }
 
     /** Rebuilds every pile and clears the Draw Log, keeping the current config, then autosaves. */
-    suspend fun reset() = mutate { it.reset(catalogue, ruinCatalogue = ruinCatalogue) }
+    suspend fun reset() = mutate { it.reset(catalogue, ruinCatalogue = ruinCatalogue, factionRewardCatalogue = factionRewardCatalogue) }
 
     /**
      * Commits staged config edits (the "Apply & Reset" action): rebuilds the piles for [tokenSet]
@@ -96,7 +101,7 @@ class EnemyPickerViewModel(
      * `CONTEXT.md`'s "Token Set").
      */
     suspend fun applyConfig(tokenSet: Set<Expansion>, drawWithReplacement: Boolean) =
-        mutate { EnemyPickerSession.start(catalogue, tokenSet, drawWithReplacement, ruinCatalogue = ruinCatalogue) }
+        mutate { EnemyPickerSession.start(catalogue, tokenSet, drawWithReplacement, ruinCatalogue = ruinCatalogue, factionRewardCatalogue = factionRewardCatalogue) }
 
     /**
      * Runs [transform] against the current [session], publishes the result, and autosaves it - a

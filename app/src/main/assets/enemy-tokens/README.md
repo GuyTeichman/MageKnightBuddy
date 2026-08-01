@@ -15,7 +15,10 @@ back is one-per-color rather than one-per-token. `PileBackFace` in `EnemyTokenAr
 same way `EnemyTokenFace` loads a token face (clipped to a circle, text-disc fallback if missing) and
 `EnemyPickerScreen.kt`'s `PileCard` shows it as a tap-to-draw-1 shortcut. All 6 base-game piles
 (green/grey/violet/brown/red/white) are present; Ruin has none — it isn't wired into the picker's
-draw flow yet (issue #201).
+draw flow yet (issue #201). The four **faction reward** piles' round emblem backs also live here
+(`elementalist_rewards.jpg`, `dark_crusader_rewards.jpg`, `apocalypse_cult_rewards.jpg`,
+`council_of_void_rewards.jpg`, issue #252) since they're per-`TokenPileId` round backs like the enemy
+piles' — their *face* tiles are the exception, kept in `../faction-reward-tokens/` (see that README).
 
 ## Present so far
 

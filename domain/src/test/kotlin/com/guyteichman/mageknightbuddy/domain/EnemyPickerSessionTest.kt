@@ -32,6 +32,15 @@ class EnemyPickerSessionTest {
     private val ruinLegion = RuinToken(id = "ruin_ll_altar", expansion = Expansion.LOST_LEGION, altarColors = listOf(ManaColor.RED, ManaColor.BLUE, ManaColor.GREEN, ManaColor.WHITE))
     private val ruinCatalogue = listOf(ruinAltar, ruinEwt, ruinLegion)
 
+    // Faction reward fixtures (issue #252): two Elementalist rewards (Shades of Tezla) plus one from
+    // each Apocalypse Dragon faction, to exercise reward piles being built from their own catalogue,
+    // gated by expansion, and (for AD) two piles sharing a single expansion toggle.
+    private val rewardElemA = FactionRewardToken(id = "reward_elem_a", expansion = Expansion.SHADES_OF_TEZLA_ELEMENTALIST, pile = TokenPileId.ELEMENTALIST_REWARDS, name = "Elem A", effectText = "Heal 1.", copies = 2)
+    private val rewardElemB = FactionRewardToken(id = "reward_elem_b", expansion = Expansion.SHADES_OF_TEZLA_ELEMENTALIST, pile = TokenPileId.ELEMENTALIST_REWARDS, name = "Elem B", effectText = "Move 2.", copies = 1)
+    private val rewardCult = FactionRewardToken(id = "reward_cult_a", expansion = Expansion.APOCALYPSE_DRAGON, pile = TokenPileId.APOCALYPSE_CULT_REWARDS, name = "Cult A", effectText = "Attack 2.", copies = 1)
+    private val rewardVoid = FactionRewardToken(id = "reward_void_a", expansion = Expansion.APOCALYPSE_DRAGON, pile = TokenPileId.COUNCIL_OF_VOID_REWARDS, name = "Void A", effectText = "Block 2.", copies = 1)
+    private val factionRewardCatalogue = listOf(rewardElemA, rewardElemB, rewardCult, rewardVoid)
+
     // Expected green draw pile under identity shuffle: copies expanded in catalogue order.
     private val greenOrder = listOf("orc_a", "orc_a", "orc_b", "orc_c")
 
@@ -82,6 +91,78 @@ class EnemyPickerSessionTest {
     fun `start without a ruin catalogue builds no RUIN pile`() {
         val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
         assertFalse(session.piles.containsKey(TokenPileId.RUIN))
+    }
+
+    @Test
+    fun `start builds a faction's reward pile only when that faction's expansion is in the token set`() {
+        // Base-only: no reward pile exists at all.
+        val baseOnly = EnemyPickerSession.start(
+            catalogue, tokenSet = setOf(Expansion.BASE), shuffle = noShuffle, factionRewardCatalogue = factionRewardCatalogue,
+        )
+        assertFalse(baseOnly.piles.containsKey(TokenPileId.ELEMENTALIST_REWARDS))
+        assertFalse(baseOnly.piles.containsKey(TokenPileId.APOCALYPSE_CULT_REWARDS))
+
+        // Elementalist ticked: its reward pile appears with copies expanded in catalogue order
+        // (reward_elem_a x2, reward_elem_b x1); the AD piles stay absent.
+        val elem = EnemyPickerSession.start(
+            catalogue,
+            tokenSet = setOf(Expansion.BASE, Expansion.SHADES_OF_TEZLA_ELEMENTALIST),
+            shuffle = noShuffle,
+            factionRewardCatalogue = factionRewardCatalogue,
+        )
+        assertEquals(
+            listOf("reward_elem_a", "reward_elem_a", "reward_elem_b"),
+            elem.piles.getValue(TokenPileId.ELEMENTALIST_REWARDS).drawPile,
+        )
+        assertEquals(emptyList(), elem.piles.getValue(TokenPileId.ELEMENTALIST_REWARDS).discardPile)
+        assertFalse(elem.piles.containsKey(TokenPileId.APOCALYPSE_CULT_REWARDS))
+        assertFalse(elem.piles.containsKey(TokenPileId.COUNCIL_OF_VOID_REWARDS))
+    }
+
+    @Test
+    fun `the single Apocalypse Dragon toggle builds both AD faction reward piles`() {
+        val ad = EnemyPickerSession.start(
+            catalogue,
+            tokenSet = setOf(Expansion.BASE, Expansion.APOCALYPSE_DRAGON),
+            shuffle = noShuffle,
+            factionRewardCatalogue = factionRewardCatalogue,
+        )
+        // One expansion toggle, two distinct piles (Apocalypse Cult + Council of the Void).
+        assertEquals(listOf("reward_cult_a"), ad.piles.getValue(TokenPileId.APOCALYPSE_CULT_REWARDS).drawPile)
+        assertEquals(listOf("reward_void_a"), ad.piles.getValue(TokenPileId.COUNCIL_OF_VOID_REWARDS).drawPile)
+        // The Shades of Tezla reward pile is not pulled in by the AD toggle.
+        assertFalse(ad.piles.containsKey(TokenPileId.ELEMENTALIST_REWARDS))
+    }
+
+    @Test
+    fun `start without a faction reward catalogue builds no reward piles`() {
+        val session = EnemyPickerSession.start(
+            catalogue, tokenSet = setOf(Expansion.SHADES_OF_TEZLA_ELEMENTALIST), shuffle = noShuffle,
+        )
+        assertFalse(session.piles.containsKey(TokenPileId.ELEMENTALIST_REWARDS))
+    }
+
+    @Test
+    fun `a faction reward token draws through the same discard-on-draw machinery as enemies (interim, issue 251)`() {
+        // Deliberately asserts the *interim* behaviour: a drawn reward token lands in the discard
+        // immediately and its "spent" state is just the memory-aid defeated flag - the shared path
+        // that lets issue #251 make held-vs-spent pile-correct for enemies and reward tokens at once.
+        val session = EnemyPickerSession.start(
+            catalogue,
+            tokenSet = setOf(Expansion.SHADES_OF_TEZLA_ELEMENTALIST),
+            shuffle = noShuffle,
+            factionRewardCatalogue = factionRewardCatalogue,
+        )
+
+        val after = session.draw(mapOf(TokenPileId.ELEMENTALIST_REWARDS to 1), batchId = 3L, shuffle = noShuffle)
+
+        val pile = after.piles.getValue(TokenPileId.ELEMENTALIST_REWARDS)
+        assertEquals(listOf("reward_elem_a", "reward_elem_b"), pile.drawPile)
+        assertEquals(listOf("reward_elem_a"), pile.discardPile)
+        assertEquals(
+            DrawLogEntry(tokenId = "reward_elem_a", pile = TokenPileId.ELEMENTALIST_REWARDS, batchId = 3L),
+            after.drawLog.single(),
+        )
     }
 
     @Test

@@ -1,0 +1,194 @@
+[
+  {
+    "id": "reward_elementalist_healing_herbs",
+    "expansion": "SHADES_OF_TEZLA_ELEMENTALIST",
+    "pile": "ELEMENTALIST_REWARDS",
+    "name": "Healing Herbs",
+    "effectText": "Heal 1, or Throw away a Wound card from your discard pile.",
+    "copies": 2
+  },
+  {
+    "id": "reward_elementalist_tome_of_relearning",
+    "expansion": "SHADES_OF_TEZLA_ELEMENTALIST",
+    "pile": "ELEMENTALIST_REWARDS",
+    "name": "Tome of Relearning",
+    "effectText": "On your turn, when not in combat, you may swap one of your skills for another in the common skills area.",
+    "copies": 2
+  },
+  {
+    "id": "reward_elementalist_fire_gem",
+    "expansion": "SHADES_OF_TEZLA_ELEMENTALIST",
+    "pile": "ELEMENTALIST_REWARDS",
+    "name": "Fire Gem",
+    "effectText": "Add the Fire element to an attack or block from a single action card.",
+    "copies": 2
+  },
+  {
+    "id": "reward_elementalist_ice_shard",
+    "expansion": "SHADES_OF_TEZLA_ELEMENTALIST",
+    "pile": "ELEMENTALIST_REWARDS",
+    "name": "Ice Shard",
+    "effectText": "Add the Ice element to an attack or block from a single action card.",
+    "copies": 2
+  },
+  {
+    "id": "reward_elementalist_cloak_of_shielding",
+    "expansion": "SHADES_OF_TEZLA_ELEMENTALIST",
+    "pile": "ELEMENTALIST_REWARDS",
+    "name": "Cloak of Shielding",
+    "effectText": "Once, when your Hero is about to be wounded, you may ignore one Wound and any additional effects from it.",
+    "copies": 2
+  },
+  {
+    "id": "reward_elementalist_mystical_map",
+    "expansion": "SHADES_OF_TEZLA_ELEMENTALIST",
+    "pile": "ELEMENTALIST_REWARDS",
+    "name": "Mystical Map",
+    "effectText": "During your movement, reveal a new tile at a distance of up to 3 spaces. This costs no movement.",
+    "copies": 2
+  },
+  {
+    "id": "reward_dark_crusader_vampiric_chalice",
+    "expansion": "SHADES_OF_TEZLA_DARK_CRUSADER",
+    "pile": "DARK_CRUSADER_REWARDS",
+    "name": "Vampiric Chalice",
+    "effectText": "After combat this turn, for each enemy you defeated you may discard a Wound (to a maximum of 4).",
+    "copies": 2
+  },
+  {
+    "id": "reward_dark_crusader_amulet_of_reawakening",
+    "expansion": "SHADES_OF_TEZLA_DARK_CRUSADER",
+    "pile": "DARK_CRUSADER_REWARDS",
+    "name": "Amulet of Reawakening",
+    "effectText": "Pick a card at random from your discard pile and put it on the bottom of your Deed Deck. At the end of your turn, draw as if your Hand Limit is 1 higher.",
+    "copies": 2
+  },
+  {
+    "id": "reward_dark_crusader_vial_of_toxin",
+    "expansion": "SHADES_OF_TEZLA_DARK_CRUSADER",
+    "pile": "DARK_CRUSADER_REWARDS",
+    "name": "Vial of Toxin",
+    "effectText": "One source of physical attack gains +3 (+2 in ranged, +1 in siege). This bonus is lost if the attack is no longer physical.",
+    "copies": 2
+  },
+  {
+    "id": "reward_dark_crusader_ghostly_elixir",
+    "expansion": "SHADES_OF_TEZLA_DARK_CRUSADER",
+    "pile": "DARK_CRUSADER_REWARDS",
+    "name": "Ghostly Elixir",
+    "effectText": "One attack on a single action card becomes ranged attack.",
+    "copies": 2
+  },
+  {
+    "id": "reward_dark_crusader_orb_of_twilight",
+    "expansion": "SHADES_OF_TEZLA_DARK_CRUSADER",
+    "pile": "DARK_CRUSADER_REWARDS",
+    "name": "Orb of Twilight",
+    "effectText": "You may change one Black mana die in the source to Gold, or one Gold mana die in the source to Black.",
+    "copies": 2
+  },
+  {
+    "id": "reward_dark_crusader_staff_of_concealment",
+    "expansion": "SHADES_OF_TEZLA_DARK_CRUSADER",
+    "pile": "DARK_CRUSADER_REWARDS",
+    "name": "Staff of Concealment",
+    "effectText": "Move 2. Your movement does not provoke rampaging enemies or enemies with ambush this turn. Also, any enemies pursuing you are not moved and do not attack you this turn.",
+    "copies": 2
+  },
+  {
+    "id": "reward_apocalypse_cult_cloak_of_the_martyr",
+    "expansion": "APOCALYPSE_DRAGON",
+    "pile": "APOCALYPSE_CULT_REWARDS",
+    "name": "Cloak of the Martyr",
+    "effectText": "Choose one Unit. It may be assigned damage during combat this turn even if it is Wounded or has already been assigned damage once during this combat. After assigning damage to it, destroy it.",
+    "copies": 2
+  },
+  {
+    "id": "reward_apocalypse_cult_mask_of_fear",
+    "expansion": "APOCALYPSE_DRAGON",
+    "pile": "APOCALYPSE_CULT_REWARDS",
+    "name": "Mask of Fear",
+    "effectText": "Reduce one enemy attack by 2. You may not use regular (Silver) units for the remainder of this combat.",
+    "copies": 2
+  },
+  {
+    "id": "reward_apocalypse_cult_blade_of_dominance",
+    "expansion": "APOCALYPSE_DRAGON",
+    "pile": "APOCALYPSE_CULT_REWARDS",
+    "name": "Blade of Dominance",
+    "effectText": "Spend an amount of Attack. One enemy with total attack(s) equal to or less than this amount does not attack this turn.",
+    "copies": 2
+  },
+  {
+    "id": "reward_apocalypse_cult_blood_fury_dagger",
+    "expansion": "APOCALYPSE_DRAGON",
+    "pile": "APOCALYPSE_CULT_REWARDS",
+    "name": "Blood Fury Dagger",
+    "effectText": "For each Wound you take from one enemy's attack(s), get Attack 2 during your Attack phase, to a maximum of 6 Attack.",
+    "copies": 2
+  },
+  {
+    "id": "reward_apocalypse_cult_ring_of_shadows",
+    "expansion": "APOCALYPSE_DRAGON",
+    "pile": "APOCALYPSE_CULT_REWARDS",
+    "name": "Ring of Shadows",
+    "effectText": "During the Assign Damage Phase, ignore all wounds (and any additional effects from them) from one enemy's attack(s). Ignore all Fame gained and Reputation gained & lost for the remainder of this combat.",
+    "copies": 2
+  },
+  {
+    "id": "reward_apocalypse_cult_boot_of_charging",
+    "expansion": "APOCALYPSE_DRAGON",
+    "pile": "APOCALYPSE_CULT_REWARDS",
+    "name": "Boot of Charging",
+    "effectText": "Move 2. You must use this to move into a space adjacent to a rampaging enemy and you must fight that enemy this turn. Get Attack 2 in the attack phase which you may only use against that enemy.",
+    "copies": 2
+  },
+  {
+    "id": "reward_council_of_void_binding_contract",
+    "expansion": "APOCALYPSE_DRAGON",
+    "pile": "COUNCIL_OF_VOID_REWARDS",
+    "name": "Binding Contract",
+    "effectText": "Get a discount of 2 towards the cost of recruiting one Unit. You may discard one card or mana crystal to increase the discount to 4.",
+    "copies": 2
+  },
+  {
+    "id": "reward_council_of_void_helm_of_mind_shielding",
+    "expansion": "APOCALYPSE_DRAGON",
+    "pile": "COUNCIL_OF_VOID_REWARDS",
+    "name": "Helm of Mind Shielding",
+    "effectText": "Psychic Block 2. This turn, your Block (but not your Units') is Psychic Block in addition to its other type(s).",
+    "copies": 2
+  },
+  {
+    "id": "reward_council_of_void_mask_of_impersonation",
+    "expansion": "APOCALYPSE_DRAGON",
+    "pile": "COUNCIL_OF_VOID_REWARDS",
+    "name": "Mask of Impersonation",
+    "effectText": "When you are about to lose Reputation, reduce the Reputation loss by 1 and you may give another player Reputation -1.",
+    "copies": 2
+  },
+  {
+    "id": "reward_council_of_void_scroll_of_seeking",
+    "expansion": "APOCALYPSE_DRAGON",
+    "pile": "COUNCIL_OF_VOID_REWARDS",
+    "name": "Scroll of Seeking",
+    "effectText": "If you are interacting at an inhabited site, you may recruit one Unit as if at any site. If you are not at an inhabited site, as your action this turn you may interact to recruit one Unit as if at a village.",
+    "copies": 2
+  },
+  {
+    "id": "reward_council_of_void_tome_of_trading",
+    "expansion": "APOCALYPSE_DRAGON",
+    "pile": "COUNCIL_OF_VOID_REWARDS",
+    "name": "Tome of Trading",
+    "effectText": "On your turn, when not in combat, you may swap an Advanced Action or Spell in your hand with one of the same color in the corresponding offer.",
+    "copies": 2
+  },
+  {
+    "id": "reward_council_of_void_aura_gauntlet",
+    "expansion": "APOCALYPSE_DRAGON",
+    "pile": "COUNCIL_OF_VOID_REWARDS",
+    "name": "Aura Gauntlet",
+    "effectText": "Choose a basic mana color shown on a die in the Source and gain the benefit:\nBlue - Block 2\nGreen - Heal 1\nRed - Attack 2\nWhite - Influence 2",
+    "copies": 2
+  }
+]

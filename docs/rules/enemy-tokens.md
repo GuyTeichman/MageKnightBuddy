@@ -366,9 +366,11 @@ token grants on defeat, neither of which the Enemy Picker tracks (ADR-0006), so 
 | Vampire Dragon | 2 | 8 (16) | 8 | Physical | Vampiric               | 7 | Elusive |
 | Death Dragon   | 2 | 9      | 7 | Physical | Paralyze, Assassination | 6 | — |
 
-**Shades of Tezla ruin & faction tokens are out of scope here.** The expansion also adds new location
-tokens (Necropolis, Hidden Valley, Cemetery), faction leaders, faction reward tokens and a faction
-die — none of which are round-enemy tokens, so they're not part of the Enemy Picker's pile model.
+**Shades of Tezla ruins & other non-enemy tokens are out of scope here.** The expansion also adds new
+location tokens (Necropolis, Hidden Valley, Cemetery), faction leaders and a faction die — none of
+which are round-enemy tokens, so they're not part of the Enemy Picker's pile model. Its **faction
+reward tokens** *are* now modelled, but as their own concept in `docs/rules/faction-reward-tokens.md`
+(`FactionRewardToken`, issue #252) rather than here — they're held rewards, not enemies.
 
 ## Ruin tokens (base game)
 
@@ -446,9 +448,13 @@ next to the round enemy discs. The data itself (base
 Tracked as GitHub sub-issues of #178:
 
 - Wire the RUIN pile into the Enemy Picker's draw flow, UI, and art (#201)
-- Lost Legion and Shades of Tezla enemy tokens — done (#188); Lost Legion ruin tokens deferred to the
-  RUIN-pile work (#201), and Shades of Tezla's faction-only/separate-pile mode to #189/#190
-- Apocalypse Dragon — possessed enemies & faction tokens (#189); faction tokens → Score Calculator (#190)
+- Lost Legion and Shades of Tezla enemy tokens — done (#188); Lost Legion ruin tokens done with the
+  RUIN-pile work (#201); Shades of Tezla's faction-only/separate-enemy-pile scenarios still deferred
+- Faction reward tokens (all four factions across Shades of Tezla + Apocalypse Dragon) — done (#252),
+  see `docs/rules/faction-reward-tokens.md`; the discard-pile-correctness follow-up is #251
+- Apocalypse Dragon — possessed enemies & AD enemy tokens (#189, narrowed: its faction-token half
+  moved to #252); wiring faction tokens into the Score Calculator (#190) was **closed** — faction
+  reward tokens are drawn in the Enemy Picker, not scored
 - Explicit Summon Draw action (#191) — incl. summoned tokens applying their own offensive abilities
 - Multi-pile simultaneous draw & large-batch display (#192)
 - Defeat action (detail button) + multi-draw grid overview (#197)
