@@ -67,13 +67,17 @@ class SettingsViewModel(
     /** Serializes the whole history and writes it to [uri] (the SAF "create document" result). */
     fun backUpTo(uri: Uri) {
         viewModelScope.launch {
-            val sessions = repository.exportAll()
-            val json = BackupCodec.encode(sessions, Instant.now())
+            // Reading + JSON-encoding the history is CPU work (a decode+encode per record), so run it
+            // off the main thread on Dispatchers.Default; the file write below is IO-bound instead.
+            val (count, json) = withContext(Dispatchers.Default) {
+                val sessions = repository.exportAll()
+                sessions.size to BackupCodec.encode(sessions, Instant.now())
+            }
             val wrote = withContext(Dispatchers.IO) { writeText(uri, json) }
             _uiState.update {
                 it.copy(
                     message = SettingsMessage(
-                        if (wrote) "Backed up ${sessions.size} ${games(sessions.size)}"
+                        if (wrote) "Backed up $count ${games(count)}"
                         else "Backup failed - couldn't write that file",
                     ),
                 )
@@ -92,7 +96,8 @@ class SettingsViewModel(
                 _uiState.update { it.copy(message = SettingsMessage("Couldn't read that file")) }
                 return@launch
             }
-            when (val result = BackupCodec.decode(text)) {
+            // Parsing is CPU work (a decode per record), so keep it off the main thread too.
+            when (val result = withContext(Dispatchers.Default) { BackupCodec.decode(text) }) {
                 is BackupDecodeResult.Success -> {
                     pendingRestore = result.sessions
                     val localCount = repository.exportAll().size
@@ -136,21 +141,31 @@ class SettingsViewModel(
 
     // Writes [text] as UTF-8 to [uri], returning false (rather than throwing) if the stream can't be
     // opened or the write fails - the caller turns that into a user-facing "backup failed" message.
+    // "wt" (write + truncate) matters: a plain "w" doesn't truncate on many SAF providers, so
+    // overwriting a longer previous backup would leave stale trailing bytes and corrupt the file.
+    // SecurityException (a revoked/withdrawn Uri grant) is caught alongside IOException so a bad
+    // target never crashes the app, only reports the failure.
     private fun writeText(uri: Uri, text: String): Boolean = try {
-        getApplication<Application>().contentResolver.openOutputStream(uri)?.use { out ->
+        getApplication<Application>().contentResolver.openOutputStream(uri, "wt")?.use { out ->
             out.write(text.toByteArray(Charsets.UTF_8))
             true
         } ?: false
     } catch (e: IOException) {
         false
+    } catch (e: SecurityException) {
+        false
     }
 
-    // Reads [uri]'s whole content as a UTF-8 string, or null if it can't be opened/read.
+    // Reads [uri]'s whole content as a UTF-8 string, or null if it can't be opened/read. Catches
+    // SecurityException too (e.g. a cloud provider whose grant was revoked), so restoring a bad pick
+    // reports "Couldn't read that file" rather than crashing.
     private fun readText(uri: Uri): String? = try {
         getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
             input.readBytes().toString(Charsets.UTF_8)
         }
     } catch (e: IOException) {
+        null
+    } catch (e: SecurityException) {
         null
     }
 

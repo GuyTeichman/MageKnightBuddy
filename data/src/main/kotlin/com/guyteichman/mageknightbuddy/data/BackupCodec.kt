@@ -3,6 +3,7 @@ package com.guyteichman.mageknightbuddy.data
 import com.guyteichman.mageknightbuddy.domain.ScoringSession
 import java.time.Instant
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -26,6 +27,16 @@ object BackupCodec {
     // Malformed below rather than being silently accepted.
     private val json = Json
 
+    // A lenient reader used only to sniff the formatVersion out of an otherwise-unknown document
+    // before the strict parse. ignoreUnknownKeys matters: a *newer* backup may have added fields the
+    // strict parser would choke on, but we still want to read its version so it's reported as
+    // UnsupportedVersion (the whole point of the stamp) rather than being mistaken for Malformed.
+    private val versionProbe = Json { ignoreUnknownKeys = true }
+
+    /** Just enough of a [BackupDocument] to read its version before committing to a full parse. */
+    @Serializable
+    private class VersionEnvelope(val formatVersion: Int)
+
     /** Serializes [sessions] into a [FORMAT_VERSION] backup document stamped with [exportedAt]. */
     fun encode(sessions: List<ScoringSession>, exportedAt: Instant): String {
         val document = BackupDocument(
@@ -44,18 +55,30 @@ object BackupCodec {
      * a record naming an unknown scenario/knight/outcome -> [BackupDecodeResult.Malformed].
      */
     fun decode(text: String): BackupDecodeResult {
-        // decodeFromString throws SerializationException for shape/JSON errors and
-        // IllegalArgumentException for some malformed inputs - both mean "not a backup file".
-        val document = try {
-            json.decodeFromString<BackupDocument>(text)
+        // Sniff the version first, leniently (see versionProbe) - so a newer file that added fields
+        // still parses far enough to report its version instead of failing the strict parse below.
+        // A failure here means it isn't a backup document at all. decodeFromString throws
+        // SerializationException for shape/JSON errors and IllegalArgumentException for some inputs.
+        val version = try {
+            versionProbe.decodeFromString<VersionEnvelope>(text).formatVersion
         } catch (e: SerializationException) {
             return BackupDecodeResult.Malformed
         } catch (e: IllegalArgumentException) {
             return BackupDecodeResult.Malformed
         }
 
-        if (document.formatVersion > FORMAT_VERSION) {
-            return BackupDecodeResult.UnsupportedVersion(document.formatVersion)
+        if (version > FORMAT_VERSION) {
+            return BackupDecodeResult.UnsupportedVersion(version)
+        }
+
+        // The version is one this build understands, so now strict-parse the whole document (where
+        // unknown keys genuinely mean a malformed same-version file, not a newer format).
+        val document = try {
+            json.decodeFromString<BackupDocument>(text)
+        } catch (e: SerializationException) {
+            return BackupDecodeResult.Malformed
+        } catch (e: IllegalArgumentException) {
+            return BackupDecodeResult.Malformed
         }
 
         // The envelope parsed, but a record can still name a scenario/knight/outcome this build

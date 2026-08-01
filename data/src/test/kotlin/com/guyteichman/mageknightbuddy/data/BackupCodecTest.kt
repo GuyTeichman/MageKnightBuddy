@@ -82,6 +82,29 @@ class BackupCodecTest {
     }
 
     @Test
+    fun `encode writes the exact wire format for a Solo Conquest session, achievements and all`() {
+        val exportedAt = Instant.parse("2026-08-01T00:00:00Z")
+
+        val json = BackupCodec.encode(listOf(soloConquestSession), exportedAt)
+
+        // Independently hand-derived (per CLAUDE.md's round-trip warning) so the complex shape - Solo
+        // Conquest's fame + nested StandardAchievements + per-level unit list - is pinned by an
+        // explicit expected value, not left resting only on the encode-then-decode equality below.
+        val expected = """{"formatVersion":1,"exportedAtEpochMillis":${exportedAt.toEpochMilli()},""" +
+            """"records":[{"scenario":"solo_conquest","knight":"ARYTHEA","playerName":"Guy",""" +
+            """"input":{"type":"solo_conquest","fame":72,"standardAchievements":{""" +
+            """"spellsInDeck":3,"advancedActionsInDeck":2,"units":[""" +
+            """{"level":1,"healthyCount":1,"woundedCount":2},""" +
+            """{"level":4,"healthyCount":2,"woundedCount":2}],""" +
+            """"shieldsOnAdventureSites":5,"artifacts":4,"crystalsInInventory":7,""" +
+            """"shieldsOnConquerSites":6,"woundsInDeck":3},"citiesConquered":2,""" +
+            """"roundsFinishedEarly":1,"cardsRemainingInDummyDeck":8,"endOfRoundAnnounced":false,""" +
+            """"questPoints":9},"score":216,"outcome":"WON",""" +
+            """"playedAtEpochMillis":${soloConquestSession.playedAt.toEpochMilli()}}]}"""
+        assertEquals(expected, json)
+    }
+
+    @Test
     fun `encode then decode round-trips every field of structurally different sessions`() {
         val sessions = listOf(soloConquestSession, forTheCouncilSession)
 
@@ -115,6 +138,24 @@ class BackupCodecTest {
 
         assertIs<BackupDecodeResult.UnsupportedVersion>(result)
         assertEquals(999, result.version)
+    }
+
+    @Test
+    fun `decode reports UnsupportedVersion even when a newer file adds unknown fields`() {
+        // The realistic newer-format case: a future version bumps formatVersion *and* adds fields.
+        // The version gate must fire (UnsupportedVersion) rather than the strict parser choking on
+        // the unknown fields first and returning Malformed - otherwise the version stamp would be
+        // useless for exactly the situation it exists for. (The records:[] test above can't catch
+        // this, since with no records there are no new fields for the strict parse to trip over.)
+        val futureWithNewFields = """{"formatVersion":2,"exportedAtEpochMillis":0,"newTopLevelField":true,"records":[""" +
+            """{"scenario":"for_the_council","knight":"NOROWAS","playerName":null,""" +
+            """"input":{"type":"for_the_council","questPoints":1,"reputationTrackSpaceName":"NEGATIVE_X"},""" +
+            """"score":0,"outcome":"LOST","playedAtEpochMillis":0,"newRecordField":42}]}"""
+
+        val result = BackupCodec.decode(futureWithNewFields)
+
+        assertIs<BackupDecodeResult.UnsupportedVersion>(result)
+        assertEquals(2, result.version)
     }
 
     @Test

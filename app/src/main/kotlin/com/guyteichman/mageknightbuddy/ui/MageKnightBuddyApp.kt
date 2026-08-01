@@ -93,6 +93,12 @@ fun MageKnightBuddyApp(
         }
     }
 
+    // Pushes the Settings destination (from any tab's gear). launchSingleTop stops a fast double-tap
+    // on the gear from stacking two Settings copies, which would then need two back presses to clear.
+    fun openSettings() {
+        navController.navigate(SETTINGS_ROUTE) { launchSingleTop = true }
+    }
+
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -132,7 +138,7 @@ fun MageKnightBuddyApp(
                     repository = repository,
                     draftRepository = draftRepository,
                     fieldHelp = fieldHelp,
-                    onOpenSettings = { navController.navigate(SETTINGS_ROUTE) },
+                    onOpenSettings = { openSettings() },
                 )
             }
             composable(Tab.DummyPlayer.route) {
@@ -141,17 +147,17 @@ fun MageKnightBuddyApp(
                     volkareRepository = volkareRepository,
                     proxyPlayerRepository = proxyPlayerRepository,
                     fieldHelp = fieldHelp,
-                    onOpenSettings = { navController.navigate(SETTINGS_ROUTE) },
+                    onOpenSettings = { openSettings() },
                 )
             }
             composable(Tab.EnemyPicker.route) {
                 EnemyPickerTab(
                     repository = enemyPickerRepository,
-                    onOpenSettings = { navController.navigate(SETTINGS_ROUTE) },
+                    onOpenSettings = { openSettings() },
                 )
             }
             composable(Tab.Sites.route) {
-                SitesTab(onOpenSettings = { navController.navigate(SETTINGS_ROUTE) })
+                SitesTab(onOpenSettings = { openSettings() })
             }
             // Settings lives outside the bottom-nav `tabs` list (see SETTINGS_ROUTE): a normal
             // pushed destination, so its back arrow pops back to whichever tab opened it.
