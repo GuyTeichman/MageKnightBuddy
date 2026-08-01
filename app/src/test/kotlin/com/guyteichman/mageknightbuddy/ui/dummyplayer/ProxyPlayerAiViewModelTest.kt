@@ -6,11 +6,13 @@ import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerCard
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
+import kotlin.random.Random
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -103,5 +105,33 @@ class ProxyPlayerAiViewModelTest {
 
         assertEquals(2, viewModel.session?.round)
         assertEquals(2, repository.restore()?.round)
+    }
+
+    @Test
+    fun `pickPlayerTactic sets the player's pick and autosaves, leaving the dummy's pick untouched`() = runTest {
+        val repository = ProxyPlayerSessionRepository(FakeProxyPlayerSessionDao())
+        repository.save(ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList()))
+        val viewModel = ProxyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.pickPlayerTactic(3)
+
+        assertEquals(3, viewModel.session?.tacticState?.playerPick)
+        assertNull(viewModel.session?.tacticState?.dummyPick)
+        assertEquals(viewModel.session, repository.restore())
+    }
+
+    @Test
+    fun `pickDummyTactic sets the dummy's pick and autosaves, leaving the player's pick untouched`() = runTest {
+        val repository = ProxyPlayerSessionRepository(FakeProxyPlayerSessionDao())
+        repository.save(ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList()))
+        val viewModel = ProxyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.pickDummyTactic(Random(0))
+
+        assertTrue(viewModel.session?.tacticState?.dummyPick in 1..6)
+        assertNull(viewModel.session?.tacticState?.playerPick)
+        assertEquals(viewModel.session, repository.restore())
     }
 }

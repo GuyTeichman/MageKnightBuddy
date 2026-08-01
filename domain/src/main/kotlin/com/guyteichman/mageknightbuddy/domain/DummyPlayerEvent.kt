@@ -45,4 +45,12 @@ sealed interface DummyPlayerEvent {
         val advancedActionOfferColor: CardIdentity,
         val spellOfferColor: CardColor,
     ) : DummyPlayerEvent
+
+    /**
+     * Recorded each time [DummyPlayerSession.pickPlayerTactic] or [DummyPlayerSession.pickDummyTactic]
+     * records a Tactic Card pick for the active Day/Night pile ([isDay]). Both the player's and the
+     * Dummy Player's picks get their own entry, logged in the order they actually happened - so the
+     * log itself shows which one picked first that Round, per [tacticPickOrder].
+     */
+    data class TacticPicked(val round: Int, val isDay: Boolean, val card: Int, val pickedByPlayer: Boolean) : DummyPlayerEvent
 }

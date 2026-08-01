@@ -63,6 +63,7 @@ private fun ProxyPlayerEvent.toDto(): ProxyPlayerEventDto = when (this) {
     is ProxyPlayerEvent.EndOfRoundAnnounced -> ProxyPlayerEventDto.EndOfRoundAnnounced(round)
     is ProxyPlayerEvent.ObjectiveResolved -> ProxyPlayerEventDto.ObjectiveResolved(round, objectiveCard.toDto())
     is ProxyPlayerEvent.RoundEnded -> ProxyPlayerEventDto.RoundEnded(round, advancedActionOfferColor.toDto(), spellOfferColor.name, discardedObjective?.toDto())
+    is ProxyPlayerEvent.TacticPicked -> ProxyPlayerEventDto.TacticPicked(round, isDay, card, pickedByPlayer)
 }
 
 private fun ProxyPlayerEventDto.toDomain(): ProxyPlayerEvent = when (this) {
@@ -72,6 +73,7 @@ private fun ProxyPlayerEventDto.toDomain(): ProxyPlayerEvent = when (this) {
     is ProxyPlayerEventDto.EndOfRoundAnnounced -> ProxyPlayerEvent.EndOfRoundAnnounced(round)
     is ProxyPlayerEventDto.ObjectiveResolved -> ProxyPlayerEvent.ObjectiveResolved(round, objectiveCard.toDomain())
     is ProxyPlayerEventDto.RoundEnded -> ProxyPlayerEvent.RoundEnded(round, advancedActionOfferColor.toDomain(), CardColor.valueOf(spellOfferColor), discardedObjective?.toDomain())
+    is ProxyPlayerEventDto.TacticPicked -> ProxyPlayerEvent.TacticPicked(round, isDay, card, pickedByPlayer)
 }
 
 /**

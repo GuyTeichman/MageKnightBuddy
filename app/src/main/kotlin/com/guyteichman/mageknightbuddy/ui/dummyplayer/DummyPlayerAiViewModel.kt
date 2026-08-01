@@ -7,6 +7,7 @@ import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
+import kotlin.random.Random
 
 /**
  * Backs the Dummy Player tab's AI (turn/round) screen: restores the saved [DummyPlayerSession] on
@@ -38,6 +39,12 @@ class DummyPlayerAiViewModel(repository: DummyPlayerSessionRepository) :
      */
     suspend fun endRound(advancedActionOfferColor: CardIdentity, spellOfferColor: CardColor) =
         mutate { it.endRound(advancedActionOfferColor, spellOfferColor) }
+
+    /** Records the real player's Tactic pick for this round and autosaves - see [DummyPlayerSession.pickPlayerTactic]. */
+    suspend fun pickPlayerTactic(card: Int) = mutate { it.pickPlayerTactic(card) }
+
+    /** Draws the Dummy Player's Tactic pick for this round and autosaves - see [DummyPlayerSession.pickDummyTactic]. */
+    suspend fun pickDummyTactic(random: Random = Random) = mutate { it.pickDummyTactic(random) }
 
     companion object {
         fun factory(repository: DummyPlayerSessionRepository): ViewModelProvider.Factory = viewModelFactory {

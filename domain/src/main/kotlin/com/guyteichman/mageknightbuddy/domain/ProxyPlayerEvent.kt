@@ -48,4 +48,11 @@ sealed interface ProxyPlayerEvent {
         val spellOfferColor: CardColor,
         val discardedObjective: ProxyPlayerCard?,
     ) : ProxyPlayerEvent
+
+    /**
+     * Recorded each time [ProxyPlayerSession.pickPlayerTactic] or [ProxyPlayerSession.pickDummyTactic]
+     * records a Tactic Card pick for the active Day/Night pile ([isDay]) - mirrors
+     * [DummyPlayerEvent.TacticPicked].
+     */
+    data class TacticPicked(val round: Int, val isDay: Boolean, val card: Int, val pickedByPlayer: Boolean) : ProxyPlayerEvent
 }

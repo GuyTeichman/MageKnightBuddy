@@ -6,11 +6,13 @@ import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
+import kotlin.random.Random
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -158,5 +160,33 @@ class DummyPlayerAiViewModelTest {
             CardIdentity.DualColor(CardColor.GREEN, CardColor.BLUE),
             viewModel.session?.deckOrder?.single(),
         )
+    }
+
+    @Test
+    fun `pickPlayerTactic sets the player's pick and autosaves, leaving the dummy's pick untouched`() = runTest {
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        repository.save(DummyPlayerSession.start(Knight.GOLDYX, deckOrder = emptyList()))
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.pickPlayerTactic(3)
+
+        assertEquals(3, viewModel.session?.tacticState?.playerPick)
+        assertNull(viewModel.session?.tacticState?.dummyPick)
+        assertEquals(viewModel.session, repository.restore())
+    }
+
+    @Test
+    fun `pickDummyTactic sets the dummy's pick and autosaves, leaving the player's pick untouched`() = runTest {
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        repository.save(DummyPlayerSession.start(Knight.GOLDYX, deckOrder = emptyList()))
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.pickDummyTactic(Random(0))
+
+        assertTrue(viewModel.session?.tacticState?.dummyPick in 1..6)
+        assertNull(viewModel.session?.tacticState?.playerPick)
+        assertEquals(viewModel.session, repository.restore())
     }
 }

@@ -308,14 +308,24 @@ class VolkareEventDescribeTest {
     }
 
     @Test
-    fun `RoundEnded describes itself as a tracking convenience only`() {
+    fun `RoundEnded describes the Tactic draft as resolved, not as a no-op`() {
         val text = VolkareEvent.RoundEnded(round = 2).describe(Scenario.VolkaresReturn)
 
         assertEquals("⚑", text.icon)
         assertEquals(
-            listOf(VolkareDescriptionSpan.Words("Tracking convenience only - nothing changes for Volkare.")),
+            listOf(VolkareDescriptionSpan.Words("Volkare's deck doesn't reshuffle, but this Round's Tactic picks are now resolved for the next draft.")),
             text.description,
         )
+    }
+
+    @Test
+    fun `TacticPicked describes the player's pick as You and Volkare's own pick as Volkare`() {
+        val playerPick = VolkareEvent.TacticPicked(round = 3, isDay = true, card = 4, pickedByPlayer = true).describe(Scenario.VolkaresReturn)
+        val volkarePick = VolkareEvent.TacticPicked(round = 3, isDay = false, card = 2, pickedByPlayer = false).describe(Scenario.VolkaresReturn)
+
+        assertEquals("◇", playerPick.icon)
+        assertEquals(listOf(VolkareDescriptionSpan.Words("You picked Day Tactic 4.")), playerPick.description)
+        assertEquals(listOf(VolkareDescriptionSpan.Words("Volkare picked Night Tactic 2.")), volkarePick.description)
     }
 
     @Test

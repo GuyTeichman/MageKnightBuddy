@@ -89,8 +89,10 @@ import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
+import com.guyteichman.mageknightbuddy.domain.PickOrder
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.domain.coopTacticScenarios
+import com.guyteichman.mageknightbuddy.domain.tacticPickOrder
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
 import com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon
@@ -569,6 +571,30 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
     var showSummary by remember { mutableStateOf(false) }
     var showEndRoundDialog by remember { mutableStateOf(false) }
 
+    // Whether this Round's Tactic draft still needs a pick from either side - drives both the
+    // auto-pick effect below and the Play Turn/End Round gating (issue #221/#179: a Round can't
+    // proceed until both picks are in).
+    val tacticState = session?.tacticState
+    val needsTacticPick = tacticState != null && (tacticState.playerPick == null || tacticState.dummyPick == null)
+
+    if (session != null) {
+        // isVolkare = false: this screen only ever runs Standard Dummy Player sessions - Volkare
+        // has its own screen/pick order (issue #222). Keyed on session.tacticState (a data class,
+        // compared structurally) so this restarts exactly when a pick changes or a new Round
+        // clears both - DUMMY_FIRST draws as soon as it's null, PLAYER_FIRST waits for the
+        // player's pick to land first (see TacticRules.kt's tacticPickOrder doc comment).
+        LaunchedEffect(session.tacticState) {
+            val pickOrder = tacticPickOrder(isVolkare = false, isSolo = session.isSolo)
+            val dummyShouldGoNow = when (pickOrder) {
+                PickOrder.DUMMY_FIRST -> true
+                PickOrder.PLAYER_FIRST -> session.tacticState.playerPick != null
+            }
+            if (session.tacticState.dummyPick == null && dummyShouldGoNow) {
+                viewModel.pickDummyTactic()
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -596,14 +622,14 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 ) {
                     Button(
                         onClick = { scope.launch { viewModel.playTurn() } },
-                        enabled = !session.roundEnded && !viewModel.isBusy,
+                        enabled = !session.roundEnded && !viewModel.isBusy && !needsTacticPick,
                         modifier = Modifier.weight(1f),
                     ) {
                         Text("Play Turn")
                     }
                     OutlinedButton(
                         onClick = { showEndRoundDialog = true },
-                        enabled = !viewModel.isBusy,
+                        enabled = !viewModel.isBusy && !needsTacticPick,
                         modifier = Modifier.weight(1f),
                     ) {
                         Text("End Round")
@@ -655,6 +681,18 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 scope.launch { viewModel.endRound(advancedActionOfferColor, spellColor) }
                 showEndRoundDialog = false
             },
+        )
+    }
+
+    // No visibility toggle like showEndRoundDialog - this dialog's visibility is entirely derived
+    // from needsTacticPick, so it appears/disappears with the session state itself.
+    if (session != null && needsTacticPick) {
+        TacticPickerDialog(
+            isDay = session.isDay,
+            tacticState = session.tacticState,
+            aiLabel = "Dummy",
+            enabled = !viewModel.isBusy && session.tacticState.playerPick == null,
+            onPickPlayer = { card -> scope.launch { viewModel.pickPlayerTactic(card) } },
         )
     }
 }
@@ -1139,6 +1177,19 @@ private fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
             add(DescriptionSpan.CrystalDot(spellOfferColor))
             add(DescriptionSpan.Words(" ${spellOfferColor.label}) granted +1 crystal."))
         },
+    )
+    is DummyPlayerEvent.TacticPicked -> LogEntryText(
+        icon = "◇",
+        title = "Tactic picked",
+        meta = "Round $round",
+        // Both the player's and the Dummy Player's picks get their own log entry (see
+        // DummyPlayerEvent.TacticPicked's doc comment), so the log's own ordering shows which one
+        // picked first that Round - not just what each pick was.
+        description = listOf(
+            DescriptionSpan.Words(
+                "${if (pickedByPlayer) "You" else "The Dummy Player"} picked ${if (isDay) "Day" else "Night"} Tactic $card.",
+            ),
+        ),
     )
 }
 

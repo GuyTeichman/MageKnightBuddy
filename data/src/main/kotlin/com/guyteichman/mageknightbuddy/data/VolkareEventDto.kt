@@ -43,4 +43,9 @@ sealed interface VolkareEventDto {
     @Serializable
     @SerialName("quest_lost")
     data class QuestLost(val round: Int) : VolkareEventDto
+
+    /** Mirrors [com.guyteichman.mageknightbuddy.domain.VolkareEvent.TacticPicked]. */
+    @Serializable
+    @SerialName("tactic_picked")
+    data class TacticPicked(val round: Int, val isDay: Boolean, val card: Int, val pickedByPlayer: Boolean) : VolkareEventDto
 }

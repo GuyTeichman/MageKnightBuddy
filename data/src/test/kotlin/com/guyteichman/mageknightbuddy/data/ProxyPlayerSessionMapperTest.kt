@@ -4,6 +4,7 @@ import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerCard
+import com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import kotlin.random.Random
@@ -161,5 +162,28 @@ class ProxyPlayerSessionMapperTest {
         assertEquals(null, roundTripped.tacticState.playerPick)
         assertEquals(false, roundTripped.isSolo)
         assertEquals(Scenario.SoloConquest, roundTripped.scenario)
+    }
+
+    @Test
+    fun `toEntity then toDomain round-trips TacticPicked log entries for both the player's and the Proxy Player's picks`() {
+        val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+            .pickPlayerTactic(card = 4)
+            .pickDummyTactic(random = Random(0))
+        val dummyPick = requireNotNull(session.tacticState.dummyPick)
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+
+        // Independent ground truth (see the first test's comment for why this matters): a fresh
+        // session logs RoundStarted first, then one TacticPicked entry per pick, in call order.
+        assertEquals(
+            listOf(
+                ProxyPlayerEvent.RoundStarted(round = 1),
+                ProxyPlayerEvent.TacticPicked(round = 1, isDay = true, card = 4, pickedByPlayer = true),
+                ProxyPlayerEvent.TacticPicked(round = 1, isDay = true, card = dummyPick, pickedByPlayer = false),
+            ),
+            roundTripped.log,
+        )
     }
 }

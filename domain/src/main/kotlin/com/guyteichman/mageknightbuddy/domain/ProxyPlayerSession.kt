@@ -195,15 +195,23 @@ data class ProxyPlayerSession private constructor(
 
     /**
      * Records the real player's Tactic pick for the active Day/Night pile ([isDay]) - mirrors
-     * [DummyPlayerSession.pickPlayerTactic].
+     * [DummyPlayerSession.pickPlayerTactic], including logging a [ProxyPlayerEvent.TacticPicked] entry.
      */
-    fun pickPlayerTactic(card: Int): ProxyPlayerSession = copy(tacticState = tacticState.pickPlayer(card, isDay))
+    fun pickPlayerTactic(card: Int): ProxyPlayerSession = copy(
+        tacticState = tacticState.pickPlayer(card, isDay),
+        log = log + ProxyPlayerEvent.TacticPicked(round, isDay, card, pickedByPlayer = true),
+    )
 
     /**
      * Draws the Proxy Player's Tactic pick at random for the active Day/Night pile ([isDay]) -
-     * mirrors [DummyPlayerSession.pickDummyTactic].
+     * mirrors [DummyPlayerSession.pickDummyTactic], including logging a [ProxyPlayerEvent.TacticPicked] entry.
      */
-    fun pickDummyTactic(random: Random = Random): ProxyPlayerSession = copy(tacticState = tacticState.pickDummy(isDay, random))
+    fun pickDummyTactic(random: Random = Random): ProxyPlayerSession {
+        val next = tacticState.pickDummy(isDay, random)
+        // pickDummy always sets dummyPick to a freshly-drawn 1-6 value, so this is never null here.
+        val card = requireNotNull(next.dummyPick)
+        return copy(tacticState = next, log = log + ProxyPlayerEvent.TacticPicked(round, isDay, card, pickedByPlayer = false))
+    }
 
     /**
      * The Proxy Player's total movement points this turn (docs/rules/proxy-player.md's "Movement
