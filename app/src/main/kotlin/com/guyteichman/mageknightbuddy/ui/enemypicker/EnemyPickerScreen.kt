@@ -1,5 +1,6 @@
 package com.guyteichman.mageknightbuddy.ui.enemypicker
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -43,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -105,6 +109,11 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
     var summonZoom by remember { mutableStateOf<ZoomState?>(null) }
     // A token whose full ability info window ("?") is open.
     var infoToken by remember { mutableStateOf<EnemyToken?>(null) }
+    // A ruin whose read-only detail window is open - the RUIN pile's counterpart to `infoToken`,
+    // opened by tapping a ruin cell in the pile-contents dialog (issue #231).
+    var infoRuin by remember { mutableStateOf<RuinToken?>(null) }
+    // The pile whose "view draw pile" contents dialog is open (issue #231), or null.
+    var contentsPileId by remember { mutableStateOf<TokenPileId?>(null) }
     // The Draw Log index whose Defeat dialog is open, or null.
     var defeatDialogIndex by remember { mutableStateOf<Int?>(null) }
     // A pending destructive reset (Reset piles / Apply & Reset), held until the user confirms.
@@ -205,6 +214,7 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
         // this just sets the same `gridState` `onDraw`'s N>1 branch does.
         onOpenBatch = { indices -> gridState = GridState(indices); zoom = null; summonGrid = null; summonZoom = null },
         onOpenDefeatDialog = { index -> defeatDialogIndex = index },
+        onOpenContents = { pileId -> contentsPileId = pileId },
         currentChildOf = currentChildOf,
         onRequestReset = { pendingReset = { scope.launch { viewModel.reset() } } },
         onRequestApplyConfig = { tokenSet, replacement ->
@@ -291,8 +301,36 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository) {
         )
     }
 
+    // Drop a stale open-contents selection if its pile disappears - e.g. an Apply & Reset that
+    // changes the Token Set so this pile no longer exists. Without this, `contentsPileId` would
+    // linger (the guard below just skips rendering) and could re-open the dialog unbidden if that
+    // same pile id later returned.
+    LaunchedEffect(session.piles.keys, contentsPileId) {
+        if (contentsPileId != null && contentsPileId !in session.piles) contentsPileId = null
+    }
+
+    // The "view draw pile" contents dialog (issue #231). Composed before the info dialogs below so
+    // that tapping a cell (which opens infoToken/infoRuin) stacks that detail window on top of it.
+    contentsPileId?.let { pileId ->
+        // The pile may vanish if the token set changes while this is open; guard with a null-safe let.
+        session.piles[pileId]?.let { pile ->
+            PileContentsDialog(
+                pileId = pileId,
+                pile = pile,
+                withReplacement = session.drawWithReplacement,
+                onOpenEnemyInfo = { token -> infoToken = token },
+                onOpenRuinInfo = { ruin -> infoRuin = ruin },
+                onDismiss = { contentsPileId = null },
+            )
+        }
+    }
+
     infoToken?.let { token ->
         TokenInfoDialog(token = token, onDismiss = { infoToken = null })
+    }
+
+    infoRuin?.let { ruin ->
+        RuinInfoDialog(ruin = ruin, onDismiss = { infoRuin = null })
     }
 
     defeatDialogIndex?.let { index ->
@@ -343,6 +381,7 @@ private fun EnemyPickerContent(
     onOpenToken: (Int) -> Unit,
     onOpenBatch: (List<Int>) -> Unit,
     onOpenDefeatDialog: (Int) -> Unit,
+    onOpenContents: (TokenPileId) -> Unit,
     currentChildOf: (Int) -> DrawLogEntry?,
     onRequestReset: () -> Unit,
     onRequestApplyConfig: (Set<Expansion>, Boolean) -> Unit,
@@ -394,6 +433,7 @@ private fun EnemyPickerContent(
                             canDrawOne = !isBusy &&
                                 (session.drawWithReplacement || pile.drawPile.size + pile.discardPile.size > 0),
                             onDrawOne = { onDraw(mapOf(pileId to 1)) },
+                            onViewContents = { onOpenContents(pileId) },
                             tapToDrawOnly = pileId == TokenPileId.RUIN,
                         )
                     }
@@ -464,6 +504,7 @@ private fun PileCard(
     onQuantityChange: (Int) -> Unit,
     canDrawOne: Boolean,
     onDrawOne: () -> Unit,
+    onViewContents: () -> Unit,
     // The RUIN pile is revealed one token at a time (you enter one ruin site), never batched, so it
     // drops the quantity stepper and keeps only the tap-to-draw-1 shortcut (issue #201).
     tapToDrawOnly: Boolean = false,
@@ -487,13 +528,16 @@ private fun PileCard(
                 PileBackFace(pileId = pileId, size = 72.dp)
             }
             Text(pileId.displayName(), style = MaterialTheme.typography.titleMedium)
+            // The count line doubles as the "view draw pile" trigger (issue #231): primary-colored
+            // and underlined so it reads as tappable, opening the pile-composition dialog. With
+            // replacement nothing depletes, so "drawn" would always be 0 - hide it and say so.
             Text(
-                // With replacement, nothing depletes, so "drawn" would always be 0 - hide it.
-                text = if (withReplacement) "Draws with replacement (never depletes)"
+                text = if (withReplacement) "View pile · never depletes"
                 else "$remaining in pile · $drawn drawn",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.Underline),
+                color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
+                modifier = Modifier.clickable(onClick = onViewContents),
             )
             if (tapToDrawOnly) {
                 // No stepper for the RUIN pile - a subtle hint that its face is the whole control.
@@ -1260,6 +1304,154 @@ private fun TokenInfoDialog(token: EnemyToken, onDismiss: () -> Unit) {
                             Text(desc, style = MaterialTheme.typography.bodySmall)
                         }
                     }
+                }
+            }
+        },
+    )
+}
+
+/**
+ * The "view draw pile" dialog (issue #231): the still-face-down contents of one [pile], grouped by
+ * identity (art + a "×N" count badge) and sorted alphabetically by name via [composePile], so a
+ * player can survey what they might still face and plan combat. Deliberately shows *unordered*
+ * composition - never draw order - so it can't reveal the next token. Tapping an enemy cell opens
+ * its ability window ([onOpenEnemyInfo]); a ruin cell opens its read-only detail ([onOpenRuinInfo]).
+ * Under [withReplacement] the pile never depletes, so the title frames it as the full pile rather
+ * than "remaining".
+ */
+@Composable
+private fun PileContentsDialog(
+    pileId: TokenPileId,
+    pile: TokenPile,
+    withReplacement: Boolean,
+    onOpenEnemyInfo: (EnemyToken) -> Unit,
+    onOpenRuinInfo: (RuinToken) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val isRuin = pileId == TokenPileId.RUIN
+    // Name resolver for the sort, drawn from whichever catalogue this pile uses. A ruin has no
+    // single "name" field, so it's labelled by kind (its two variants), matching the Draw Log rows.
+    val nameOf: (String) -> String = { id ->
+        if (isRuin) {
+            RuinTokenCatalogue.byId(id)?.let { if (it.isAltar) "Ancient Altar" else "Enemies with Treasure" } ?: id
+        } else {
+            TokenCatalogue.byId(id)?.name ?: id
+        }
+    }
+    // remember keyed on the draw pile so the grouping only recomputes when the pile actually changes.
+    val composition = remember(pile.drawPile) { composePile(pile.drawPile, nameOf) }
+    val title = if (withReplacement) "${pileId.displayName()} · full pile (${composition.total})"
+    else "${pileId.displayName()} · ${composition.total} remaining"
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        title = { Text(title) },
+        text = {
+            if (composition.groups.isEmpty()) {
+                // With eager Replenish (issue #231) a live pile never actually empties; this only
+                // shows for a degenerate/restored empty pile.
+                Text("This pile is empty.")
+            } else {
+                // Same adaptive grid the draw-result overview uses (D9), for a consistent look.
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = GRID_CELL_MIN_SIZE),
+                    modifier = Modifier.heightIn(max = GRID_MAX_HEIGHT),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(composition.groups, key = { it.tokenId }) { group ->
+                        PileContentsCell(
+                            group = group,
+                            isRuin = isRuin,
+                            onOpen = {
+                                if (isRuin) RuinTokenCatalogue.byId(group.tokenId)?.let(onOpenRuinInfo)
+                                else TokenCatalogue.byId(group.tokenId)?.let(onOpenEnemyInfo)
+                            },
+                        )
+                    }
+                }
+            }
+        },
+    )
+}
+
+/**
+ * One cell of the [PileContentsDialog] grid: a token's art with a "×N" badge when more than one
+ * copy remains (a lone copy needs no count), its name below, tappable to open detail. Ruin ids
+ * render the hexagonal [RuinTokenFace]; everything else the round [EnemyTokenFace].
+ */
+@Composable
+private fun PileContentsCell(group: PileTokenGroup, isRuin: Boolean, onOpen: () -> Unit) {
+    val token = if (isRuin) null else TokenCatalogue.byId(group.tokenId)
+    val ruin = if (isRuin) RuinTokenCatalogue.byId(group.tokenId) else null
+    Column(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // Box so the count badge can overlay the art's corner.
+        Box(contentAlignment = Alignment.Center) {
+            when {
+                token != null -> EnemyTokenFace(token = token, size = 72.dp)
+                ruin != null -> RuinTokenFace(ruin = ruin, size = 72.dp)
+                else -> Text(group.tokenId, style = MaterialTheme.typography.labelSmall)
+            }
+            if (group.count > 1) {
+                CountBadge(count = group.count, modifier = Modifier.align(Alignment.BottomEnd))
+            }
+        }
+        Text(
+            text = group.displayName,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** A small "×N" pill overlaid on a pile-contents cell when several copies of a token remain. */
+@Composable
+private fun CountBadge(count: Int, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    ) {
+        Text(
+            text = "×$count",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onPrimary,
+        )
+    }
+}
+
+/**
+ * Read-only detail for a ruin token (issue #231) - the RUIN pile's counterpart to [TokenInfoDialog],
+ * opened by tapping a ruin cell in [PileContentsDialog]. Shows the same face and prompt as
+ * [RuinZoomDialog] (altar payment + Fame, or the Enemies-With-Treasure draw line + reward) but with
+ * none of its draw/Defeat actions - this is a preview of pile contents, not a drawn ruin.
+ */
+@Composable
+private fun RuinInfoDialog(ruin: RuinToken, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        title = { Text(if (ruin.isAltar) "Ancient Altar" else "Enemies with Treasure") },
+        text = {
+            Column(
+                Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                RuinTokenFace(ruin = ruin, size = 140.dp)
+                if (ruin.isAltar) {
+                    Text(ruin.altarPrompt(), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+                    Text("Gain ${ruin.altarFame()} Fame", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Text(ruin.enemyDrawPrompt(), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+                    ruin.reward?.let { Text("Reward: $it", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center) }
                 }
             }
         },

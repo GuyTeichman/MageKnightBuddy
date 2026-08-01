@@ -38,10 +38,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.guyteichman.mageknightbuddy.data.ScoreCalculatorDraftRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.domain.Outcome
 import com.guyteichman.mageknightbuddy.domain.ScoringSession
 import com.guyteichman.mageknightbuddy.domain.breakdown
+import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
+import com.guyteichman.mageknightbuddy.ui.scorecalculator.ScoreCalculatorScreen
 
 private const val SCOREBOARD_LIST_ROUTE = "scoreboard_list"
 
@@ -50,16 +53,30 @@ private const val SCOREBOARD_LIST_ROUTE = "scoreboard_list"
 // navArgument declaration further down - the same way a path parameter works in a URL.
 private const val SCOREBOARD_DETAILS_ROUTE = "scoreboard_details/{index}"
 
+// The Score Calculator wizard, reached from the list screen's "Score new scenario" FAB.
+// Scoring used to be its own bottom-nav tab; it now lives inside the Scoreboard tab's nested
+// graph so the two form a single tab (issue #248).
+private const val SCOREBOARD_SCORE_ROUTE = "scoreboard_score"
+
 /**
- * Root composable for the Scoreboard tab: shows the list of saved [ScoringSession]s and, on
- * tapping a row, a full-screen per-category score breakdown for that session. Runs its own
- * nested [NavHost] - separate from the app's top-level tab navigation - so that pushing the
- * breakdown screen only affects this tab's own back stack. That keeps the tab's navigation
- * state (list vs. breakdown) independent of, and unaffected by, switching to other tabs and
- * back, rather than everything living in one flat, shared navigation graph.
+ * Root composable for the Scoreboard tab: shows the list of saved [ScoringSession]s and hosts,
+ * inside its own nested [NavHost], both the full-screen per-category score breakdown (reached by
+ * tapping a row) and the Score Calculator wizard (reached via the "Score new scenario" FAB). The
+ * nested [NavHost] is separate from the app's top-level tab navigation, so pushing the breakdown
+ * or the wizard only affects this tab's own back stack. That keeps the tab's navigation state
+ * independent of, and unaffected by, switching to other tabs and back, rather than everything
+ * living in one flat, shared navigation graph.
+ *
+ * @param repository source of the saved sessions shown in the list and breakdown.
+ * @param draftRepository where the wizard autosaves its in-progress fields (see [ScoreCalculatorScreen]).
+ * @param fieldHelp the bundled "?" help text/citations passed through to the wizard.
  */
 @Composable
-fun ScoreboardTab(repository: ScoringSessionRepository, onScoreNewScenario: () -> Unit) {
+fun ScoreboardTab(
+    repository: ScoringSessionRepository,
+    draftRepository: ScoreCalculatorDraftRepository,
+    fieldHelp: Map<String, FieldHelp>,
+) {
     // A NavController scoped to this tab's own nested graph - distinct from whatever
     // NavController drives the app's top-level tab switching.
     val nestedNavController = rememberNavController()
@@ -75,7 +92,7 @@ fun ScoreboardTab(repository: ScoringSessionRepository, onScoreNewScenario: () -
             ScoreboardListScreen(
                 sessions = sessions,
                 onRowClick = { index -> nestedNavController.navigate("scoreboard_details/$index") },
-                onScoreNewScenario = onScoreNewScenario,
+                onScoreNewScenario = { nestedNavController.navigate(SCOREBOARD_SCORE_ROUTE) },
             )
         }
         composable(
@@ -91,6 +108,17 @@ fun ScoreboardTab(repository: ScoringSessionRepository, onScoreNewScenario: () -
             sessions.getOrNull(index)?.let { session ->
                 ScoreboardDetailsScreen(session = session, onBack = { nestedNavController.popBackStack() })
             }
+        }
+        composable(SCOREBOARD_SCORE_ROUTE) {
+            ScoreCalculatorScreen(
+                repository = repository,
+                draftRepository = draftRepository,
+                fieldHelp = fieldHelp,
+                // On a successful save, pop back to the list, where the new row appears at the
+                // top. System back also returns here on its own, since the wizard sits on this
+                // nested NavHost's back stack above the list.
+                onDone = { nestedNavController.popBackStack() },
+            )
         }
     }
 }

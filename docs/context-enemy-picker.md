@@ -7,7 +7,7 @@ The tab and screen that replaces the physical face-down token piles: tapping a *
 _Avoid_: Enemy browser, token reference (it owns real pile state; browsing abilities is a secondary affordance)
 
 **Token Pile**:
-One face-down stack of same-backed tokens the **Enemy Picker** draws from — the 6 enemy colors (green/grey/violet/brown/red/white), ruin tokens, possessed enemies, and one per faction. Each has its own Discard Pile, matching the rulebook's "sort the enemy (round) and ruin (hexagonal) tokens by the reverse side, and stack them in seven face down piles. Next to each pile, there is a space for discarded tokens" (p.3). Which piles exist at all depends on the active expansion selection.
+One face-down stack of same-backed tokens the **Enemy Picker** draws from — the 6 enemy colors (green/grey/violet/brown/red/white), ruin tokens, possessed enemies, and one per faction. Each has its own Discard Pile, matching the rulebook's "sort the enemy (round) and ruin (hexagonal) tokens by the reverse side, and stack them in seven face down piles. Next to each pile, there is a space for discarded tokens" (p.3). Which piles exist at all depends on the active expansion selection. Its face-down draw pile can be surveyed (issue #231) as an **unordered composition** — the remaining tokens grouped by identity with copy counts, sorted alphabetically, opened from the pile's tappable count line — so a player can estimate combat odds. It deliberately never exposes draw *order*: showing what's left is legitimate public information (you know each pile's full contents at setup and the discard is face-up), but showing the next token would break the picker's face-down secrecy.
 _Avoid_: Deck (reserved for `docs/context-dummy-player.md`'s Dummy Player's/Volkare's/Proxy Player's card decks — a Token Pile holds cardboard tokens and has entirely different draw rules); Enemy Pile (3 of the piles hold non-enemies)
 
 **Ruin Token**:
@@ -37,7 +37,7 @@ _Avoid_: Enemy Token (different shape entirely - no armor/attack/fame, and an An
 combat at all)
 
 **Replenish**:
-What happens when a **Token Pile** is drawn empty: its Discard Pile is shuffled and becomes the new pile (rulebook p.3, "If you run out of tokens, reshuffle the discarded ones and create a new face down pile"; the Apocalypse Dragon rulebook repeats it verbatim for possessed enemies and faction tokens). Mandatory and automatic — never a setting.
+What happens when a **Token Pile** is drawn empty: its Discard Pile is shuffled and becomes the new pile (rulebook p.3, "If you run out of tokens, reshuffle the discarded ones and create a new face down pile"; the Apocalypse Dragon rulebook repeats it verbatim for possessed enemies and faction tokens). Mandatory and automatic — never a setting. Happens **eagerly**: the reshuffle fires the instant a draw empties the draw pile, so a live pile never rests at 0 remaining (issue #231). This is distribution-identical to reshuffling lazily on the next draw — the just-drawn token is in the discard either way — but it means the pile-composition view and the per-pile counts never display an empty pile. The one place an empty draw pile can still surface is a session *restored* from state saved under the older lazy behaviour, which the draw code still replenishes on entry.
 _Avoid_: Reshuffle (that term is taken by `docs/context-dummy-player.md`'s entry, and means the Dummy/Proxy Player deck+discard merge — see its own entry; keeping the two words apart is deliberate)
 
 **Draw Log**:
