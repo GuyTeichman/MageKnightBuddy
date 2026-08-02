@@ -311,6 +311,73 @@ class EnemyPickerSessionTest {
     }
 
     @Test
+    fun `un-defeating a reshuffled token pulls it back out of the draw pile, not the discard`() {
+        // Build the state through the class's own methods (per CLAUDE.md).
+        var session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+        // Draw orc_a, orc_a, orc_b (indices 0,1,2); orc_c stays in the draw pile.
+        repeat(3) { session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle) }
+        // Defeat orc_b (index 2) -> discard = [orc_b], draw pile = [orc_c].
+        session = session.setDefeated(index = 2, defeated = true)
+        assertEquals(listOf("orc_b"), session.piles.getValue(TokenPileId.GREEN).discardPile)
+        // Draw orc_c (index 3): empties the draw pile, so the discard [orc_b] eager-reshuffles into
+        // it - orc_b is now in the DRAW pile, no longer in the discard.
+        session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
+        assertEquals(listOf("orc_b"), session.piles.getValue(TokenPileId.GREEN).drawPile)
+        assertEquals(emptyList(), session.piles.getValue(TokenPileId.GREEN).discardPile)
+        assertTrue(session.canUndefeat(index = 2))
+
+        // Un-defeat index 2: orc_b isn't in the discard, so it's pulled from the draw pile and held
+        // back on the board - no longer drawable, and not duplicated.
+        val after = session.setDefeated(index = 2, defeated = false)
+
+        assertFalse(after.drawLog[2].defeated)
+        val green = after.piles.getValue(TokenPileId.GREEN)
+        assertEquals(emptyList(), green.drawPile)
+        assertEquals(emptyList(), green.discardPile)
+        // All 4 green tokens are on the board now (orc_a, orc_a, orc_c, and the restored orc_b),
+        // each counted exactly once - the "same token twice" bug does not recur.
+        assertEquals(4, after.onBoardCount(TokenPileId.GREEN))
+    }
+
+    @Test
+    fun `un-defeating is blocked (a no-op) when the token is in neither the discard nor the draw pile`() {
+        var session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+        // Draw orc_a, orc_a, orc_b (0,1,2), defeat orc_b (index 2) into the discard.
+        repeat(3) { session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle) }
+        session = session.setDefeated(index = 2, defeated = true)
+        // Draw orc_c (index 3): reshuffles orc_b into the draw pile. Draw orc_b (index 4): now orc_b
+        // (a single-copy token) is on the board via index 4, and in neither the draw pile nor the
+        // discard (both empty).
+        session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
+        session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
+        val green = session.piles.getValue(TokenPileId.GREEN)
+        assertEquals(emptyList(), green.drawPile)
+        assertEquals(emptyList(), green.discardPile)
+
+        // The old defeated entry (index 2) can't be un-defeated: its orc_b is in neither pile, so
+        // returning it to the board would duplicate the single physical copy.
+        assertFalse(session.canUndefeat(index = 2))
+
+        val after = session.setDefeated(index = 2, defeated = false)
+
+        // Blocked: the flag stays defeated and no pile changes (no double-count).
+        assertTrue(after.drawLog[2].defeated)
+        assertEquals(session.piles, after.piles)
+    }
+
+    @Test
+    fun `canUndefeat is true while the token is still in the discard, and for a non-defeated entry`() {
+        val drawn = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+            .draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
+        // A freshly drawn (on-board, not defeated) entry is never "blocked" - nothing to undo.
+        assertTrue(drawn.canUndefeat(index = 0))
+
+        // Once defeated, its token sits in the discard, so it can be un-defeated.
+        val defeated = drawn.setDefeated(index = 0, defeated = true)
+        assertTrue(defeated.canUndefeat(index = 0))
+    }
+
+    @Test
     fun `setDefeated is a pure memory flag under Draw with Replacement, never touching a pile`() {
         // With replacement no discard ever accumulates, so "defeat" is a memory aid only - it must
         // not push the token into a discard the pile model doesn't use.

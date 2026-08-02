@@ -204,12 +204,23 @@ data class EnemyPickerSession private constructor(
      * accumulated pile state to move the token in: under [drawWithReplacement] (piles never deplete
      * and no discard accumulates, so the flag is a memory aid again), and for an ephemeral Summon
      * child (already discarded when drawn, and never independently defeated). Stays pure (no
-     * `shuffle`), so it is cleanly reversible; the rare defeat → Replenish → un-defeat corner - where
-     * the token has already been reshuffled out of the discard - just flips the flag and leaves the
-     * pile untouched (the token id is no longer in the discard to remove).
+     * `shuffle`), so it is cleanly reversible.
+     *
+     * Un-defeat pulls the token back on the board from wherever it physically is: the discard if it's
+     * still there, otherwise the draw pile (it may have been reshuffled back by a Replenish). If it is
+     * in **neither** - it was reshuffled out *and* re-drawn, so all its copies are accounted for
+     * elsewhere - un-defeat can't return it without duplicating a physical token, so this is a
+     * **no-op** (the flag stays defeated). [canUndefeat] reports that case up front so the UI can
+     * block the control rather than let it silently do nothing.
      */
     fun setDefeated(index: Int, defeated: Boolean = true, note: String = ""): EnemyPickerSession {
         val entry = drawLog[index]
+
+        // Refuse an un-defeat we can't honour (token in neither pile), leaving flag + pile consistent.
+        if (!defeated && entry.defeated && !drawWithReplacement && !entry.ephemeral && !canUndefeat(index)) {
+            return this
+        }
+
         val updatedEntry = entry.copy(defeated = defeated, note = note)
         // toMutableList().also { it[index] = ... } replaces one element without mutating the
         // original list (drawLog stays untouched; a fresh list is stored on the copy).
@@ -222,17 +233,33 @@ data class EnemyPickerSession private constructor(
         val updatedPile = when {
             // On the board -> discard (a fresh defeat).
             defeated && !entry.defeated -> pile.copy(discardPile = pile.discardPile + entry.tokenId)
-            // Discard -> on the board (un-defeat): remove one copy of the id, if it's still there.
-            !defeated && entry.defeated -> pile.copy(
-                discardPile = pile.discardPile.toMutableList().also { discard ->
-                    val at = discard.indexOf(entry.tokenId)
-                    if (at >= 0) discard.removeAt(at)
-                },
-            )
+            // Discard/draw -> on the board (un-defeat): pull one copy out of the discard if present,
+            // else the draw pile (reshuffled back). The no-op guard above guarantees it's in one.
+            !defeated && entry.defeated ->
+                if (entry.tokenId in pile.discardPile) {
+                    pile.copy(discardPile = pile.discardPile.toMutableList().also { it.removeAt(it.indexOf(entry.tokenId)) })
+                } else {
+                    pile.copy(drawPile = pile.drawPile.toMutableList().also { it.removeAt(it.indexOf(entry.tokenId)) })
+                }
             // No lifecycle transition (e.g. a note-only edit): leave the pile alone.
             else -> pile
         }
         return copy(piles = piles + (entry.pile to updatedPile), drawLog = updatedLog)
+    }
+
+    /**
+     * Whether the [drawLog] entry at [index] can be **un-defeated** - returned to the board (issue
+     * #251). True for anything that isn't a blocked un-defeat: a non-defeated entry (nothing to undo),
+     * a [drawWithReplacement] game or ephemeral child (the flag is pure memory there), or a defeated
+     * token still present in its pile's discard or draw pile. **False** only when a defeated token is
+     * in *neither* pile - reshuffled out and re-drawn - so un-defeating it would duplicate a physical
+     * copy. The UI uses this to disable / warn on the un-defeat control instead of no-opping silently.
+     */
+    fun canUndefeat(index: Int): Boolean {
+        val entry = drawLog[index]
+        if (!entry.defeated || drawWithReplacement || entry.ephemeral) return true
+        val pile = piles[entry.pile] ?: return false
+        return entry.tokenId in pile.discardPile || entry.tokenId in pile.drawPile
     }
 
     /**
