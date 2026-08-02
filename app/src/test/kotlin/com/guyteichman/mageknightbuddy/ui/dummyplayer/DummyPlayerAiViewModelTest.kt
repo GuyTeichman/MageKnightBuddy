@@ -11,6 +11,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
@@ -188,5 +189,147 @@ class DummyPlayerAiViewModelTest {
         assertTrue(viewModel.session?.tacticState?.dummyPick in 1..6)
         assertNull(viewModel.session?.tacticState?.playerPick)
         assertEquals(viewModel.session, repository.restore())
+    }
+
+    @Test
+    fun `undo restores the exact session from before the last action and autosaves it`() = runTest {
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        // A 3-card RED deck: GOLDYX holds 0 RED crystals (see STARTING_CRYSTAL_DOTS), so the turn's
+        // 3rd card (RED) triggers no chain - one playTurn() drains the deck to empty deterministically.
+        val entry = DummyPlayerSession.start(
+            Knight.GOLDYX,
+            deckOrder = List(3) { CardIdentity.SingleColor(CardColor.RED) },
+        )
+        repository.save(entry)
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.playTurn()
+        // Sanity-check the action actually happened before undoing it, so this test can tell
+        // "undo reverted a real change" apart from "nothing ever changed".
+        assertEquals(emptyList(), viewModel.session?.deckOrder)
+
+        viewModel.undo()
+
+        // The whole session snapshot is restored - deck, discard, and the appended TurnPlayed log
+        // entry all revert together, since undo pops the pre-action object rather than reversing
+        // fields one by one. Comparing against `entry` asserts every field at once.
+        assertEquals(entry, viewModel.session)
+        // Write-through: Room now holds the reverted state too, so navigating away and back would
+        // not resurrect the undone turn (issue #62's autosave interaction).
+        assertEquals(entry, repository.restore())
+    }
+
+    @Test
+    fun `undo of endRound restores the exact pre-shuffle deck and discard pile`() = runTest {
+        // The reshuffle case issue #62's Notes singled out as the design risk ("whether EndRound's
+        // reshuffled deck order can even be reconstructed once undone - the round-prep shuffle is
+        // not currently seeded/reversible"). The snapshot approach dissolves it by retaining the
+        // pre-shuffle object rather than recomputing it; this test proves that end to end.
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        // GREEN and BLUE (positions 4-5) are never revealed and stay in a distinguishable order, so
+        // asserting them back in [GREEN, BLUE] order is a real order check, not a same-card
+        // coincidence. The leading 3 REDs are what playTurn() reveals (GOLDYX holds 0 RED crystals,
+        // so the 3rd RED triggers no chain - see STARTING_CRYSTAL_DOTS).
+        val entry = DummyPlayerSession.start(
+            Knight.GOLDYX,
+            deckOrder = listOf(CardColor.RED, CardColor.RED, CardColor.RED, CardColor.GREEN, CardColor.BLUE)
+                .map { CardIdentity.SingleColor(it) },
+        )
+        repository.save(entry)
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        // Build the pre-endRound state via the class's own playTurn() (per CLAUDE.md's TDD habit),
+        // so endRound actually reshuffles a *non-empty* discard pile rather than a convenient empty
+        // one - a shortcut precondition would never exercise the discard-fold that undo must revert.
+        viewModel.playTurn()
+        val afterPlay = viewModel.session
+        // Precondition sanity: [RED,RED,RED] revealed into discard, [GREEN,BLUE] left in the deck.
+        assertEquals(
+            listOf(CardColor.GREEN, CardColor.BLUE).map { CardIdentity.SingleColor(it) },
+            afterPlay?.deckOrder,
+        )
+        assertEquals(
+            List(3) { CardIdentity.SingleColor(CardColor.RED) },
+            afterPlay?.discardPile,
+        )
+
+        viewModel.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+            spellOfferColor = CardColor.BLUE,
+        )
+        // endRound really ran: round advanced, discard folded into a now-6-card reshuffled deck,
+        // discard emptied. (Its order is non-deterministic - deliberately not asserted here.)
+        assertEquals(2, viewModel.session?.round)
+        assertEquals(6, viewModel.session?.deckOrder?.size)
+        assertEquals(emptyList(), viewModel.session?.discardPile)
+
+        viewModel.undo()
+
+        // The pre-shuffle deck comes back in its exact original order, and the discard pile endRound
+        // had emptied is restored - neither is recomputed, both are the retained snapshot.
+        assertEquals(
+            listOf(CardColor.GREEN, CardColor.BLUE).map { CardIdentity.SingleColor(it) },
+            viewModel.session?.deckOrder,
+        )
+        assertEquals(List(3) { CardIdentity.SingleColor(CardColor.RED) }, viewModel.session?.discardPile)
+        // And every other field reverts too (round, crystals, the appended RoundEnded log entry).
+        assertEquals(afterPlay, viewModel.session)
+        assertEquals(afterPlay, repository.restore())
+    }
+
+    @Test
+    fun `canUndo is false until a mutation happens, then true`() = runTest {
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        repository.save(DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardIdentity.SingleColor(CardColor.RED))))
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.canUndo)
+
+        viewModel.playTurn()
+
+        assertTrue(viewModel.canUndo)
+    }
+
+    @Test
+    fun `undo walks back through the full stack of actions to the entry state`() = runTest {
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        // 6 RED cards = two no-chain turns (see the single-undo test's note on why RED never chains
+        // for GOLDYX): turn 1 leaves 3, turn 2 leaves 0.
+        val entry = DummyPlayerSession.start(
+            Knight.GOLDYX,
+            deckOrder = List(6) { CardIdentity.SingleColor(CardColor.RED) },
+        )
+        repository.save(entry)
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.playTurn()
+        viewModel.playTurn()
+        assertEquals(0, viewModel.session?.deckOrder?.size)
+
+        viewModel.undo()
+        assertEquals(3, viewModel.session?.deckOrder?.size)
+
+        viewModel.undo()
+        assertEquals(entry, viewModel.session)
+        // Back at the entry state, there's nothing left to revert.
+        assertFalse(viewModel.canUndo)
+    }
+
+    @Test
+    fun `undo does nothing when there is no prior action to revert`() = runTest {
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        val entry = DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardIdentity.SingleColor(CardColor.RED)))
+        repository.save(entry)
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.undo()
+
+        assertEquals(entry, viewModel.session)
+        assertFalse(viewModel.canUndo)
     }
 }
