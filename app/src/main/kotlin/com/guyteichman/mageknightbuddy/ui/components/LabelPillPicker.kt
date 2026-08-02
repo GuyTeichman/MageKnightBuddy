@@ -55,10 +55,15 @@ internal fun <T> LabelPillPicker(
                     topEnd = if (index == options.lastIndex) 50.dp else 0.dp,
                     bottomEnd = if (index == options.lastIndex) 50.dp else 0.dp,
                 )
+                val fill = color(option)
+                // The pill fills are always-light and theme-independent, so the text/icon can't
+                // inherit the theme's LocalContentColor (light in dark mode = invisible on a light
+                // fill, issue #172) - derive a legible ink from the fill's own luminance instead.
+                val ink = pillContentColor(fill)
                 Surface(
                     onClick = { onSelect(option) },
                     shape = shape,
-                    color = color(option),
+                    color = fill,
                     border = BorderStroke(
                         width = if (isSelected) 2.dp else 1.dp,
                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
@@ -71,9 +76,9 @@ internal fun <T> LabelPillPicker(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         if (isSelected) {
-                            Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+                            Icon(Icons.Filled.Check, contentDescription = null, tint = ink, modifier = Modifier.padding(end = 4.dp))
                         }
-                        Text(displayName(option))
+                        Text(displayName(option), color = ink)
                     }
                 }
             }
