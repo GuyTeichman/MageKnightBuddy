@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -177,7 +178,17 @@ fun VolkareAiScreen(repository: VolkareSessionRepository, onBack: () -> Unit) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // Undo (issue #255): the mechanism is inherited from AutosaveSessionViewModel
+                    // (added for the Dummy Player screen in #62) - this just wires the same icon-only
+                    // button, disabled when there's nothing to revert or a mutation is in flight.
+                    IconButton(
+                        onClick = { scope.launch { viewModel.undo() } },
+                        enabled = viewModel.canUndo && !viewModel.isBusy,
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo")
+                    }
                     Button(
                         onClick = { scope.launch { viewModel.playTurn() } },
                         // Volkare's Return has no equivalent guard - Frenzy keeps him playable
