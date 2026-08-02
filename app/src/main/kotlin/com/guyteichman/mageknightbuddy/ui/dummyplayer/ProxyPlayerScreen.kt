@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.UnfoldLess
 import androidx.compose.material.icons.filled.UnfoldMore
@@ -183,7 +184,17 @@ fun ProxyPlayerAiScreen(
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // Undo (issue #256): the mechanism is inherited from AutosaveSessionViewModel
+                    // (added for the Dummy Player screen in #62) - this just wires the same icon-only
+                    // button, disabled when there's nothing to revert or a mutation is in flight.
+                    IconButton(
+                        onClick = { scope.launch { viewModel.undo() } },
+                        enabled = viewModel.canUndo && !viewModel.isBusy,
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo")
+                    }
                     Button(
                         onClick = { scope.launch { viewModel.playTurn() } },
                         enabled = !session.roundEnded && !viewModel.isBusy && !needsTacticPick,
