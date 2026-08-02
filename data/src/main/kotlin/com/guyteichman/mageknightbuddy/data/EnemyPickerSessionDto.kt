@@ -22,10 +22,12 @@ data class TokenPileDto(
 /**
  * Mirror of [com.guyteichman.mageknightbuddy.domain.DrawLogEntry]; [pile] holds the pile enum's
  * name. [parentIndex] mirrors [com.guyteichman.mageknightbuddy.domain.DrawLogEntry.parentIndex]
- * (a Summon Draw child's summoner index) and [ephemeral] mirrors
+ * (a Summon Draw child's summoner index), [ephemeral] mirrors
  * [com.guyteichman.mageknightbuddy.domain.DrawLogEntry.ephemeral] (whether a summon child is
- * discarded on draw vs held on the board, issue #251) - both defaulted so older persisted rows
- * without them still decode.
+ * discarded on draw vs held on the board, issue #251), and [possessedTokenId] mirrors
+ * [com.guyteichman.mageknightbuddy.domain.DrawLogEntry.possessedTokenId] (the possessed token paired
+ * with a possessed enemy's circular token) - all defaulted so older persisted rows without them
+ * still decode, which is what keeps this an additive JSON change with no Room migration (cf. #194).
  */
 @Serializable
 data class DrawLogEntryDto(
@@ -36,4 +38,5 @@ data class DrawLogEntryDto(
     val note: String = "",
     val parentIndex: Int? = null,
     val ephemeral: Boolean = false,
+    val possessedTokenId: String? = null,
 )

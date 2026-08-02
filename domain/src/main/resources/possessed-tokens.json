@@ -1,0 +1,11 @@
+[
+  { "id": "possessed_01", "expansion": "APOCALYPSE_DRAGON", "copies": 1, "fameDelta": 1, "psychicAttack": 4 },
+  { "id": "possessed_02", "expansion": "APOCALYPSE_DRAGON", "copies": 1, "attackDelta": 1, "fameDelta": 1, "psychicAttack": 3 },
+  { "id": "possessed_03", "expansion": "APOCALYPSE_DRAGON", "copies": 3, "psychicAttack": 1 },
+  { "id": "possessed_04", "expansion": "APOCALYPSE_DRAGON", "copies": 1, "armorDelta": 2, "fameDelta": 1, "psychicAttack": 2 },
+  { "id": "possessed_05", "expansion": "APOCALYPSE_DRAGON", "copies": 1, "armorDelta": 1, "fameDelta": 1, "psychicAttack": 3 },
+  { "id": "possessed_06", "expansion": "APOCALYPSE_DRAGON", "copies": 1, "armorDelta": 1 },
+  { "id": "possessed_07", "expansion": "APOCALYPSE_DRAGON", "copies": 2, "armorDelta": -1, "fameDelta": -1 },
+  { "id": "possessed_08", "expansion": "APOCALYPSE_DRAGON", "copies": 1, "attackDelta": -1, "fameDelta": -1 },
+  { "id": "possessed_09", "expansion": "APOCALYPSE_DRAGON", "copies": 1, "attackDelta": 1 }
+]
