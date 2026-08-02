@@ -67,6 +67,8 @@ import com.guyteichman.mageknightbuddy.domain.DrawLogEntry
 import com.guyteichman.mageknightbuddy.domain.EnemyPickerSession
 import com.guyteichman.mageknightbuddy.domain.EnemyToken
 import com.guyteichman.mageknightbuddy.domain.Expansion
+import com.guyteichman.mageknightbuddy.domain.FactionRewardToken
+import com.guyteichman.mageknightbuddy.domain.FactionRewardTokenCatalogue
 import com.guyteichman.mageknightbuddy.domain.RuinToken
 import com.guyteichman.mageknightbuddy.domain.RuinTokenCatalogue
 import com.guyteichman.mageknightbuddy.domain.TokenCatalogue
@@ -113,12 +115,17 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
     // A ruin whose read-only detail window is open - the RUIN pile's counterpart to `infoToken`,
     // opened by tapping a ruin cell in the pile-contents dialog (issue #231).
     var infoRuin by remember { mutableStateOf<RuinToken?>(null) }
+    // A faction reward token whose read-only detail is open, opened by tapping a reward cell in the
+    // pile-contents dialog (issue #252) - the reward piles' counterpart to `infoRuin`.
+    var infoReward by remember { mutableStateOf<FactionRewardToken?>(null) }
     // The pile whose "view draw pile" contents dialog is open (issue #231), or null.
     var contentsPileId by remember { mutableStateOf<TokenPileId?>(null) }
     // The Draw Log index whose Defeat dialog is open, or null.
     var defeatDialogIndex by remember { mutableStateOf<Int?>(null) }
     // A pending destructive reset (Reset piles / Apply & Reset), held until the user confirms.
     var pendingReset by remember { mutableStateOf<(() -> Unit)?>(null) }
+    // Whether the held-faction-rewards grid (issue #252) is open - the pinned Draw Log entry's target.
+    var heldRewardsOpen by remember { mutableStateOf(false) }
 
     if (session == null) {
         // Still restoring / creating the first session.
@@ -217,6 +224,7 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
         onOpenBatch = { indices -> gridState = GridState(indices); zoom = null; summonGrid = null; summonZoom = null },
         onOpenDefeatDialog = { index -> defeatDialogIndex = index },
         onOpenContents = { pileId -> contentsPileId = pileId },
+        onOpenHeldRewards = { heldRewardsOpen = true },
         currentChildOf = currentChildOf,
         onRequestReset = { pendingReset = { scope.launch { viewModel.reset() } } },
         onRequestApplyConfig = { tokenSet, replacement ->
@@ -241,12 +249,46 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
         )
     }
 
+    // The held-faction-rewards grid (issue #252), opened from the pinned Draw Log entry. Composed
+    // before `zoom` below so a reward's effect zoom (opened by tapping a cell) stacks on top of it,
+    // and dismissing that zoom falls back to this grid - the same before/after trick the enemy
+    // grid/zoom pair uses. `heldRewardIndices` is derived live from the session, so spending a token
+    // (which flips its defeated flag) drops it out of the grid on the next recomposition.
+    val heldRewardIndices = session.drawLog.indices.filter {
+        session.drawLog[it].pile.isFactionReward && !session.drawLog[it].defeated
+    }
+    // If the grid is open but the last held token was just spent, close it - as a side effect
+    // (LaunchedEffect) rather than a state write during composition.
+    LaunchedEffect(heldRewardsOpen, heldRewardIndices.isEmpty()) {
+        if (heldRewardsOpen && heldRewardIndices.isEmpty()) heldRewardsOpen = false
+    }
+    if (heldRewardsOpen && heldRewardIndices.isNotEmpty()) {
+        HeldRewardsDialog(
+            heldIndices = heldRewardIndices,
+            log = session.drawLog,
+            onOpenDetail = { index -> zoom = ZoomState(listOf(index), 0); summonGrid = null; summonZoom = null },
+            onSpend = { index -> scope.launch { viewModel.setDefeated(index, true) } },
+            onDismiss = { heldRewardsOpen = false },
+        )
+    }
+
     zoom?.let { state ->
         val entry = session.drawLog[state.logIndices[state.index]]
+        // A drawn faction reward token gets its own dialog (name + effect text + spend), never the
+        // enemy or ruin zoom - it prints no armor/attack/fame and no altar/enemy-draw prompt.
+        val reward = FactionRewardTokenCatalogue.byId(entry.tokenId)
         // A drawn RUIN token gets its own dialog (altar prompt / enemy-draw), never the
         // armor/attack/fame enemy zoom - the two components print entirely different things.
         val ruin = RuinTokenCatalogue.byId(entry.tokenId)
-        if (ruin != null) {
+        if (reward != null) {
+            FactionRewardZoomDialog(
+                token = reward,
+                entry = entry,
+                logIndex = state.logIndices[state.index],
+                onToggleSpent = { index, spent -> scope.launch { viewModel.setDefeated(index, spent) } },
+                onDismiss = { zoom = null; summonGrid = null; summonZoom = null },
+            )
+        } else if (ruin != null) {
             RuinZoomDialog(
                 ruin = ruin,
                 entry = entry,
@@ -322,6 +364,7 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
                 withReplacement = session.drawWithReplacement,
                 onOpenEnemyInfo = { token -> infoToken = token },
                 onOpenRuinInfo = { ruin -> infoRuin = ruin },
+                onOpenRewardInfo = { reward -> infoReward = reward },
                 onDismiss = { contentsPileId = null },
             )
         }
@@ -333,6 +376,10 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
 
     infoRuin?.let { ruin ->
         RuinInfoDialog(ruin = ruin, onDismiss = { infoRuin = null })
+    }
+
+    infoReward?.let { reward ->
+        RewardInfoDialog(token = reward, onDismiss = { infoReward = null })
     }
 
     defeatDialogIndex?.let { index ->
@@ -385,6 +432,7 @@ private fun EnemyPickerContent(
     onOpenBatch: (List<Int>) -> Unit,
     onOpenDefeatDialog: (Int) -> Unit,
     onOpenContents: (TokenPileId) -> Unit,
+    onOpenHeldRewards: () -> Unit,
     currentChildOf: (Int) -> DrawLogEntry?,
     onRequestReset: () -> Unit,
     onRequestApplyConfig: (Set<Expansion>, Boolean) -> Unit,
@@ -437,7 +485,9 @@ private fun EnemyPickerContent(
                                 (session.drawWithReplacement || pile.drawPile.size + pile.discardPile.size > 0),
                             onDrawOne = { onDraw(mapOf(pileId to 1)) },
                             onViewContents = { onOpenContents(pileId) },
-                            tapToDrawOnly = pileId == TokenPileId.RUIN,
+                            // Ruins and faction reward tokens are revealed one at a time (one ruin
+                            // site / one earned reward), so both drop the batch stepper (issue #252).
+                            tapToDrawOnly = pileId == TokenPileId.RUIN || pileId.isFactionReward,
                         )
                     }
                 }
@@ -449,6 +499,7 @@ private fun EnemyPickerContent(
                     onOpenToken = onOpenToken,
                     onOpenBatch = onOpenBatch,
                     onOpenDefeatDialog = onOpenDefeatDialog,
+                    onOpenHeldRewards = onOpenHeldRewards,
                     currentChildOf = currentChildOf,
                 )
             }
@@ -604,6 +655,7 @@ private fun DrawLogSection(
     onOpenToken: (Int) -> Unit,
     onOpenBatch: (List<Int>) -> Unit,
     onOpenDefeatDialog: (Int) -> Unit,
+    onOpenHeldRewards: () -> Unit,
     currentChildOf: (Int) -> DrawLogEntry?,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -616,12 +668,25 @@ private fun DrawLogSection(
         // groupDrawLog already excludes Summon Draw children (parentIndex != null) and returns
         // newest-batch-first - see its own doc comment for why.
         val groups = groupDrawLog(log)
-        val onBoard = groups.filter { !it.allDefeated(log) }
-        val defeated = groups.filter { it.allDefeated(log) }
+        // Faction reward groups (issue #252) are always single-token (earned one at a time), and get
+        // special treatment: the *held* (un-spent) ones collapse into one pinned entry at the top,
+        // while the *spent* ones drop into the Defeated section as ordinary dimmed rows.
+        val (rewardGroups, normalGroups) = groups.partition { log[it.logIndices.first()].pile.isFactionReward }
+        val heldRewardCount = rewardGroups.count { !log[it.logIndices.first()].defeated }
+        val spentRewardGroups = rewardGroups.filter { log[it.logIndices.first()].defeated }
 
+        val onBoard = normalGroups.filter { !it.allDefeated(log) }
+        val defeated = normalGroups.filter { it.allDefeated(log) }
+
+        // The single pinned "Faction rewards held: N" entry, always at the very top of the log.
+        if (heldRewardCount > 0) {
+            PinnedHeldRewardsRow(count = heldRewardCount, onClick = onOpenHeldRewards)
+        }
+
+        val hasDefeated = defeated.isNotEmpty() || spentRewardGroups.isNotEmpty()
         // Only show the section headers once there's actually a split to label; a fresh log with
-        // nothing defeated yet is just a flat newest-first list.
-        val showHeaders = onBoard.isNotEmpty() && defeated.isNotEmpty()
+        // nothing defeated/spent yet is just a flat newest-first list.
+        val showHeaders = onBoard.isNotEmpty() && hasDefeated
 
         if (onBoard.isNotEmpty()) {
             if (showHeaders) Text("On the board", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
@@ -629,7 +694,7 @@ private fun DrawLogSection(
                 DrawLogGroupRow(group, log, onOpenToken, onOpenBatch, onOpenDefeatDialog, currentChildOf)
             }
         }
-        if (defeated.isNotEmpty()) {
+        if (hasDefeated) {
             Text(
                 "Defeated",
                 style = MaterialTheme.typography.labelLarge,
@@ -639,6 +704,46 @@ private fun DrawLogSection(
             defeated.forEach { group ->
                 DrawLogGroupRow(group, log, onOpenToken, onOpenBatch, onOpenDefeatDialog, currentChildOf)
             }
+            // Spent faction reward tokens sit here too, as ordinary dimmed rows (issue #252's
+            // "spent -> dimmed history"), newest first like everything else.
+            spentRewardGroups.forEach { group ->
+                DrawLogGroupRow(group, log, onOpenToken, onOpenBatch, onOpenDefeatDialog, currentChildOf)
+            }
+        }
+    }
+}
+
+/**
+ * The single pinned Draw Log entry (issue #252) that collapses every currently-held faction reward
+ * token into one row at the top of the log - tapping it opens the [HeldRewardsDialog] grid. Styled
+ * like a [DrawLogRow] but with a distinct tinted background so it reads as a persistent summary
+ * rather than one more drawn token.
+ */
+@Composable
+private fun PinnedHeldRewardsRow(count: Int, onClick: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.secondaryContainer)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Faction rewards held: $count",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Text(
+                    "Tap to view or spend",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+            TextButton(onClick = onClick) { Text("View") }
         }
     }
 }
@@ -677,29 +782,38 @@ private fun DrawLogRow(
     summonedChild: DrawLogEntry?,
 ) {
     val token = TokenCatalogue.byId(entry.tokenId)
-    // A ruin id resolves in the ruin catalogue instead (a sibling type, not an EnemyToken).
+    // A ruin id resolves in the ruin catalogue instead (a sibling type, not an EnemyToken); a
+    // faction reward id in its own catalogue (issue #252) - the three id namespaces are disjoint.
     val ruin = if (token == null) RuinTokenCatalogue.byId(entry.tokenId) else null
+    val reward = if (token == null && ruin == null) FactionRewardTokenCatalogue.byId(entry.tokenId) else null
     val summonedChildToken = summonedChild?.let { TokenCatalogue.byId(it.tokenId) }
-    // Defeated rows are de-emphasised (dimmed name), since the on-board enemies are what still needs
-    // attention.
+    // Defeated/spent rows are de-emphasised (dimmed name), since the on-board enemies are what still
+    // needs attention.
     val nameColor = if (entry.defeated) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
-    val hasLeadingFace = ruin != null || summonedChildToken != null
+    val hasLeadingFace = ruin != null || reward != null || summonedChildToken != null
+    // A reward token's "defeated" flag means "spent", so its toggle reads differently.
+    val doneDesc = when {
+        reward != null -> if (entry.defeated) "Spent" else "Mark spent"
+        else -> if (entry.defeated) "Defeated" else "Mark defeated"
+    }
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // A ruin shows its own hexagonal face; an enemy row instead shows its current Summon
-            // Draw child (if any) as the leading thumbnail.
+            // A ruin shows its own hexagonal face; a reward shows its square tile face; an enemy row
+            // instead shows its current Summon Draw child (if any) as the leading thumbnail.
             if (ruin != null) {
                 RuinTokenFace(ruin = ruin, size = 32.dp)
+            } else if (reward != null) {
+                FactionRewardTokenFace(token = reward, size = 32.dp)
             } else if (summonedChildToken != null) {
                 EnemyTokenFace(token = summonedChildToken, size = 32.dp)
             }
             Column(Modifier.weight(1f).padding(start = if (hasLeadingFace) 8.dp else 0.dp)) {
                 Text(
-                    token?.name ?: ruin?.let { if (it.isAltar) "Ancient Altar" else "Enemies with Treasure" } ?: entry.tokenId,
+                    token?.name ?: ruin?.let { if (it.isAltar) "Ancient Altar" else "Enemies with Treasure" } ?: reward?.name ?: entry.tokenId,
                     style = MaterialTheme.typography.bodyLarge,
                     color = nameColor,
                 )
@@ -713,7 +827,7 @@ private fun DrawLogRow(
             IconButton(onClick = { onOpenDefeatDialog(index) }) {
                 Icon(
                     imageVector = if (entry.defeated) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
-                    contentDescription = if (entry.defeated) "Defeated" else "Mark defeated",
+                    contentDescription = doneDesc,
                     tint = if (entry.defeated) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -1133,6 +1247,157 @@ private fun RuinZoomDialog(
 }
 
 /**
+ * Zoomed view of a drawn (or revisited) faction reward token (issue #252) - the reward piles'
+ * counterpart to [TokenZoomDialog]/[RuinZoomDialog], since a reward token prints no armor/attack/fame
+ * and no altar/enemy-draw prompt, only a one-off effect. Shows its square tile face, its effect text
+ * (reference only, never resolved - ADR-0006), the universal discard-for-Fame/Influence footer, and a
+ * **Spend** action - the reward's "Defeat", flipping the same [DrawLogEntry.defeated] flag so a spent
+ * token drops out of the held pinned entry into the dimmed history (interim behaviour; issue #251
+ * makes that flag pile-correct). Spending also closes the window, matching the enemy/ruin zooms.
+ */
+@Composable
+private fun FactionRewardZoomDialog(
+    token: FactionRewardToken,
+    entry: DrawLogEntry,
+    logIndex: Int,
+    onToggleSpent: (Int, Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {},
+        title = { Text(token.name, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+        text = {
+            Column(
+                Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                FactionRewardTokenFace(token = token, size = 140.dp)
+                Text(token.effectText, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+                // The line printed on every reward token, held once here rather than in each token's
+                // effectText (see FactionRewardToken's doc) - shown so the player knows the option.
+                Text(
+                    FACTION_REWARD_DISCARD_FOOTER,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = onDismiss) { Text("Close") }
+                    Button(
+                        onClick = { onToggleSpent(logIndex, true); onDismiss() },
+                        enabled = !entry.defeated,
+                    ) {
+                        Text(if (entry.defeated) "Spent" else "Spend")
+                    }
+                }
+            }
+        },
+    )
+}
+
+/**
+ * The held-faction-rewards grid (issue #252): every currently-held reward token, reached from the
+ * pinned Draw Log entry. One cell per held token (face + name + a **Spend** checkbox); tapping the
+ * cell opens that token's [FactionRewardZoomDialog] detail. Spending a token flips its
+ * [DrawLogEntry.defeated] flag, which drops it out of [heldIndices] on the next recomposition, so it
+ * leaves this grid and joins the dimmed history. Reuses the same adaptive grid as [TokenGridDialog].
+ */
+@Composable
+private fun HeldRewardsDialog(
+    heldIndices: List<Int>,
+    log: List<DrawLogEntry>,
+    onOpenDetail: (Int) -> Unit,
+    onSpend: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        title = { Text("Faction rewards held") },
+        text = {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = GRID_CELL_MIN_SIZE),
+                modifier = Modifier.heightIn(max = GRID_MAX_HEIGHT),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(heldIndices, key = { it }) { logIndex ->
+                    val entry = log[logIndex]
+                    HeldRewardCell(
+                        token = FactionRewardTokenCatalogue.byId(entry.tokenId),
+                        tokenId = entry.tokenId,
+                        onOpen = { onOpenDetail(logIndex) },
+                        onSpend = { onSpend(logIndex) },
+                    )
+                }
+            }
+        },
+    )
+}
+
+/** One held-reward grid cell: the token's face, its name, and a Spend checkbox (issue #252). A held
+ * token is by definition un-spent, so the checkbox is always the empty/outlined state - tapping it
+ * spends the token. */
+@Composable
+private fun HeldRewardCell(token: FactionRewardToken?, tokenId: String, onOpen: () -> Unit, onSpend: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (token != null) {
+            FactionRewardTokenFace(token = token, size = 72.dp)
+        }
+        Text(
+            text = token?.name ?: tokenId,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+        IconButton(onClick = onSpend) {
+            Icon(
+                imageVector = Icons.Outlined.CheckCircle,
+                contentDescription = "Spend",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/**
+ * Read-only detail for a faction reward token (issue #252) - the reward piles' counterpart to
+ * [RuinInfoDialog], opened by tapping a reward cell in [PileContentsDialog]'s pile survey. Same face
+ * + effect + discard footer as [FactionRewardZoomDialog] but with none of its Spend action - this is
+ * a preview of what's still in the pile, not a held token.
+ */
+@Composable
+private fun RewardInfoDialog(token: FactionRewardToken, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        title = { Text(token.name) },
+        text = {
+            Column(
+                Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                FactionRewardTokenFace(token = token, size = 140.dp)
+                Text(token.effectText, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+                Text(
+                    FACTION_REWARD_DISCARD_FOOTER,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        },
+    )
+}
+
+/**
  * Grid overview of a multi-token draw batch (D3/D7), possibly spanning several piles at once
  * (D16): one cell per drawn token with art, name and (when [showDefeatToggle]) a Defeat toggle;
  * tapping a cell opens that token's own zoomed detail with prev/next across the same batch. Sized
@@ -1331,16 +1596,18 @@ private fun PileContentsDialog(
     withReplacement: Boolean,
     onOpenEnemyInfo: (EnemyToken) -> Unit,
     onOpenRuinInfo: (RuinToken) -> Unit,
+    onOpenRewardInfo: (FactionRewardToken) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val isRuin = pileId == TokenPileId.RUIN
+    val isReward = pileId.isFactionReward
     // Name resolver for the sort, drawn from whichever catalogue this pile uses. A ruin has no
     // single "name" field, so it's labelled by kind (its two variants), matching the Draw Log rows.
     val nameOf: (String) -> String = { id ->
-        if (isRuin) {
-            RuinTokenCatalogue.byId(id)?.let { if (it.isAltar) "Ancient Altar" else "Enemies with Treasure" } ?: id
-        } else {
-            TokenCatalogue.byId(id)?.name ?: id
+        when {
+            isRuin -> RuinTokenCatalogue.byId(id)?.let { if (it.isAltar) "Ancient Altar" else "Enemies with Treasure" } ?: id
+            isReward -> FactionRewardTokenCatalogue.byId(id)?.name ?: id
+            else -> TokenCatalogue.byId(id)?.name ?: id
         }
     }
     // remember keyed on the draw pile so the grouping only recomputes when the pile actually changes.
@@ -1369,9 +1636,13 @@ private fun PileContentsDialog(
                         PileContentsCell(
                             group = group,
                             isRuin = isRuin,
+                            isReward = isReward,
                             onOpen = {
-                                if (isRuin) RuinTokenCatalogue.byId(group.tokenId)?.let(onOpenRuinInfo)
-                                else TokenCatalogue.byId(group.tokenId)?.let(onOpenEnemyInfo)
+                                when {
+                                    isRuin -> RuinTokenCatalogue.byId(group.tokenId)?.let(onOpenRuinInfo)
+                                    isReward -> FactionRewardTokenCatalogue.byId(group.tokenId)?.let(onOpenRewardInfo)
+                                    else -> TokenCatalogue.byId(group.tokenId)?.let(onOpenEnemyInfo)
+                                }
                             },
                         )
                     }
@@ -1387,9 +1658,10 @@ private fun PileContentsDialog(
  * render the hexagonal [RuinTokenFace]; everything else the round [EnemyTokenFace].
  */
 @Composable
-private fun PileContentsCell(group: PileTokenGroup, isRuin: Boolean, onOpen: () -> Unit) {
-    val token = if (isRuin) null else TokenCatalogue.byId(group.tokenId)
+private fun PileContentsCell(group: PileTokenGroup, isRuin: Boolean, isReward: Boolean, onOpen: () -> Unit) {
+    val token = if (isRuin || isReward) null else TokenCatalogue.byId(group.tokenId)
     val ruin = if (isRuin) RuinTokenCatalogue.byId(group.tokenId) else null
+    val reward = if (isReward) FactionRewardTokenCatalogue.byId(group.tokenId) else null
     Column(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1399,6 +1671,7 @@ private fun PileContentsCell(group: PileTokenGroup, isRuin: Boolean, onOpen: () 
             when {
                 token != null -> EnemyTokenFace(token = token, size = 72.dp)
                 ruin != null -> RuinTokenFace(ruin = ruin, size = 72.dp)
+                reward != null -> FactionRewardTokenFace(token = reward, size = 72.dp)
                 else -> Text(group.tokenId, style = MaterialTheme.typography.labelSmall)
             }
             if (group.count > 1) {
@@ -1471,15 +1744,27 @@ private fun DefeatDialog(entry: DrawLogEntry, onSave: (Boolean, String) -> Unit,
     var defeated by remember { mutableStateOf(entry.defeated) }
     var note by remember { mutableStateOf(entry.note) }
     val token = TokenCatalogue.byId(entry.tokenId)
+    val reward = if (token == null) FactionRewardTokenCatalogue.byId(entry.tokenId) else null
+    val ruin = if (token == null && reward == null) RuinTokenCatalogue.byId(entry.tokenId) else null
+    val title = token?.name
+        ?: reward?.name
+        ?: ruin?.let { if (it.isAltar) "Ancient Altar" else "Enemies with Treasure" }
+        ?: entry.tokenId
+    // A reward token's "defeated" flag means "spent" (issue #252); a ruin's means "resolved".
+    val doneLabel = when {
+        reward != null -> "Spent"
+        ruin != null -> "Resolved"
+        else -> "Defeated"
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = { onSave(defeated, note) }) { Text("Save") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-        title = { Text(token?.name ?: entry.tokenId) },
+        title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                LabeledSwitch(label = "Defeated", checked = defeated, onCheckedChange = { defeated = it })
+                LabeledSwitch(label = doneLabel, checked = defeated, onCheckedChange = { defeated = it })
                 // The note is for tracking an enemy still on the board ("keep, NE tile"), so it's
                 // only editable while the enemy is *not* marked defeated.
                 OutlinedTextField(
@@ -1496,6 +1781,14 @@ private fun DefeatDialog(entry: DrawLogEntry, onSave: (Boolean, String) -> Unit,
 
 /** Largest number of tokens a single stepper draw allows - a sanity cap, well above any real need. */
 private const val MAX_BATCH = 20
+
+/**
+ * The line printed on **every** faction reward token (issue #252): it can always be cashed in instead
+ * of used. Held once here rather than in each token's [FactionRewardToken.effectText] (it's identical
+ * across all 24 token types / 48 tokens), and shown as a footer under whichever reward is on screen. Not
+ * scored - the player takes the Fame/Influence themselves (ADR-0006).
+ */
+private const val FACTION_REWARD_DISCARD_FOOTER = "Or discard during interactions for 1 Fame or 3 Influence."
 
 /** Grid cell min width (D9): sized so the common 2-6 token batch reads as a comfortably large grid. */
 private val GRID_CELL_MIN_SIZE = 96.dp
@@ -1552,6 +1845,10 @@ internal fun TokenPileId.displayName(): String = when (this) {
     TokenPileId.RED -> "Red enemies"
     TokenPileId.WHITE -> "White enemies"
     TokenPileId.RUIN -> "Ruins"
+    TokenPileId.ELEMENTALIST_REWARDS -> "Elementalist rewards"
+    TokenPileId.DARK_CRUSADER_REWARDS -> "Dark Crusader rewards"
+    TokenPileId.APOCALYPSE_CULT_REWARDS -> "Apocalypse Cult rewards"
+    TokenPileId.COUNCIL_OF_VOID_REWARDS -> "Council of the Void rewards"
 }
 
 /** Player-facing expansion name for the Token Set checkboxes. */

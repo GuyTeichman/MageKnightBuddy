@@ -48,9 +48,28 @@ _Avoid_: History (reserved for the Scoreboard's saved sessions); treating the de
 An Apocalypse Dragon enemy formed from *two* tokens: a possessed enemy token plus a normal circular enemy token of a color the triggering text names (Apocalypse Dragon rulebook p.7). The possessed token carries **deltas, not stats** — it modifies the circular token's Armor, topmost Attack, and Fame, and may add a Psychic Attack of value 1-4. The **Enemy Picker** renders the pair the way the cardboard looks (circular token superimposed on the possessed token's circular slot) and shows only the **summed** numbers, never the deltas alongside them, so the player is never left wondering whether they're expected to do the arithmetic themselves. Defeating one also awards a faction token from the faction the triggering text names.
 _Avoid_: Treating the possessed token as an enemy in its own right (it has no standalone stat line)
 
-**Faction Token**:
-An Apocalypse Dragon reward token drawn from one of two 12-token **Token Pile**s (The Apocalypse Cult, The Council of the Void), typically on defeating a **Possessed Enemy**. The one kind of token the **Enemy Picker** does *not* discard on draw: per the Apocalypse Dragon rulebook (p.6), a drawn faction token is **held** face up in the player's play area until spent, and whatever is still held at game end is worth 1 Fame each. So the picker keeps a small held-inventory list with a Spend action that moves a token to its discard — in-play state it deliberately refuses to keep for enemies ([ADR-0006](adr/0006-enemy-picker-owns-pile-state-but-models-no-map.md)), justified because this is flat inventory rather than board position, and because the rules make it player-visible anyway.
-_Avoid_: Treating a faction token like an enemy draw (its lifecycle is draw → hold → spend, not draw → discard)
+**Faction Reward Token** (modelled as `FactionRewardToken`; formerly just "Faction Token"):
+A held reward token drawn from one of **four** 12-token (6 types × 2) faction **Token Pile**s — the
+Shades of Tezla **Elementalist** and **Dark Crusader** factions, and the Apocalypse Dragon **Apocalypse
+Cult** and **Council of the Void** factions — won by defeating that faction's enemies (SoT faction
+enemies; AD **Possessed Enemies**). It prints no Armor/Attack/Fame, only a one-off effect, plus the
+line printed on *every* reward token: *"may be discarded during interactions for 1 Fame, or 3
+Influence."* Its lifecycle is **draw → hold → spend**, not draw → discard (see
+`docs/rules/faction-reward-tokens.md`). Each pile is surfaced by its faction's existing **Token Set**
+`Expansion` toggle (the single Apocalypse Dragon toggle surfaces both AD piles).
+
+In the UI (issue #252) the held tokens collapse into a **single pinned Draw Log entry** at the top;
+tapping it opens a grid where each held token shows its effect and a **Spend** checkbox, and spending
+one moves it to the dimmed "done" history — reusing the Draw Log's checked-off flag rather than a
+bespoke inventory panel. **Deliberately not scored** (the rescope of closed issue #190): the app shows
+the discard-for-Fame/Influence option as reference text but tracks no Fame or reward state (ADR-0006);
+the player takes it themselves.
+_Interim_: for now a drawn reward token uses the **same discard-on-draw machinery as enemies**, so
+"spend" is a pure memory aid with no pile effect. Making held-vs-spent pile-correct (a held token out
+of both piles until spent) is issue #251, which fixes enemies, ruins, and reward tokens centrally.
+_Avoid_: Treating a faction reward token like an enemy draw (its lifecycle is draw → hold → spend);
+assuming it is scored (it isn't — #190 was closed); the bare name "Faction Token" (prefer "Faction
+Reward Token" to distinguish it from a faction's *enemy* tokens, which mix into the colour piles)
 
 **Summon Draw**:
 The extra **Token Pile** draw an enemy with the Summon ability forces: a token drawn *at the start of the Block phase* (the brown pile for every base-game summoner, but the summoned pile is recorded per-token in the catalogue rather than assumed, since possessed/expansion summoners can draw other colours), which replaces the summoner for the Block and Damage Assigning phases and is always discarded afterward, never yielding Fame or a faction token (rulebook p.9; Apocalypse Dragon p.10). In the **Enemy Picker** it's an explicit action on the drawn enemy rather than an automatic part of the reveal, because the player commits to the fight before legally knowing what gets summoned — auto-drawing would leak that. The summoned token fights with **its own** stats *and its own offensive abilities* (a summoned Brutal token attacks Brutally) — the summoner lends only the fight slot, not its abilities. When a **Possessed Enemy**'s topmost attack is itself a Summon, the possessed token's Attack delta applies to *this* token instead of the summoner, and is applied at the moment it's drawn (not yet implemented - possessed enemies are #189).
@@ -59,7 +78,7 @@ A summoned child is **ephemeral**, unlike every other **Draw Log** entry: it isn
 _Avoid_: Drawing the summoned token at reveal time; treating a child like a normal Draw Log entry (it has no independent Defeat state)
 
 **Token Set**:
-The **Enemy Picker**'s per-game choice of which expansions' tokens make up its **Token Pile**s — a setup decision (a scenario may dictate it), not a statement about what the player owns. Changing it necessarily rebuilds every pile and clears the **Draw Log**, so edits are staged in the screen's config section and committed by one "Apply & Reset" action rather than taking effect per checkbox. Each entry is one `Expansion` value; note **Shades of Tezla contributes two** — its Elementalist and Dark Crusader factions are separately-tickable sets that mix into the green/brown/red piles (the only Shades mode the single-axis Token Set can express; the faction-only/separate-pile scenarios are deferred to #189/#190 — see `docs/rules/enemy-tokens.md`'s Shades section). Distinct from `docs/context-scoring.md`'s **Settings**' eventual global expansion toggles — see that entry.
+The **Enemy Picker**'s per-game choice of which expansions' tokens make up its **Token Pile**s — a setup decision (a scenario may dictate it), not a statement about what the player owns. Changing it necessarily rebuilds every pile and clears the **Draw Log**, so edits are staged in the screen's config section and committed by one "Apply & Reset" action rather than taking effect per checkbox. Each entry is one `Expansion` value; note **Shades of Tezla contributes two** — its Elementalist and Dark Crusader factions are separately-tickable sets that mix into the green/brown/red piles (the only Shades *enemy* mode the single-axis Token Set can express; the faction-only/separate-enemy-pile scenarios remain deferred — see `docs/rules/enemy-tokens.md`'s Shades section). Each faction toggle *also* now surfaces that faction's **Faction Reward Token** pile (issue #252), and the single Apocalypse Dragon toggle surfaces both AD reward piles — so ticking a faction brings in both its mixed-in enemies and its reward pile. Distinct from `docs/context-scoring.md`'s **Settings**' eventual global expansion toggles — see that entry.
 _Avoid_: Expansion settings, owned expansions (that's **Settings**' question, deliberately kept separate)
 
 **Draw with Replacement**:

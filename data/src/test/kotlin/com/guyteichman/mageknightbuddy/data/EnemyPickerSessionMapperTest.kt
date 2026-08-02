@@ -5,6 +5,7 @@ import com.guyteichman.mageknightbuddy.domain.EnemyAttack
 import com.guyteichman.mageknightbuddy.domain.EnemyPickerSession
 import com.guyteichman.mageknightbuddy.domain.EnemyToken
 import com.guyteichman.mageknightbuddy.domain.Expansion
+import com.guyteichman.mageknightbuddy.domain.FactionRewardToken
 import com.guyteichman.mageknightbuddy.domain.TokenPile
 import com.guyteichman.mageknightbuddy.domain.TokenPileId
 import kotlin.test.Test
@@ -18,6 +19,9 @@ class EnemyPickerSessionMapperTest {
     private val greenA = EnemyToken(id = "orc_a", name = "Orc A", pile = TokenPileId.GREEN, expansion = Expansion.BASE, copies = 2, armor = 3, fame = 2, attacks = listOf(EnemyAttack(4)))
     private val greenB = EnemyToken(id = "orc_b", name = "Orc B", pile = TokenPileId.GREEN, expansion = Expansion.BASE, copies = 1, armor = 4, fame = 3, attacks = listOf(EnemyAttack(3)))
     private val catalogue = listOf(greenA, greenB)
+
+    private val rewardElem = FactionRewardToken(id = "reward_elem_a", expansion = Expansion.SHADES_OF_TEZLA_ELEMENTALIST, pile = TokenPileId.ELEMENTALIST_REWARDS, name = "Elem A", effectText = "Heal 1.", copies = 2)
+    private val factionRewardCatalogue = listOf(rewardElem)
 
     @Test
     fun `toEntity then toDomain round-trips a session with drawn and defeated log entries`() {
@@ -91,6 +95,34 @@ class EnemyPickerSessionMapperTest {
         // The child's parentIndex specifically, called out on its own since it's the new field.
         assertEquals(0, roundTripped.drawLog[1].parentIndex)
         assertEquals(null, roundTripped.drawLog[0].parentIndex)
+    }
+
+    @Test
+    fun `toEntity then toDomain round-trips a session that holds a drawn faction reward token`() {
+        // A faction reward pile (issue #252) is just another TokenPileId, so the generic pile-map
+        // mapper should carry it with no special-casing - this proves it does.
+        val session = EnemyPickerSession.start(
+            catalogue,
+            tokenSet = setOf(Expansion.BASE, Expansion.SHADES_OF_TEZLA_ELEMENTALIST),
+            shuffle = noShuffle,
+            factionRewardCatalogue = factionRewardCatalogue,
+        ).draw(mapOf(TokenPileId.ELEMENTALIST_REWARDS to 1), batchId = 8L, shuffle = noShuffle)
+
+        val roundTripped = session.toEntity().toDomain()
+
+        assertEquals(session, roundTripped)
+
+        // Independent ground truth (reward pile is [reward_elem_a, reward_elem_a] under identity
+        // shuffle): one draw moves the top copy to the discard, leaving the other in the draw pile.
+        assertEquals(
+            TokenPile(drawPile = listOf("reward_elem_a"), discardPile = listOf("reward_elem_a")),
+            roundTripped.piles.getValue(TokenPileId.ELEMENTALIST_REWARDS),
+        )
+        assertEquals(
+            DrawLogEntry(tokenId = "reward_elem_a", pile = TokenPileId.ELEMENTALIST_REWARDS, batchId = 8L),
+            roundTripped.drawLog.single(),
+        )
+        assertTrue(Expansion.SHADES_OF_TEZLA_ELEMENTALIST in roundTripped.tokenSet)
     }
 
     @Test
