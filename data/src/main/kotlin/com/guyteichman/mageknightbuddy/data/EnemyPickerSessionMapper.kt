@@ -19,6 +19,13 @@ import kotlinx.serialization.json.Json
 // is the enum's value list; `find` returns null for a name no longer present.
 private fun expansionOrNull(name: String): Expansion? = Expansion.entries.find { it.name == name }
 
+// The same tolerance for pile ids: a persisted pile map can name a TokenPileId this build doesn't
+// have - e.g. a session saved by a build with the Apocalypse Dragon POSSESSED pile (or a concurrent
+// faction branch's reward piles) then opened by one without it. A bare valueOf would throw and crash
+// the whole restore (cf. the #194 migration crash-loop, and expansionOrNull above), so an unknown
+// pile is dropped instead, keeping every pile this build still understands.
+private fun tokenPileIdOrNull(name: String): TokenPileId? = TokenPileId.entries.find { it.name == name }
+
 private fun TokenPile.toDto(): TokenPileDto = TokenPileDto(drawPile = drawPile, discardPile = discardPile)
 private fun TokenPileDto.toDomain(): TokenPile = TokenPile(drawPile = drawPile, discardPile = discardPile)
 
@@ -35,7 +42,10 @@ private fun Map<TokenPileId, TokenPile>.toJson(): String =
 
 private fun String.toPileMap(): Map<TokenPileId, TokenPile> =
     Json.decodeFromString<Map<String, TokenPileDto>>(this)
-        .entries.associate { (name, dto) -> TokenPileId.valueOf(name) to dto.toDomain() }
+        // mapNotNull drops any pile whose id this build no longer knows (see tokenPileIdOrNull),
+        // rather than crashing the whole restore on the first unknown key.
+        .entries.mapNotNull { (name, dto) -> tokenPileIdOrNull(name)?.let { it to dto.toDomain() } }
+        .toMap()
 
 /**
  * Converts a domain session into the Room row that persists it, ready for

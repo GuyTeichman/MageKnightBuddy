@@ -188,6 +188,32 @@ class EnemyPickerSessionMapperTest {
     }
 
     @Test
+    fun `toDomain drops an unknown pile-map key instead of crashing`() {
+        // A session can be saved by a build whose TokenPileId set differs from this one's - a pile a
+        // later refactor removed or renamed, or a newer build's pile (as the POSSESSED / faction
+        // reward piles are to a build predating them) opened by an older one. A bare
+        // TokenPileId.valueOf would throw and crash the whole load (cf. the #194 migration crash-loop),
+        // so an unknown pile key is dropped. Built by hand with a name no current enum value matches,
+        // since the live enum can't produce a stale key.
+        val entity = EnemyPickerSessionEntity(
+            drawWithReplacement = false,
+            tokenSetJson = """["BASE"]""",
+            pilesJson = """{"GREEN":{"drawPile":["orc_a"],"discardPile":[]},"REMOVED_LEGACY_PILE":{"drawPile":["x"],"discardPile":[]}}""",
+            drawLogJson = "[]",
+            updatedAt = 1L,
+        )
+
+        val restored = entity.toDomain()
+
+        // The known pile survives intact; the stale one is simply absent (not a crash).
+        assertEquals(setOf(TokenPileId.GREEN), restored.piles.keys)
+        assertEquals(
+            TokenPile(drawPile = listOf("orc_a"), discardPile = emptyList()),
+            restored.piles.getValue(TokenPileId.GREEN),
+        )
+    }
+
+    @Test
     fun `toEntity stamps the given updatedAt onto the entity`() {
         val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
 
