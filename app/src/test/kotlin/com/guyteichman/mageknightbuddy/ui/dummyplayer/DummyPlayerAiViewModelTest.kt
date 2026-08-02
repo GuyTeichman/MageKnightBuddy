@@ -11,6 +11,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
@@ -188,5 +189,88 @@ class DummyPlayerAiViewModelTest {
         assertTrue(viewModel.session?.tacticState?.dummyPick in 1..6)
         assertNull(viewModel.session?.tacticState?.playerPick)
         assertEquals(viewModel.session, repository.restore())
+    }
+
+    @Test
+    fun `undo restores the exact session from before the last action and autosaves it`() = runTest {
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        // A 3-card RED deck: GOLDYX holds 0 RED crystals (see STARTING_CRYSTAL_DOTS), so the turn's
+        // 3rd card (RED) triggers no chain - one playTurn() drains the deck to empty deterministically.
+        val entry = DummyPlayerSession.start(
+            Knight.GOLDYX,
+            deckOrder = List(3) { CardIdentity.SingleColor(CardColor.RED) },
+        )
+        repository.save(entry)
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.playTurn()
+        // Sanity-check the action actually happened before undoing it, so this test can tell
+        // "undo reverted a real change" apart from "nothing ever changed".
+        assertEquals(emptyList(), viewModel.session?.deckOrder)
+
+        viewModel.undo()
+
+        // The whole session snapshot is restored - deck, discard, and the appended TurnPlayed log
+        // entry all revert together, since undo pops the pre-action object rather than reversing
+        // fields one by one. Comparing against `entry` asserts every field at once.
+        assertEquals(entry, viewModel.session)
+        // Write-through: Room now holds the reverted state too, so navigating away and back would
+        // not resurrect the undone turn (issue #62's autosave interaction).
+        assertEquals(entry, repository.restore())
+    }
+
+    @Test
+    fun `canUndo is false until a mutation happens, then true`() = runTest {
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        repository.save(DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardIdentity.SingleColor(CardColor.RED))))
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.canUndo)
+
+        viewModel.playTurn()
+
+        assertTrue(viewModel.canUndo)
+    }
+
+    @Test
+    fun `undo walks back through the full stack of actions to the entry state`() = runTest {
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        // 6 RED cards = two no-chain turns (see the single-undo test's note on why RED never chains
+        // for GOLDYX): turn 1 leaves 3, turn 2 leaves 0.
+        val entry = DummyPlayerSession.start(
+            Knight.GOLDYX,
+            deckOrder = List(6) { CardIdentity.SingleColor(CardColor.RED) },
+        )
+        repository.save(entry)
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.playTurn()
+        viewModel.playTurn()
+        assertEquals(0, viewModel.session?.deckOrder?.size)
+
+        viewModel.undo()
+        assertEquals(3, viewModel.session?.deckOrder?.size)
+
+        viewModel.undo()
+        assertEquals(entry, viewModel.session)
+        // Back at the entry state, there's nothing left to revert.
+        assertFalse(viewModel.canUndo)
+    }
+
+    @Test
+    fun `undo does nothing when there is no prior action to revert`() = runTest {
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        val entry = DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardIdentity.SingleColor(CardColor.RED)))
+        repository.save(entry)
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.undo()
+
+        assertEquals(entry, viewModel.session)
+        assertFalse(viewModel.canUndo)
     }
 }

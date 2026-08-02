@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
@@ -613,13 +614,25 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
             )
         },
         bottomBar = {
-            // Bottom action row instead of a Scaffold-managed bottomBar surface, since only the
-            // two buttons need it and Row + padding is simpler than a full BottomAppBar here.
+            // Bottom action row instead of a Scaffold-managed bottomBar surface, since only these
+            // controls need it and Row + padding is simpler than a full BottomAppBar here.
             if (session != null) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // Undo (issue #62): icon-only so the two primary verbs keep their width - it's a
+                    // misclick-recovery utility, not a peer game action. Disabled when there's
+                    // nothing to revert (right after entering the screen) or a mutation is in flight.
+                    // No confirmation: undo restores the exact prior snapshot, so there's no data
+                    // loss to warn about.
+                    IconButton(
+                        onClick = { scope.launch { viewModel.undo() } },
+                        enabled = viewModel.canUndo && !viewModel.isBusy,
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo")
+                    }
                     Button(
                         onClick = { scope.launch { viewModel.playTurn() } },
                         enabled = !session.roundEnded && !viewModel.isBusy && !needsTacticPick,
