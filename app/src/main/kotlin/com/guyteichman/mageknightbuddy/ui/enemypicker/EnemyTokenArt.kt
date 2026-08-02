@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -70,30 +72,37 @@ private fun loadTokenBitmap(context: Context, id: String): ImageBitmap? = try {
 /**
  * Renders a [TokenPileId]'s face-down back art at [size] (issue #198). Round enemy piles are clipped
  * to a circle same as [EnemyTokenFace] - their source crop is a circle centered on a square, so
- * clipping just trims the square's corners. The **RUIN pile is the exception**: ruins are hexagonal,
- * so their back is a transparent-PNG hexagon (like [RuinTokenFace]) and gets **no** clip - the alpha
- * is the shape. Falls back to a colored disc with the pile's name if that pile's back art isn't
- * bundled yet, the same graceful-degradation pattern as [EnemyTokenFace]'s [TokenTextFallback].
+ * clipping just trims the square's corners. Two exceptions: the **RUIN pile**'s back is a transparent-
+ * PNG hexagon (like [RuinTokenFace]) and gets **no** clip - the alpha is the shape; and the four
+ * **faction reward piles** (issue #252) keep their square tile art - clipped to the lightly-rounded
+ * [RewardTokenShape] with a thin black [RewardTokenBorder] outline (matching the reward faces / ruin
+ * art), never a circle. Falls back to a colored shape with the pile's name if that pile's back art
+ * isn't bundled yet, the same graceful-degradation pattern as [EnemyTokenFace]'s [TokenTextFallback].
  */
 @Composable
 internal fun PileBackFace(pileId: TokenPileId, size: Dp = 96.dp) {
     val context = LocalContext.current
     val bitmap = remember(pileId) { loadPileBackBitmap(context, pileId) }
-    // The RUIN back carries its own hexagon alpha; every other pile's back is a round disc.
+    // RUIN carries its own hexagon alpha; reward piles are square tiles; every other pile is a round disc.
     val isHex = pileId == TokenPileId.RUIN
+    val isReward = pileId.isFactionReward
 
     if (bitmap != null) {
-        Image(
-            bitmap = bitmap,
-            contentDescription = pileId.displayName(),
-            modifier = if (isHex) Modifier.size(size) else Modifier.size(size).clip(CircleShape),
-        )
+        val artModifier = when {
+            isHex -> Modifier.size(size)
+            isReward -> Modifier.size(size).clip(RewardTokenShape).border(RewardTokenBorder, Color.Black, RewardTokenShape)
+            else -> Modifier.size(size).clip(CircleShape)
+        }
+        Image(bitmap = bitmap, contentDescription = pileId.displayName(), modifier = artModifier)
     } else {
+        // A reward pile's fallback is a square tile with the same black outline; others a round disc.
+        val fallbackShape = if (isReward) RewardTokenShape else CircleShape
         Box(
             modifier = Modifier
                 .size(size)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .clip(fallbackShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .let { if (isReward) it.border(RewardTokenBorder, Color.Black, RewardTokenShape) else it },
             contentAlignment = Alignment.Center,
         ) {
             Text(

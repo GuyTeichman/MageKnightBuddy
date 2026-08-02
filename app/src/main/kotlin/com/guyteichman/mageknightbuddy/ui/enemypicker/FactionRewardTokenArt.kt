@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -16,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -45,8 +47,9 @@ internal fun FactionRewardTokenFace(token: FactionRewardToken, size: Dp = 96.dp)
         Image(
             bitmap = bitmap,
             contentDescription = token.name,
-            // Rounded rectangle, not a circle: the tile art spans the full square.
-            modifier = Modifier.size(size).clip(RoundedCornerShape(REWARD_CORNER)),
+            // A square tile (lightly rounded), never a circle - the printed art fills the square - with
+            // a thin black outline for consistency with the ruin art's own outline.
+            modifier = Modifier.size(size).clip(RewardTokenShape).border(RewardTokenBorder, Color.Black, RewardTokenShape),
         )
     } else {
         RewardTextFallback(token = token, size = size)
@@ -68,8 +71,9 @@ private fun RewardTextFallback(token: FactionRewardToken, size: Dp) {
     Box(
         modifier = Modifier
             .size(size)
-            .clip(RoundedCornerShape(REWARD_CORNER))
-            .background(MaterialTheme.colorScheme.secondaryContainer),
+            .clip(RewardTokenShape)
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .border(RewardTokenBorder, Color.Black, RewardTokenShape),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -83,5 +87,12 @@ private fun RewardTextFallback(token: FactionRewardToken, size: Dp) {
     }
 }
 
-/** Corner rounding for a reward token's square face tile. */
-private val REWARD_CORNER = 10.dp
+/**
+ * Shape shared by a faction reward token's square face tile *and* its pile back (see [PileBackFace] in
+ * EnemyTokenArt.kt): a lightly-rounded **square**, never a circle, so the tile reads square like the
+ * printed art. `internal` so the pile-back renderer in the same package can reuse it for consistency.
+ */
+internal val RewardTokenShape = RoundedCornerShape(8.dp)
+
+/** Width of the thin black outline drawn around reward token art (face + back), matching the ruin art's outline. */
+internal val RewardTokenBorder = 1.dp
