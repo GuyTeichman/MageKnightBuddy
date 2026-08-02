@@ -17,9 +17,10 @@ import kotlinx.serialization.Serializable
  * - Reusing [Expansion] would couple the Sites tab to the Token Set's meaning ("which tokens make up
  *   this game's piles"), which is unrelated.
  *
- * [APOCALYPSE_DRAGON] is intentionally absent for now: its sites are deferred to issue #238, and a
- * value with no entries would break the catalogue-validation test's exact per-expansion counts. Add
- * it when those sites are transcribed.
+ * [APOCALYPSE_DRAGON] carries the three AD Site Description cards (Oasis, Ziggurat, Pyramid) added in
+ * issue #238 - transcribed in `docs/rules/sites.md` from the AD rulebook, since the Quick Reference
+ * Sheet predates that expansion. AD adds no other in-scope map-features: "Destroyed Sites" is a
+ * token/mechanic rather than a Site Description card and is excluded (see `docs/rules/sites.md`).
  *
  * `@Serializable` so it can tag each [Site] in the JSON catalogue (ADR-0007).
  */
@@ -28,4 +29,5 @@ enum class SiteExpansion {
     BASE,
     LOST_LEGION,
     SHADES_OF_TEZLA,
+    APOCALYPSE_DRAGON,
 }

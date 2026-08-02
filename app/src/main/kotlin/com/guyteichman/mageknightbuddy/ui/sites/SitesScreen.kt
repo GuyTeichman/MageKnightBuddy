@@ -247,4 +247,5 @@ private fun SiteExpansion.badgeLabel(): String = when (this) {
     SiteExpansion.BASE -> "Base"
     SiteExpansion.LOST_LEGION -> "Lost Legion"
     SiteExpansion.SHADES_OF_TEZLA -> "Shades of Tezla"
+    SiteExpansion.APOCALYPSE_DRAGON -> "Apocalypse Dragon"
 }

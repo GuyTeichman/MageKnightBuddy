@@ -18,12 +18,14 @@ the tab (a **Site** models a card's *content*, not a stack you draw from)
 One transcribed map-feature — a static record modeling a physical **Site Description card** (`Site`
 in `domain/`, loaded from `sites.json` via the **Site Catalogue**). Carries an `id`, `name`,
 **Site Category**, **Site Expansion**, an ordered list of **Site Section**s, and an optional `art`
-filename. Covers three loosely-different kinds of thing the Quick Reference Sheet groups together:
+filename. Covers several loosely-different kinds of thing the source cards group together:
 true sites (Keep, Village, Dungeon, …), the two rampaging enemies (Marauding Orcs, Draconum), the
-Walls terrain feature, and the Shades of Tezla location tiles — see `docs/rules/sites.md` for the
-full transcription with rulebook citations. The **Enemy Token Abilities** reference on the Quick
-Reference Sheet is deliberately *not* a Site: that lives in the Enemy Picker
-(`docs/rules/enemy-tokens.md`), and duplicating it would invite drift.
+Walls terrain feature, the Shades of Tezla location tiles, and the three Apocalypse Dragon sites
+(Oasis, Ziggurat, Pyramid) — see `docs/rules/sites.md` for the full transcription with rulebook
+citations. Two references are deliberately *not* Sites: the **Enemy Token Abilities** block (which
+lives in the Enemy Picker, `docs/rules/enemy-tokens.md` — duplicating it would invite drift) and the
+Apocalypse Dragon **Destroyed Site** token/mechanic (a token placed on wiped-out sites, not a Site
+Description card).
 _Avoid_: Location (too broad — a rampaging enemy or a wall isn't a location you occupy); confusing a
 `Site` with the Enemy Picker's `EnemyToken` (different domain, different tab)
 
@@ -46,11 +48,12 @@ _Avoid_: treating a category as rules-authoritative (it's an app grouping); "typ
 
 **Site Expansion**:
 Which *Mage Knight* product a **Site** first appeared in (`SiteExpansion`: `BASE`, `LOST_LEGION`,
-`SHADES_OF_TEZLA`). Deliberately a **separate enum from the Enemy Picker's `Expansion`**: sites never
-split Shades of Tezla by faction (`Expansion` does, because *tokens* come in two factions), no site
-comes from Krang (its only addition is the Flip Back ability), and coupling the Sites tab to the
-**Token Set**'s meaning would be wrong. Apocalypse Dragon sites — and the matching enum value — are
-deferred to Sub-issue F (issue #238). Verified per-entry against the rulebooks in `docs/rules/sites.md`.
+`SHADES_OF_TEZLA`, `APOCALYPSE_DRAGON`). Deliberately a **separate enum from the Enemy Picker's
+`Expansion`**: sites never split Shades of Tezla by faction (`Expansion` does, because *tokens* come
+in two factions), no site comes from Krang (its only addition is the Flip Back ability), and coupling
+the Sites tab to the **Token Set**'s meaning would be wrong. The three Apocalypse Dragon sites (Oasis,
+Ziggurat, Pyramid) added the `APOCALYPSE_DRAGON` value in issue #238. Verified per-entry against the
+rulebooks in `docs/rules/sites.md`.
 _Avoid_: reusing `Expansion` (`docs/context-enemy-picker.md`) for sites — different axis, different
 values
 

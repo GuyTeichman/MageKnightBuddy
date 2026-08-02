@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
  */
 class SiteCatalogueTest {
 
-    // The 21 in-scope map-features, grouped by expansion, per docs/rules/sites.md's attribution
+    // The 24 in-scope map-features, grouped by expansion, per docs/rules/sites.md's attribution
     // table. Asserted as name sets so a site tagged with the wrong expansion is caught, not just a
     // wrong grand total.
     private val baseNames = setOf(
@@ -23,6 +23,7 @@ class SiteCatalogueTest {
     )
     private val lostLegionNames = setOf("Walls", "Deep Mines", "Refugee Camp", "Maze", "Labyrinth")
     private val shadesNames = setOf("Hidden Valley Tile", "Necropolis Tile", "Graveyard Tile")
+    private val apocalypseNames = setOf("Oasis", "Ziggurat", "Pyramid")
 
     // The app-side category grouping, per docs/rules/sites.md's "Category taxonomy" table. Asserted
     // per category so a mis-categorised site is caught.
@@ -31,8 +32,9 @@ class SiteCatalogueTest {
         SiteCategory.FORTIFIED_SITE to setOf("Keep", "Mage Tower"),
         SiteCategory.ADVENTURE_SITE to setOf(
             "Monster Den", "Spawning Grounds", "Dungeon", "Tomb", "Ancient Ruins", "Maze", "Labyrinth",
+            "Ziggurat", "Pyramid",
         ),
-        SiteCategory.SETTLEMENT to setOf("Village", "Monastery", "Refugee Camp"),
+        SiteCategory.SETTLEMENT to setOf("Village", "Monastery", "Refugee Camp", "Oasis"),
         SiteCategory.RESOURCE_SITE to setOf("Crystal Mines", "Deep Mines", "Magical Glade"),
         SiteCategory.SPECIAL_TILE to setOf("Hidden Valley Tile", "Necropolis Tile", "Graveyard Tile"),
         SiteCategory.TERRAIN_FEATURE to setOf("Walls"),
@@ -79,10 +81,10 @@ class SiteCatalogueTest {
     // --- Component counts & rosters (the "count matches the physical component count" check)
 
     @Test
-    fun `the catalogue has exactly the 21 in-scope map-features`() {
-        assertEquals(21, SiteCatalogue.sites.size, "expected 21 in-scope sites")
+    fun `the catalogue has exactly the 24 in-scope map-features`() {
+        assertEquals(24, SiteCatalogue.sites.size, "expected 24 in-scope sites")
         assertEquals(
-            baseNames + lostLegionNames + shadesNames,
+            baseNames + lostLegionNames + shadesNames + apocalypseNames,
             SiteCatalogue.sites.map { it.name }.toSet(),
         )
     }
@@ -95,10 +97,15 @@ class SiteCatalogueTest {
         assertEquals(baseNames, namesIn(SiteExpansion.BASE))
         assertEquals(lostLegionNames, namesIn(SiteExpansion.LOST_LEGION))
         assertEquals(shadesNames, namesIn(SiteExpansion.SHADES_OF_TEZLA))
-        // Apocalypse Dragon sites are deferred (issue #238) - a site tagged with a not-yet-present
-        // expansion should fail loudly, not slip in.
+        assertEquals(apocalypseNames, namesIn(SiteExpansion.APOCALYPSE_DRAGON))
+        // A site tagged with an expansion we haven't rostered above should fail loudly, not slip in.
         assertEquals(
-            setOf(SiteExpansion.BASE, SiteExpansion.LOST_LEGION, SiteExpansion.SHADES_OF_TEZLA),
+            setOf(
+                SiteExpansion.BASE,
+                SiteExpansion.LOST_LEGION,
+                SiteExpansion.SHADES_OF_TEZLA,
+                SiteExpansion.APOCALYPSE_DRAGON,
+            ),
             SiteCatalogue.sites.map { it.expansion }.toSet(),
         )
     }
@@ -218,5 +225,51 @@ class SiteCatalogueTest {
         assertTrue("Eternal Night" in headingsOf("necropolis_tile"))
         assertTrue(bodyOf("necropolis_tile", "Imbued With Magic").contains("black mana"))
         assertTrue(bodyOf("graveyard_tile", "Movement").contains("terrain type"))
+    }
+
+    @Test
+    fun `Oasis is an Apocalypse Dragon settlement you interact at that grants Move 2 at the start of your turn`() {
+        val oasis = assertNotNull(SiteCatalogue.byId("oasis"))
+        assertEquals(SiteExpansion.APOCALYPSE_DRAGON, oasis.expansion)
+        assertEquals(SiteCategory.SETTLEMENT, oasis.category)
+        assertTrue(bodyOf("oasis", "Interaction").contains("recruit"), "Oasis interaction recruits Units")
+        // The Oasis's Magical-Glade-like twist: a start-of-turn Move bonus (physical reminder token
+        // reads "Gain +2 Move for starting on the Oasis Site").
+        assertTrue(bodyOf("oasis", "Revitalizing").contains("Move 2"), "Oasis grants Move 2 at start of turn")
+    }
+
+    @Test
+    fun `Ziggurat is a three-floor Apocalypse Dragon adventure site fighting green, purple, then brown enemies`() {
+        val ziggurat = assertNotNull(SiteCatalogue.byId("ziggurat"))
+        assertEquals(SiteExpansion.APOCALYPSE_DRAGON, ziggurat.expansion)
+        assertEquals(SiteCategory.ADVENTURE_SITE, ziggurat.category)
+        // Floor enemy colors, hand-read from the Ziggurat Site Description card (rulebook p.9).
+        val floors = bodyOf("ziggurat", "Floors")
+        assertTrue(
+            floors.contains("green") && floors.contains("purple") && floors.contains("brown"),
+            "Ziggurat floors fight green, purple, and brown enemies",
+        )
+        // Per-floor reward tiers (Floor 1 crystals / Floor 2 Spell / Floor 3 Artifact), card p.9.
+        val reward = bodyOf("ziggurat", "Reward")
+        assertTrue(reward.contains("Spell") && reward.contains("Artifact"), "Ziggurat rewards a Spell and an Artifact")
+    }
+
+    @Test
+    fun `Pyramid mirrors the Ziggurat but fights gray, white, and red enemies`() {
+        val pyramid = assertNotNull(SiteCatalogue.byId("pyramid"))
+        assertEquals(SiteExpansion.APOCALYPSE_DRAGON, pyramid.expansion)
+        assertEquals(SiteCategory.ADVENTURE_SITE, pyramid.category)
+        // Floor enemy colors from the rulebook p.8 floor->color table (Pyramid column).
+        val floors = bodyOf("pyramid", "Floors")
+        assertTrue(
+            floors.contains("gray") && floors.contains("white") && floors.contains("red"),
+            "Pyramid floors fight gray, white, and red enemies",
+        )
+        // The two sites share floor structure; the enemy colors are what distinguish them, so the
+        // Ziggurat's purple/brown enemies must not leak onto the Pyramid.
+        assertTrue(
+            !floors.contains("purple") && !floors.contains("brown"),
+            "Pyramid must not reuse the Ziggurat's purple/brown enemies",
+        )
     }
 }
