@@ -41,4 +41,14 @@ class PillContentColorTest {
             )
         }
     }
+
+    // These two grays straddle the ~0.179 crossover the helper uses (gray 0x757575 has relative
+    // luminance ~0.178, gray 0x777777 ~0.185), so together they actually pin *where* the flip
+    // happens - without them the light/dark fills above are far enough from the boundary that a
+    // badly-moved threshold anywhere in a wide band would still pass.
+    @Test
+    fun `fill just below the crossover gets light ink, just above gets dark ink`() {
+        assertTrue(pillContentColor(Color(0xFF757575)).luminance() > 0.7f, "just below crossover -> light ink")
+        assertTrue(pillContentColor(Color(0xFF777777)).luminance() < 0.3f, "just above crossover -> dark ink")
+    }
 }
