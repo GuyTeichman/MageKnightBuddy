@@ -257,7 +257,8 @@
     "sections": [
       { "heading": "Interaction", "body": "During interaction at an oasis, you may recruit Units that can be recruited at villages, buy healing, and buy and sell mana crystals." },
       { "heading": "Revitalizing", "body": "An oasis also revitalizes you; if you start your turn on an oasis, you get Move 2." }
-    ]
+    ],
+    "art": "oasis.jpg"
   },
   {
     "id": "ziggurat",
@@ -271,7 +272,8 @@
       { "heading": "Reward", "body": "If you defeat the enemy, claim that floor's reward - Floor 1: two random mana crystals; Floor 2: a Spell; Floor 3: an Artifact - and mark that floor with your Shield token on the corresponding number. Because you defeated an apocalypse possessed enemy, you also gain an Apocalypse Faction token. If you do not defeat the enemy, discard the tokens and the action ends with no reward." },
       { "heading": "Partially Conquered", "body": "You may not enter the same ziggurat again once you have conquered a floor of it. Another player may enter, but may not leave on a floor already marked, and may not ascend to a floor if that floor and all floors after it are already marked. If all three floors are marked, no one may enter it again." },
       { "heading": "Final Scoring", "body": "During final scoring, each ziggurat provides 2 Fame (toward the Greatest Adventurer title) for anyone who has a Shield token on it." }
-    ]
+    ],
+    "art": "ziggurat.jpg"
   },
   {
     "id": "pyramid",
@@ -285,6 +287,7 @@
       { "heading": "Reward", "body": "If you defeat the enemy, claim that floor's reward - Floor 1: two random mana crystals; Floor 2: a Spell; Floor 3: an Artifact - and mark that floor with your Shield token on the corresponding number. Because you defeated an apocalypse possessed enemy, you also gain an Apocalypse Faction token. If you do not defeat the enemy, discard the tokens and the action ends with no reward." },
       { "heading": "Partially Conquered", "body": "You may not enter the same pyramid again once you have conquered a floor of it. Another player may enter, but may not leave on a floor already marked, and may not ascend to a floor if that floor and all floors after it are already marked. If all three floors are marked, no one may enter it again." },
       { "heading": "Final Scoring", "body": "During final scoring, each pyramid provides 2 Fame (toward the Greatest Adventurer title) for anyone who has a Shield token on it." }
-    ]
+    ],
+    "art": "pyramid.jpg"
   }
 ]

@@ -14,8 +14,8 @@ every referenced file is actually bundled and that no bundled image is unreferen
 
 ## Present so far
 
-**All 21** in-scope sites, including `graveyard_tile` (which had no distinct art before). Apocalypse
-Dragon sites are out of scope here (issue #238).
+**All 24** in-scope sites, including `graveyard_tile` (which had no distinct art before) and the
+three Apocalypse Dragon sites `oasis` / `ziggurat` / `pyramid` (issue #261).
 
 ## Source & provenance
 
@@ -34,9 +34,26 @@ the tracked PDF):
 This replaces an earlier approach that cropped the site illustrations out of a Tabletop Simulator
 mod's Site Description cards: those crops carried the card's parchment texture and stray rules-icon
 bleed, framed each site inconsistently, and left `graveyard_tile` without distinct art. The
-quick-reference icons are purpose-made, uniform in style and framing, and cover all 21 sites in one
-pass. They are small (~150 px source), which is why the detail header shows each at a modest framed
-size rather than full-bleed.
+quick-reference icons are purpose-made, uniform in style and framing, and cover all 21 base/expansion
+sites in one pass. They are small (~150 px source), which is why the detail header shows each at a
+modest framed size rather than full-bleed.
+
+### Apocalypse Dragon sites (`oasis`, `ziggurat`, `pyramid`)
+
+The Quick Reference Sheet predates the Apocalypse Dragon, so its three sites have no QRS icon. Their
+art instead comes from the **Apocalypse Dragon rulebook** (`Mage-Knight-The-Apocalypse-Dragon---Rulebook-WEB.pdf`,
+also © WizKids), which carries the same painted site vignettes. Same *final* style as the QRS icons
+(a centred vignette on a warm cream square, 300×300 JPEG q90) via a slightly different extraction, because
+the AD PDF stores these as JPEG2000 images with a separate soft-mask rather than plain JPEGs:
+
+1. `pdfimages -png` (p.8 "New Map Features") pulls each vignette plus its soft-mask; the three site
+   images are the ~175×150 RGB ones (Oasis pond, Ziggurat, Pyramid).
+2. Each vignette is composited over its soft-mask (for the clean feathered edge), trimmed to content,
+   scaled to ~85% of the tile (matching the base icons' fill), and centred on a cream square
+   (`#F6E3BE`, the base set's average fill) → 300×300 JPEG q90.
+
+The TTS mod also has these three as map tiles, but — exactly as the base pass found — the rulebook
+vignettes frame more consistently with the rest of the set than a mod-tile crop would.
 
 ## Licensing
 
