@@ -60,8 +60,15 @@ import androidx.room.RoomDatabase
     // and VolkareSessionEntity, plus a scenario column to the first two (VolkareSessionEntity
     // already had its own, Return/Quest-only, scenario column) - for the Tactic Card draft
     // (issue #219, part of #179) - no hand-written migration, fallbackToDestructiveMigration is
-    // fine pre-release, same as every prior bump.
-    version = 13,
+    // fine pre-release, same as every prior bump. Bumped 13 -> 14: the Enemy Picker's pile lifecycle
+    // became pile-correct (issue #251) - EnemyPickerSessionEntity's drawLogJson gained a
+    // DrawLogEntryDto.ephemeral field, and its pilesJson `discardPile` now means *defeated-only* (an
+    // undefeated drawn token is held on the board, out of both piles) rather than every drawn token.
+    // The columns didn't change, but the JSON *semantics* did, so an old row would be misinterpreted
+    // (its discarded-on-draw tokens would be re-drawable) - a destructive wipe avoids that, the same
+    // "JSON content/semantics changed" reasoning as the 3 -> 4 / 4 -> 5 / 10 -> 11 bumps, and
+    // fallbackToDestructiveMigration is fine pre-release as always.
+    version = 14,
     exportSchema = false,
 )
 abstract class MageKnightBuddyDatabase : RoomDatabase() {

@@ -126,11 +126,26 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
     var pendingReset by remember { mutableStateOf<(() -> Unit)?>(null) }
     // Whether the held-faction-rewards grid (issue #252) is open - the pinned Draw Log entry's target.
     var heldRewardsOpen by remember { mutableStateOf(false) }
+    // Set when an un-defeat was blocked (issue #251): the token has been reshuffled out of the discard
+    // and re-drawn, so it's in neither pile and can't be returned to the board without duplicating it.
+    var undefeatBlocked by remember { mutableStateOf(false) }
 
     if (session == null) {
         // Still restoring / creating the first session.
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
+    }
+
+    // Every Defeat / Spend toggle funnels through here so the one un-defeat guard lives in a single
+    // place (issue #251): un-defeating a token that's been reshuffled out of the discard and re-drawn
+    // (so it's in neither pile) would duplicate it, so instead of silently no-opping we warn. Defeats
+    // (and any un-defeat that can be honoured) go straight through to the ViewModel.
+    val requestSetDefeated: (Int, Boolean, String) -> Unit = { index, defeated, note ->
+        if (!defeated && !session.canUndefeat(index)) {
+            undefeatBlocked = true
+        } else {
+            scope.launch { viewModel.setDefeated(index, defeated, note) }
+        }
     }
 
     // Shared by the DrawBar's staged multi-pile draw and #198's per-card tap-to-draw-1 shortcut -
@@ -244,7 +259,7 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
             showDefeatToggle = true,
             currentChildOf = currentChildOf,
             onOpenDetail = { position -> zoom = ZoomState(grid.logIndices, position); summonGrid = null; summonZoom = null },
-            onToggleDefeated = { index, defeated -> scope.launch { viewModel.setDefeated(index, defeated) } },
+            onToggleDefeated = { index, defeated -> requestSetDefeated(index, defeated, "") },
             onDismiss = { gridState = null; zoom = null; summonGrid = null; summonZoom = null },
         )
     }
@@ -267,7 +282,7 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
             heldIndices = heldRewardIndices,
             log = session.drawLog,
             onOpenDetail = { index -> zoom = ZoomState(listOf(index), 0); summonGrid = null; summonZoom = null },
-            onSpend = { index -> scope.launch { viewModel.setDefeated(index, true) } },
+            onSpend = { index -> requestSetDefeated(index, true, "") },
             onDismiss = { heldRewardsOpen = false },
         )
     }
@@ -285,7 +300,7 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
                 token = reward,
                 entry = entry,
                 logIndex = state.logIndices[state.index],
-                onToggleSpent = { index, spent -> scope.launch { viewModel.setDefeated(index, spent) } },
+                onToggleSpent = { index, spent -> requestSetDefeated(index, spent, "") },
                 onDismiss = { zoom = null; summonGrid = null; summonZoom = null },
             )
         } else if (ruin != null) {
@@ -297,7 +312,7 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
                 enemyName = { childIndex -> TokenCatalogue.byId(session.drawLog[childIndex].tokenId)?.name ?: session.drawLog[childIndex].tokenId },
                 onDrawEnemies = onDrawRuinEnemies,
                 onViewEnemies = openRuinEnemies,
-                onToggleDefeated = { index, defeated -> scope.launch { viewModel.setDefeated(index, defeated) } },
+                onToggleDefeated = { index, defeated -> requestSetDefeated(index, defeated, "") },
                 onDismiss = { zoom = null; summonGrid = null; summonZoom = null },
             )
         } else {
@@ -306,7 +321,7 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
                 log = session.drawLog,
                 onNavigate = { newIndex -> zoom = state.copy(index = newIndex); summonGrid = null; summonZoom = null },
                 onShowInfo = { token -> infoToken = token },
-                onToggleDefeated = { index, defeated -> scope.launch { viewModel.setDefeated(index, defeated) } },
+                onToggleDefeated = { index, defeated -> requestSetDefeated(index, defeated, "") },
                 onSummon = onSummon,
                 onViewSummoned = onViewSummoned,
                 currentChildrenOf = { index -> session.currentChildrenOf(index) },
@@ -386,7 +401,7 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
         DefeatDialog(
             entry = session.drawLog[index],
             onSave = { defeated, note ->
-                scope.launch { viewModel.setDefeated(index, defeated, note) }
+                requestSetDefeated(index, defeated, note)
                 defeatDialogIndex = null
             },
             onDismiss = { defeatDialogIndex = null },
@@ -402,6 +417,17 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
                 TextButton(onClick = { action(); pendingReset = null }) { Text("Reset") }
             },
             dismissButton = { TextButton(onClick = { pendingReset = null }) { Text("Cancel") } },
+        )
+    }
+
+    // Shown when an un-defeat was blocked (issue #251) - see [requestSetDefeated]. Rare: the token has
+    // already cycled back into the pile and been re-drawn, so it can't be returned to the board.
+    if (undefeatBlocked) {
+        AlertDialog(
+            onDismissRequest = { undefeatBlocked = false },
+            title = { Text("Can't undo this defeat") },
+            text = { Text("This token has already been reshuffled back into its pile and drawn again, so it can no longer be returned to the board. A pile Reset clears this up.") },
+            confirmButton = { TextButton(onClick = { undefeatBlocked = false }) { Text("OK") } },
         )
     }
 }
@@ -473,6 +499,9 @@ private fun EnemyPickerContent(
                             modifier = Modifier.weight(1f),
                             pileId = pileId,
                             pile = pile,
+                            // Tokens drawn from this pile that are still on the board (issue #251) -
+                            // derived from the Draw Log, shown alongside the remaining-to-draw count.
+                            onBoard = session.onBoardCount(pileId),
                             withReplacement = session.drawWithReplacement,
                             quantity = quantities[pileId] ?: 0,
                             onQuantityChange = { quantities = quantities + (pileId to it) },
@@ -555,6 +584,8 @@ private fun PileCard(
     modifier: Modifier = Modifier,
     pileId: TokenPileId,
     pile: TokenPile,
+    // How many tokens drawn from this pile are still on the board (undefeated); see [onBoardCount].
+    onBoard: Int,
     withReplacement: Boolean,
     quantity: Int,
     onQuantityChange: (Int) -> Unit,
@@ -565,8 +596,10 @@ private fun PileCard(
     // drops the quantity stepper and keeps only the tap-to-draw-1 shortcut (issue #201).
     tapToDrawOnly: Boolean = false,
 ) {
-    val remaining = pile.drawPile.size
-    val drawn = pile.discardPile.size
+    // Everything drawable now or after a Replenish: the draw pile plus the discard (defeated tokens
+    // reshuffle back in). On-board tokens are held out and never re-drawable, so they aren't counted
+    // here (issue #251). "Nothing to draw" = both are empty (everything drawn is on the board).
+    val toDraw = pile.drawPile.size + pile.discardPile.size
 
     ElevatedCard(modifier = modifier) {
         Column(
@@ -586,10 +619,17 @@ private fun PileCard(
             Text(pileId.displayName(), style = MaterialTheme.typography.titleMedium)
             // The count line doubles as the "view draw pile" trigger (issue #231): primary-colored
             // and underlined so it reads as tappable, opening the pile-composition dialog. With
-            // replacement nothing depletes, so "drawn" would always be 0 - hide it and say so.
+            // replacement nothing depletes, so the counts are meaningless - hide them and say so.
+            // Otherwise it shows what's left to draw and, when any, how many are still on the board.
             Text(
-                text = if (withReplacement) "View pile · never depletes"
-                else "$remaining in pile · $drawn drawn",
+                text = if (withReplacement) {
+                    "View pile · never depletes"
+                } else {
+                    buildString {
+                        append(if (toDraw > 0) "$toDraw to draw" else "Nothing to draw")
+                        if (onBoard > 0) append(" · $onBoard on board")
+                    }
+                },
                 style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.Underline),
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
@@ -606,8 +646,8 @@ private fun PileCard(
                 QuantityStepper(
                     quantity = quantity,
                     onQuantityChange = onQuantityChange,
-                    // Without replacement, can't draw more than the whole pile (draw + discard) at once.
-                    max = if (withReplacement) MAX_BATCH else (remaining + drawn).coerceAtMost(MAX_BATCH),
+                    // Without replacement, can't draw more than what's left to draw (draw + discard).
+                    max = if (withReplacement) MAX_BATCH else toDraw.coerceAtMost(MAX_BATCH),
                 )
             }
         }
@@ -1610,8 +1650,13 @@ private fun PileContentsDialog(
             else -> TokenCatalogue.byId(id)?.name ?: id
         }
     }
-    // remember keyed on the draw pile so the grouping only recomputes when the pile actually changes.
-    val composition = remember(pile.drawPile) { composePile(pile.drawPile, nameOf) }
+    // What's left to draw is the draw pile *plus* the discard: defeated tokens reshuffle back on a
+    // Replenish, so they're still tokens you might face; only on-board tokens (in neither list) are
+    // out for good (issue #251). Shown unordered, so combining the two never reveals draw order.
+    // remember keyed on both lists so the grouping recomputes when either changes.
+    val composition = remember(pile.drawPile, pile.discardPile) {
+        composePile(pile.drawPile + pile.discardPile, nameOf)
+    }
     val title = if (withReplacement) "${pileId.displayName()} · full pile (${composition.total})"
     else "${pileId.displayName()} · ${composition.total} remaining"
 
@@ -1621,9 +1666,9 @@ private fun PileContentsDialog(
         title = { Text(title) },
         text = {
             if (composition.groups.isEmpty()) {
-                // With eager Replenish (issue #231) a live pile never actually empties; this only
-                // shows for a degenerate/restored empty pile.
-                Text("This pile is empty.")
+                // Empty draw pile *and* discard means every token drawn from this pile is still on
+                // the board - the pile is genuinely empty until one is defeated back into it (#251).
+                Text("Nothing left to draw — every token from this pile is on the board.")
             } else {
                 // Same adaptive grid the draw-result overview uses (D9), for a consistent look.
                 LazyVerticalGrid(
