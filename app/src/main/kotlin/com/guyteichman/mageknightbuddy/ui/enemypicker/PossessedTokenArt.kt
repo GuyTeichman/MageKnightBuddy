@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
@@ -34,10 +35,16 @@ import com.guyteichman.mageknightbuddy.domain.PossessedToken
  */
 @Composable
 internal fun PossessedEnemyFace(circular: EnemyToken, possessed: PossessedToken, size: Dp) {
-    // contentAlignment centres the smaller circular token over the possessed background disc.
-    Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.size(size)) {
+        // The possessed token fills the box; its baked PNG alpha is the (non-circular) void shape,
+        // with the delta icons down its left side.
         PossessedTokenFace(possessed = possessed, size = size)
-        EnemyTokenFace(token = circular, size = size * CIRCULAR_ON_POSSESSED_SCALE)
+        // The circular enemy is placed offset toward the right - the way it sits on the cardboard
+        // (rulebook p.7) - so the possessed token's left-side deltas stay visible rather than being
+        // covered. BiasAlignment(+bias, 0) shifts the child right of centre without a hard offset.
+        Box(modifier = Modifier.align(BiasAlignment(horizontalBias = ENEMY_RIGHT_BIAS, verticalBias = 0f))) {
+            EnemyTokenFace(token = circular, size = size * CIRCULAR_ON_POSSESSED_SCALE)
+        }
     }
 }
 
@@ -53,10 +60,12 @@ internal fun PossessedTokenFace(possessed: PossessedToken, size: Dp) {
     val bitmap = remember(possessed.id) { loadPossessedBitmap(context, possessed.id) }
 
     if (bitmap != null) {
+        // No clip - the PNG's baked soft-edged void alpha is the token's own (non-circular) shape,
+        // the same "the art's alpha is the silhouette" approach a ruin hexagon uses.
         Image(
             bitmap = bitmap,
             contentDescription = "Possessed token",
-            modifier = Modifier.size(size).clip(CircleShape),
+            modifier = Modifier.size(size),
         )
     } else {
         Box(
@@ -105,5 +114,10 @@ private fun loadPossessedBitmap(context: Context, id: String): ImageBitmap? {
     return null
 }
 
-/** How much of the possessed token's diameter the superimposed circular enemy covers (rulebook p.7 stacking). */
-private const val CIRCULAR_ON_POSSESSED_SCALE = 0.78f
+/** The superimposed circular enemy's size relative to the possessed token (rulebook p.7 stacking) -
+ *  smaller than the token so its left-side deltas remain visible around the offset enemy. */
+private const val CIRCULAR_ON_POSSESSED_SCALE = 0.58f
+
+/** Horizontal [BiasAlignment] bias for the superimposed enemy: > 0 shifts it right of centre so the
+ *  possessed token's delta icons (down the left side) aren't covered (rulebook p.7). */
+private const val ENEMY_RIGHT_BIAS = 0.6f
