@@ -1282,20 +1282,15 @@ private fun SummonedChildZoomDialog(
                     // If a *possessed* summoner drew this child, the possessed Attack delta applies to
                     // this token's topmost attack instead of the summoner's (rulebook p.7), so the
                     // number shown is the summed one.
-                    val summonDelta = summonDeltaFor(entry, log)
+                    // Only the summed number is shown, never the delta (the "no deltas alongside
+                    // sums" rule) - the possessed summoner's boost is already baked into the value.
+                    val summonDelta = summonDeltaFor(state.logIndices[state.index], log)
                     PossessedEnemy.withTopmostAttackDelta(token.attacks, summonDelta).forEach { attack ->
                         if (attack.isSummon) {
                             Text("Summons a ${attack.summons?.summonName() ?: "token"}")
                         } else {
                             Text("Attack ${attack.value} · ${attack.element.displayName()}")
                         }
-                    }
-                    if (summonDelta != 0) {
-                        Text(
-                            "Topmost attack modified by possession (%+d)".format(summonDelta),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.tertiary,
-                        )
                     }
                     if (token.offensiveAbilities.isNotEmpty()) {
                         Text(
@@ -2019,7 +2014,11 @@ private fun DrawLogEntry.possessedToken(): PossessedToken? = possessedTokenId?.l
  */
 private fun PossessedEnemyStats.statLine(): String {
     val armorText = if (elusiveArmor != null) "$armor/$elusiveArmor" else "$armor"
-    return "Armor $armorText · Fame $fame"
+    // Defend / Reputation are carried through from the circular enemy (a possessed Shades or Lost
+    // Legion enemy still prints them), mirroring EnemyToken.statLine().
+    val defendText = if (defend != null) " · Defend $defend" else ""
+    val reputationText = if (reputation != 0) " · Reputation %+d".format(reputation) else ""
+    return "Armor $armorText$defendText · Fame $fame$reputationText"
 }
 
 /**
@@ -2029,10 +2028,18 @@ private fun PossessedEnemyStats.statLine(): String {
  * zoom can apply it via [PossessedEnemy.withTopmostAttackDelta]. Returns 0 for any child whose parent
  * isn't a possessed summoner.
  */
-private fun summonDeltaFor(entry: DrawLogEntry, log: List<DrawLogEntry>): Int {
-    val parent = entry.parentIndex?.let { log.getOrNull(it) } ?: return 0
+private fun summonDeltaFor(entryIndex: Int, log: List<DrawLogEntry>): Int {
+    val entry = log[entryIndex]
+    val parentIndex = entry.parentIndex ?: return 0
+    val parent = log.getOrNull(parentIndex) ?: return 0
     val parentToken = TokenCatalogue.byId(parent.tokenId) ?: return 0
     val possessed = parent.possessedToken() ?: return 0
+    // Rulebook p.7: the possessed Attack delta modifies only the *topmost* summon's summoned token.
+    // Children of one summon action share a batchId and are appended in summon-slot order, so the
+    // topmost is the first (lowest index) among this child's batch siblings; a second Summon slot
+    // (the Lost Legion Dragon Summoner) gets nothing.
+    val topmostChild = log.indices.firstOrNull { log[it].parentIndex == parentIndex && log[it].batchId == entry.batchId }
+    if (topmostChild != entryIndex) return 0
     return PossessedEnemy.combine(parentToken, possessed).summonAttackDelta
 }
 

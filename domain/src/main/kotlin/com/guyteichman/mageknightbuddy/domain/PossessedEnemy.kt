@@ -15,11 +15,16 @@ package com.guyteichman.mageknightbuddy.domain
  *
  * Resistances, offensive/defensive abilities and the enemy's name are *not* here: a possessed token
  * adds none of those, so the composite reuses the circular [EnemyToken]'s own values directly.
+ * [defend] and [reputation] are likewise carried through **unchanged** from the circular enemy (a
+ * possessed token never modifies them) so the composite's stat line can still show a Shades of Tezla
+ * Defend value or a Lost Legion Reputation reward, mirroring [EnemyToken].
  */
 data class PossessedEnemyStats(
     val armor: Int,
     val elusiveArmor: Int?,
     val fame: Int,
+    val defend: Int?,
+    val reputation: Int,
     val attacks: List<EnemyAttack>,
     val psychicAttack: Int?,
     val summonAttackDelta: Int,
@@ -46,6 +51,9 @@ object PossessedEnemy {
             armor = circular.armor + possessed.armorDelta,
             elusiveArmor = circular.elusiveArmor?.plus(possessed.armorDelta),
             fame = circular.fame + possessed.fameDelta,
+            // Defend / Reputation are the circular enemy's own, unchanged by possession.
+            defend = circular.defend,
+            reputation = circular.reputation,
             attacks = withTopmostAttackDelta(circular.attacks, if (topIsSummon) 0 else possessed.attackDelta),
             psychicAttack = possessed.psychicAttack,
             summonAttackDelta = if (topIsSummon) possessed.attackDelta else 0,

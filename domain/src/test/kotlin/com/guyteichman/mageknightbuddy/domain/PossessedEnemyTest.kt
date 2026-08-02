@@ -89,6 +89,26 @@ class PossessedEnemyTest {
     }
 
     @Test
+    fun `combine carries the circular enemy's Defend and Reputation through unchanged`() {
+        // A possessed Shades of Tezla / Lost Legion enemy keeps its own Defend value and Reputation
+        // reward - a possessed token never modifies them - so the composite stat line can still show them.
+        val shadesLikeEnemy = prowlers.copy(defend = 2, reputation = 1)
+        val possessed = PossessedToken(id = "p", expansion = Expansion.APOCALYPSE_DRAGON, copies = 1, armorDelta = 1)
+        val stats = PossessedEnemy.combine(shadesLikeEnemy, possessed)
+
+        assertEquals(2, stats.defend)
+        assertEquals(1, stats.reputation)
+        assertEquals(4, stats.armor) // 3 + 1, unaffected by the Defend/Reputation pass-through
+    }
+
+    @Test
+    fun `combine leaves Defend null and Reputation zero for a plain enemy`() {
+        val stats = PossessedEnemy.combine(prowlers, PossessedToken(id = "p", expansion = Expansion.APOCALYPSE_DRAGON, copies = 1, fameDelta = 1))
+        assertNull(stats.defend)
+        assertEquals(0, stats.reputation)
+    }
+
+    @Test
     fun `combine parks the attack delta for a summoner, leaving its Summon untouched`() {
         val summoner = prowlers.copy(attacks = listOf(EnemyAttack(summons = TokenPileId.BROWN)))
         val possessed = PossessedToken(id = "p", expansion = Expansion.APOCALYPSE_DRAGON, copies = 1, attackDelta = 2)
