@@ -11,10 +11,10 @@ import kotlinx.serialization.Serializable
  * A faction reward token has a *different lifecycle* to an enemy: it's earned (typically by defeating
  * a faction/possessed enemy), **held** face up until used, then spent for its effect or discarded for
  * 1 Fame / 3 Influence (see `docs/rules/faction-reward-tokens.md` and `CONTEXT.md`'s "Faction Reward
- * Token"). The Enemy Picker still owns only the *randomness of the draw* here, not the held/spent
- * bookkeeping (the player tracks that, same as which enemies are still standing) - the pile-correct
- * held-vs-spent modelling is the follow-up in issue #251. Possessed-enemy piles are still deliberately
- * *not* here (composite two-token draws with a different shape); they arrive with issue #189.
+ * Token"). Since issue #251 that held-vs-spent state is pile-correct: a drawn reward is held on the
+ * board (out of both piles) until "spent" (the defeat action) moves it into the discard - the same
+ * lifecycle as a defeated enemy (see [EnemyPickerSession]). Possessed-enemy piles are still
+ * deliberately *not* here (composite two-token draws with a different shape); they arrive with #189.
  *
  * `@Serializable` so this can be a field on [EnemyToken]/[FactionRewardToken] in the JSON catalogue
  * (ADR-0007); the enum name is what appears in the JSON. Draw-log/display order follows

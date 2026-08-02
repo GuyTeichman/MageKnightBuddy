@@ -7,9 +7,14 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Tests for [EnemyPickerSession]'s draw / replenish / flag / reset logic. All use a tiny hand-built
+ * Tests for [EnemyPickerSession]'s draw / replenish / defeat / reset logic. All use a tiny hand-built
  * fixture catalogue and an identity `shuffle` (`{ it }`) so pile order is fully deterministic and
  * every expected value below is reasoned out by hand from the fixture, not read off the code.
+ *
+ * The pile lifecycle is the pile-correct one of issue #251: drawing removes a token from the draw
+ * pile and holds it **on the board** (out of both piles); only when it is **defeated** does it enter
+ * the discard, and only the discard is reshuffled on a Replenish. So an undefeated drawn token can
+ * never be re-drawn.
  */
 class EnemyPickerSessionTest {
 
@@ -143,10 +148,10 @@ class EnemyPickerSessionTest {
     }
 
     @Test
-    fun `a faction reward token draws through the same discard-on-draw machinery as enemies (interim, issue 251)`() {
-        // Deliberately asserts the *interim* behaviour: a drawn reward token lands in the discard
-        // immediately and its "spent" state is just the memory-aid defeated flag - the shared path
-        // that lets issue #251 make held-vs-spent pile-correct for enemies and reward tokens at once.
+    fun `a drawn faction reward token is held on the board until spent (issue 251)`() {
+        // A reward token's lifecycle is draw -> hold -> spend: drawing holds it on the board (out of
+        // both piles) exactly like an enemy, and "spend" is the same action as "defeat" - only then
+        // does it enter the discard.
         val session = EnemyPickerSession.start(
             catalogue,
             tokenSet = setOf(Expansion.SHADES_OF_TEZLA_ELEMENTALIST),
@@ -154,34 +159,42 @@ class EnemyPickerSessionTest {
             factionRewardCatalogue = factionRewardCatalogue,
         )
 
-        val after = session.draw(mapOf(TokenPileId.ELEMENTALIST_REWARDS to 1), batchId = 3L, shuffle = noShuffle)
+        val drawn = session.draw(mapOf(TokenPileId.ELEMENTALIST_REWARDS to 1), batchId = 3L, shuffle = noShuffle)
 
-        val pile = after.piles.getValue(TokenPileId.ELEMENTALIST_REWARDS)
+        val pile = drawn.piles.getValue(TokenPileId.ELEMENTALIST_REWARDS)
+        // Top ("reward_elem_a") left the draw pile but is NOT in the discard - it's held on the board.
         assertEquals(listOf("reward_elem_a", "reward_elem_b"), pile.drawPile)
-        assertEquals(listOf("reward_elem_a"), pile.discardPile)
+        assertEquals(emptyList(), pile.discardPile)
         assertEquals(
             DrawLogEntry(tokenId = "reward_elem_a", pile = TokenPileId.ELEMENTALIST_REWARDS, batchId = 3L),
-            after.drawLog.single(),
+            drawn.drawLog.single(),
         )
+
+        // Spend it (setDefeated true): now it moves into the discard, where a Replenish can reshuffle it.
+        val spent = drawn.setDefeated(index = 0, defeated = true)
+        assertEquals(listOf("reward_elem_a"), spent.piles.getValue(TokenPileId.ELEMENTALIST_REWARDS).discardPile)
+        assertTrue(spent.drawLog.single().defeated)
     }
 
     @Test
-    fun `drawing without replacement moves the top token to the discard and logs it`() {
+    fun `drawing without replacement removes the top token from the draw pile and holds it on the board`() {
         val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
 
         val after = session.draw(mapOf(TokenPileId.GREEN to 1), batchId = 7L, shuffle = noShuffle)
 
         val green = after.piles.getValue(TokenPileId.GREEN)
-        // Top ("orc_a") is gone from the draw pile and now sits in the discard.
+        // Top ("orc_a") is gone from the draw pile, but the discard stays empty: it's on the board,
+        // not discarded (issue #251). The remaining draw pile is greenOrder minus its first element.
         assertEquals(listOf("orc_a", "orc_b", "orc_c"), green.drawPile)
-        assertEquals(listOf("orc_a"), green.discardPile)
-        // Exactly one log entry, describing that draw, not flagged.
+        assertEquals(emptyList(), green.discardPile)
+        // Exactly one log entry, describing that draw, not defeated, not ephemeral.
         assertEquals(1, after.drawLog.size)
         assertEquals(DrawLogEntry(tokenId = "orc_a", pile = TokenPileId.GREEN, batchId = 7L), after.drawLog.single())
+        assertFalse(after.drawLog.single().ephemeral)
     }
 
     @Test
-    fun `a batch draw of several from one pile shares one batch id`() {
+    fun `a batch draw of several from one pile shares one batch id and holds them all on the board`() {
         val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
 
         val after = session.draw(mapOf(TokenPileId.GREEN to 2), batchId = 99L, shuffle = noShuffle)
@@ -191,7 +204,8 @@ class EnemyPickerSessionTest {
         assertEquals(listOf(99L, 99L), after.drawLog.map { it.batchId })
         val green = after.piles.getValue(TokenPileId.GREEN)
         assertEquals(listOf("orc_b", "orc_c"), green.drawPile)
-        assertEquals(listOf("orc_a", "orc_a"), green.discardPile)
+        // Both drawn tokens are on the board - the discard stays empty (nothing defeated yet).
+        assertEquals(emptyList(), green.discardPile)
     }
 
     @Test
@@ -205,28 +219,50 @@ class EnemyPickerSessionTest {
     }
 
     @Test
-    fun `a pile reshuffles the instant its last token is drawn, never sitting empty`() {
+    fun `a pile drawn empty with nothing defeated is genuinely empty and cannot be drawn`() {
         // Build the state via the class's own draw() calls (per CLAUDE.md), not by hand.
         var session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
-        // Draw all 4 green tokens: the 4th draw empties the draw pile, which must reshuffle on
-        // the spot (issue #231 / eager Replenish) rather than resting empty until the next draw.
+        // Draw all 4 green tokens without defeating any: each is held on the board, so nothing lands
+        // in the discard. Unlike the old discard-on-draw model, there is no discard to reshuffle -
+        // the pile is genuinely empty (issue #251's new edge case).
         repeat(4) { session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle) }
 
         val green = session.piles.getValue(TokenPileId.GREEN)
-        // Discard (all 4, identity-shuffled back to greenOrder) has already become the new draw pile
-        // and the discard is empty again - the "empty draw pile, 4 in discard" resting state that
-        // lazy replenish used to leave behind is now never observable.
-        assertEquals(greenOrder, green.drawPile)
+        assertEquals(emptyList(), green.drawPile)
         assertEquals(emptyList(), green.discardPile)
-        // Every draw is still logged, in draw order (a, a, b, c) - the reshuffle is pile state only.
+        // All 4 draws are still logged, in draw order, all on the board.
         assertEquals(listOf("orc_a", "orc_a", "orc_b", "orc_c"), session.drawLog.map { it.tokenId })
+        assertTrue(session.drawLog.none { it.defeated })
 
-        // A further draw now simply comes off the reshuffled pile's top ("orc_a").
-        session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
-        val next = session.piles.getValue(TokenPileId.GREEN)
-        assertEquals(listOf("orc_a", "orc_b", "orc_c"), next.drawPile)
-        assertEquals(listOf("orc_a"), next.discardPile)
-        assertEquals(5, session.drawLog.size)
+        // A further draw now has no token to take (nothing in the draw pile, nothing to reshuffle).
+        val stuck = session
+        assertFailsWith<IllegalArgumentException> { stuck.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle) }
+    }
+
+    @Test
+    fun `replenish reshuffles only the discard - an on-board token is never reshuffled back`() {
+        // Draw all 4 green tokens (all on the board), then defeat just two of the copies of orc_a and
+        // orc_b, leaving orc_c on the board. Build the state through the class's own methods.
+        var session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+        repeat(4) { session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle) }
+        // Log order is [orc_a(0), orc_a(1), orc_b(2), orc_c(3)]; defeat indices 0 and 2.
+        session = session.setDefeated(index = 0, defeated = true) // orc_a -> discard
+        session = session.setDefeated(index = 2, defeated = true) // orc_b -> discard
+
+        val beforeDraw = session.piles.getValue(TokenPileId.GREEN)
+        assertEquals(emptyList(), beforeDraw.drawPile)
+        assertEquals(listOf("orc_a", "orc_b"), beforeDraw.discardPile)
+
+        // Now draw: the empty draw pile replenishes from the discard [orc_a, orc_b] (identity shuffle),
+        // then its top (orc_a) is drawn onto the board. orc_c was on the board, so it is NOT among the
+        // reshuffled tokens and can never reappear.
+        val after = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
+        val green = after.piles.getValue(TokenPileId.GREEN)
+        assertEquals(listOf("orc_b"), green.drawPile)
+        assertEquals(emptyList(), green.discardPile)
+        assertEquals("orc_a", after.drawLog.last().tokenId)
+        // The load-bearing correctness property of #251: the undefeated orc_c was never re-drawable.
+        assertTrue(green.drawPile.none { it == "orc_c" })
     }
 
     @Test
@@ -248,22 +284,60 @@ class EnemyPickerSessionTest {
     @Test
     fun `a freshly drawn enemy is on the board, not defeated`() {
         val drawn = EnemyPickerSession.start(catalogue, shuffle = noShuffle).draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
-        // Default lifecycle: revealed onto the board, awaiting a Defeat tap (D2).
+        // Default lifecycle: revealed onto the board, awaiting a Defeat tap (D2), and not ephemeral.
         assertFalse(drawn.drawLog.single().defeated)
+        assertFalse(drawn.drawLog.single().ephemeral)
     }
 
     @Test
-    fun `marking a log entry defeated changes only that entry and no pile`() {
+    fun `defeating an on-board token moves it into the discard, and un-defeating removes it`() {
         val drawn = EnemyPickerSession.start(catalogue, shuffle = noShuffle).draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
-        val pilesBefore = drawn.piles
+        val drawPileBefore = drawn.piles.getValue(TokenPileId.GREEN).drawPile
 
         val defeated = drawn.setDefeated(index = 0, defeated = true, note = "keep, NE tile")
 
         val entry = defeated.drawLog[0]
         assertTrue(entry.defeated)
         assertEquals("keep, NE tile", entry.note)
-        // The load-bearing property (ADR-0006): the flag must not perturb pile state / draw odds.
+        val greenAfterDefeat = defeated.piles.getValue(TokenPileId.GREEN)
+        // The token moved on-board -> discard (issue #251); the draw pile is untouched.
+        assertEquals(listOf("orc_a"), greenAfterDefeat.discardPile)
+        assertEquals(drawPileBefore, greenAfterDefeat.drawPile)
+
+        // Un-defeating pulls it back out of the discard (on-board again).
+        val restored = defeated.setDefeated(index = 0, defeated = false)
+        assertFalse(restored.drawLog[0].defeated)
+        assertEquals(emptyList(), restored.piles.getValue(TokenPileId.GREEN).discardPile)
+    }
+
+    @Test
+    fun `setDefeated is a pure memory flag under Draw with Replacement, never touching a pile`() {
+        // With replacement no discard ever accumulates, so "defeat" is a memory aid only - it must
+        // not push the token into a discard the pile model doesn't use.
+        val drawn = EnemyPickerSession.start(catalogue, drawWithReplacement = true, shuffle = noShuffle)
+            .draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
+        val pilesBefore = drawn.piles
+
+        val defeated = drawn.setDefeated(index = 0, defeated = true)
+
+        assertTrue(defeated.drawLog[0].defeated)
         assertEquals(pilesBefore, defeated.piles)
+    }
+
+    @Test
+    fun `onBoardCount counts undefeated non-ephemeral drawn tokens per pile`() {
+        var session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+        // Green: draw 2 (both on the board), brown: draw 1 (on the board).
+        session = session.draw(mapOf(TokenPileId.GREEN to 2), shuffle = noShuffle) // indices 0,1
+        session = session.draw(mapOf(TokenPileId.BROWN to 1), shuffle = noShuffle) // index 2
+        // Defeat one green copy - it leaves the board.
+        session = session.setDefeated(index = 0, defeated = true)
+        // Summon an ephemeral green child off the brown entry - discarded on draw, never on the board.
+        session = session.summon(parentIndex = 2, pileIds = listOf(TokenPileId.GREEN), shuffle = noShuffle) // index 3, ephemeral
+
+        assertEquals(1, session.onBoardCount(TokenPileId.GREEN)) // index 1 only (0 defeated, 3 ephemeral)
+        assertEquals(1, session.onBoardCount(TokenPileId.BROWN)) // index 2
+        assertEquals(0, session.onBoardCount(TokenPileId.RED))
     }
 
     @Test
@@ -319,25 +393,29 @@ class EnemyPickerSessionTest {
 
     @Test
     fun `a multi-pile draw replenishes an individual pile independently within the same batch`() {
-        // Drain green to its last token (3 single-pile draws leave 1 remaining, 3 in discard).
+        // Draw 3 green (on the board), then defeat all 3 so the discard has something to replenish
+        // from; the 4th token (orc_c) stays in the draw pile.
         var session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
         repeat(3) { session = session.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle) }
+        repeat(3) { i -> session = session.setDefeated(index = i, defeated = true) }
         assertEquals(listOf("orc_c"), session.piles.getValue(TokenPileId.GREEN).drawPile)
+        assertEquals(listOf("orc_a", "orc_a", "orc_b"), session.piles.getValue(TokenPileId.GREEN).discardPile)
 
-        // One multi-pile batch: green needs 2 (only 1 left, so it must replenish mid-batch), brown needs 1.
+        // One multi-pile batch: green needs 2 (only 1 in the draw pile, so it must replenish from the
+        // discard mid-batch), brown needs 1.
         val after = session.draw(mapOf(TokenPileId.GREEN to 2, TokenPileId.BROWN to 1), batchId = 5L, shuffle = noShuffle)
 
-        // Green: draws its last card ("orc_c"), empties, replenishes (discard "orc_a","orc_a","orc_b",
-        // "orc_c" identity-shuffled back to that same order), then draws its new top ("orc_a"). Only
-        // this batch's entries are checked - the log already carries the 3 prior single draws.
+        // Green: draws its last card ("orc_c") onto the board, empties, replenishes (discard
+        // "orc_a","orc_a","orc_b" identity-shuffled back to that order), then draws its new top
+        // ("orc_a"). Only this batch's entries are checked - the log already carries the 3 prior draws.
         val thisBatch = after.drawLog.takeLast(3)
         val greenEntries = thisBatch.filter { it.pile == TokenPileId.GREEN }
         assertEquals(listOf("orc_c", "orc_a"), greenEntries.map { it.tokenId })
         val green = after.piles.getValue(TokenPileId.GREEN)
-        assertEquals(listOf("orc_a", "orc_b", "orc_c"), green.drawPile)
-        assertEquals(listOf("orc_a"), green.discardPile)
+        assertEquals(listOf("orc_a", "orc_b"), green.drawPile)
+        assertEquals(emptyList(), green.discardPile)
 
-        // Brown drew its only token, independent of green's replenish.
+        // Brown drew its only token onto the board, independent of green's replenish.
         val brownEntries = thisBatch.filter { it.pile == TokenPileId.BROWN }
         assertEquals(listOf("brown_x"), brownEntries.map { it.tokenId })
 
@@ -346,30 +424,55 @@ class EnemyPickerSessionTest {
     }
 
     @Test
-    fun `summon draws one token per requested pile and tags each entry with the parent's log index`() {
+    fun `summon draws an ephemeral child - discarded on draw - tagged with the parent's log index`() {
         val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
             .draw(mapOf(TokenPileId.GREEN to 1), batchId = 1L, shuffle = noShuffle) // parent at index 0
 
         val after = session.summon(parentIndex = 0, pileIds = listOf(TokenPileId.BROWN), batchId = 50L, shuffle = noShuffle)
 
         assertEquals(2, after.drawLog.size)
+        // A true Summon child is ephemeral: discarded on draw, never independently defeated.
         assertEquals(
-            DrawLogEntry(tokenId = "brown_x", pile = TokenPileId.BROWN, batchId = 50L, parentIndex = 0),
+            DrawLogEntry(tokenId = "brown_x", pile = TokenPileId.BROWN, batchId = 50L, parentIndex = 0, ephemeral = true),
             after.drawLog[1],
         )
-        // The summon draw goes through the same pile mechanics as any other draw (ADR-0006).
         val brown = after.piles.getValue(TokenPileId.BROWN)
-        // BROWN holds a single copy, so drawing it empties the pile - which eager-Replenishes on
-        // the spot (issue #231): the token is already reshuffled back and the discard is empty.
+        // BROWN holds a single copy; the ephemeral child discards on draw, emptying the draw pile,
+        // which eager-Replenishes on the spot (issue #231) - the token is reshuffled back, discard empty.
         assertEquals(listOf("brown_x"), brown.drawPile)
         assertEquals(emptyList(), brown.discardPile)
     }
 
     @Test
+    fun `a non-ephemeral summon child (a ruin enemy) stays on the board and is independently defeatable`() {
+        // Ruin Enemies-With-Treasure enemies reuse the summon machinery but are real, defeatable
+        // enemies (ephemeral = false): drawing holds them on the board like any normal draw.
+        val session = EnemyPickerSession.start(catalogue, shuffle = noShuffle)
+            .draw(mapOf(TokenPileId.GREEN to 1), batchId = 1L, shuffle = noShuffle) // parent at index 0
+
+        val after = session.summon(parentIndex = 0, pileIds = listOf(TokenPileId.BROWN), ephemeral = false, batchId = 60L, shuffle = noShuffle)
+
+        val child = after.drawLog[1]
+        assertEquals(
+            DrawLogEntry(tokenId = "brown_x", pile = TokenPileId.BROWN, batchId = 60L, parentIndex = 0, ephemeral = false),
+            child,
+        )
+        val brown = after.piles.getValue(TokenPileId.BROWN)
+        // On the board: BROWN's only copy left the draw pile but is NOT discarded, so with an empty
+        // discard the pile is genuinely empty (no eager replenish).
+        assertEquals(emptyList(), brown.drawPile)
+        assertEquals(emptyList(), brown.discardPile)
+
+        // Defeating the ruin enemy moves it into the discard, exactly like a normal enemy.
+        val defeated = after.setDefeated(index = 1, defeated = true)
+        assertEquals(listOf("brown_x"), defeated.piles.getValue(TokenPileId.BROWN).discardPile)
+    }
+
+    @Test
     fun `a restored pile with an already-empty draw pile still replenishes on the next draw`() {
-        // Simulates a session persisted under the old lazy semantics: draw pile empty, all 4 green
-        // tokens sitting in the discard. The eager reshuffle never produces this state itself, but
-        // restore() must still cope with it (the defensive replenish-on-entry branch).
+        // Simulates a pile whose draw pile is empty but whose discard still holds defeated tokens
+        // (e.g. after defeating tokens while the draw pile was empty). restore() must cope: the draw
+        // replenishes from the discard on entry.
         val legacy = EnemyPickerSession.restore(
             tokenSet = setOf(Expansion.BASE),
             drawWithReplacement = false,
@@ -379,11 +482,12 @@ class EnemyPickerSessionTest {
 
         val after = legacy.draw(mapOf(TokenPileId.GREEN to 1), shuffle = noShuffle)
 
-        // Discard (identity-shuffled to greenOrder) replenishes the draw pile, then its top
-        // ("orc_a") is drawn; 3 remain, so no further reshuffle fires.
+        // Discard (identity-shuffled to greenOrder) replenishes the draw pile, then its top ("orc_a")
+        // is drawn onto the board; 3 remain in the draw pile and the discard is empty (nothing
+        // defeated, so nothing discarded).
         val green = after.piles.getValue(TokenPileId.GREEN)
         assertEquals(listOf("orc_a", "orc_b", "orc_c"), green.drawPile)
-        assertEquals(listOf("orc_a"), green.discardPile)
+        assertEquals(emptyList(), green.discardPile)
     }
 
     @Test

@@ -88,7 +88,9 @@ class EnemyPickerViewModel(
         val entry = current.drawLog.getOrNull(parentIndex) ?: return@mutate current
         val ruin = ruinCatalogue.find { it.id == entry.tokenId } ?: return@mutate current
         val pileIds = ruin.enemyPiles ?: return@mutate current
-        current.summon(parentIndex, pileIds)
+        // ephemeral = false: a ruin's Enemies-With-Treasure are real, independently-defeatable
+        // enemies held on the board until beaten - not discard-on-draw summon children (issue #251).
+        current.summon(parentIndex, pileIds, ephemeral = false)
     }
 
     /** Rebuilds every pile and clears the Draw Log, keeping the current config, then autosaves. */

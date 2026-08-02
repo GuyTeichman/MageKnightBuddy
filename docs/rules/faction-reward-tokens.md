@@ -37,11 +37,11 @@ spend**:
 rescope of the old issue #190): the Fame/Influence discard option is shown as reference text so the
 player can act on it themselves, but the app tracks no Fame or reward state (ADR-0006).
 
-> **Interim pile behaviour (issue #251).** For now a drawn reward token uses the same discard-on-draw
-> machinery as enemies, so "spend" is a pure memory aid with no pile effect. Making it pile-correct
-> (a held token is out of both piles until spent, at which point it enters the discard and can be
-> reshuffled on a Replenish) is tracked in #251, which fixes enemies, ruins, and reward tokens at
-> once.
+> **Pile behaviour (issue #251, done).** A drawn reward token is held **on the board** (out of both
+> the draw pile and the discard) until it is spent; "spend" (the checked-off flag) then moves it into
+> the discard, where a **Replenish** can reshuffle it. Held (unspent) rewards are never reshuffled, so
+> an unspent reward can't be re-drawn — the same pile-correct lifecycle as a drawn enemy, applied to
+> enemies, ruins, and reward tokens at once. See `enemy-tokens.md`'s "Token pile lifecycle".
 
 ## Piles and gating
 

@@ -5,6 +5,36 @@ Ground-truth transcription of the physical enemy/ruin token stat blocks, for the
 in any rulebook PDF — so unlike the other `docs/rules/*.md` files (which cite rulebook pages), this
 one cites the **token faces themselves** as reproduced in a community reference.
 
+## Token pile lifecycle (draw → board → discard)
+
+How a token moves through its pile once play starts — the rule the Enemy Picker's
+`EnemyPickerSession` models (issue #251), spelled out here because it leans on a convention the
+rulebook states once at setup and then assumes throughout:
+
+- **Setup.** Sort the round enemy and hexagonal ruin tokens by their reverse side and stack them in
+  face-down piles, with a space beside each for its **discarded** tokens (rulebook p.3, "seven face
+  down piles").
+- **Draw / reveal.** A token's identity is undetermined until it is revealed, at which point it is
+  taken from the top of its face-down pile and placed **on the board** (its space). It is now out of
+  the draw pile but **not** in the discard.
+- **Defeated → discard.** Only when an enemy is **defeated** is its token put on that pile's
+  **discard** pile. An **undefeated** enemy stays on its space — a rampaging enemy standing from tile
+  reveal until it is killed, a garrison sitting on a keep for several Rounds, or a monster that
+  survives a failed fight at a den / spawning grounds / ruins (rulebook p.11, 3c) — so it is in
+  *neither* pile. This defeated-→-discard step is the piece the rulebook never states as its own line
+  (it follows from the general combat rules); it is **pending author verification** against the
+  physical rulebook for an exact page, the same caveat every pile in this file carries.
+- **Replenish.** When a pile's face-down stack runs out, reshuffle **its discard** into a new
+  face-down pile (rulebook p.3, "If you run out of tokens, reshuffle the discarded ones and create a
+  new face down pile"). On-board tokens are still in play and are **not** reshuffled — so a pile can
+  be genuinely empty (nothing left to draw) while its tokens stand on the board, until one is
+  defeated back into the discard.
+- **Summoned tokens** are the exception: a token drawn for a **Summon** attack fills the summoner's
+  fight slot and is **discarded when the combat ends**, never independently defeated (rulebook p.9) —
+  so the app treats it as discarded the instant it is drawn.
+- **Faction reward tokens** follow the same shape with "spend" in place of "defeat" (held on the
+  board until spent, then discarded) — see `faction-reward-tokens.md`.
+
 ## Source & provenance
 
 Transcribed from the Tabletop Simulator Workshop mod "Mage Knight Plus (Highly Scripted)"
@@ -451,7 +481,8 @@ Tracked as GitHub sub-issues of #178:
 - Lost Legion and Shades of Tezla enemy tokens — done (#188); Lost Legion ruin tokens done with the
   RUIN-pile work (#201); Shades of Tezla's faction-only/separate-enemy-pile scenarios still deferred
 - Faction reward tokens (all four factions across Shades of Tezla + Apocalypse Dragon) — done (#252),
-  see `docs/rules/faction-reward-tokens.md`; the discard-pile-correctness follow-up is #251
+  see `docs/rules/faction-reward-tokens.md`; the discard-pile-correctness follow-up (#251) is done too
+  — see "Token pile lifecycle" above
 - Apocalypse Dragon — possessed enemies & AD enemy tokens (#189, narrowed: its faction-token half
   moved to #252); wiring faction tokens into the Score Calculator (#190) was **closed** — faction
   reward tokens are drawn in the Enemy Picker, not scored

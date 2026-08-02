@@ -473,6 +473,9 @@ private fun EnemyPickerContent(
                             modifier = Modifier.weight(1f),
                             pileId = pileId,
                             pile = pile,
+                            // Tokens drawn from this pile that are still on the board (issue #251) -
+                            // derived from the Draw Log, shown alongside the remaining-to-draw count.
+                            onBoard = session.onBoardCount(pileId),
                             withReplacement = session.drawWithReplacement,
                             quantity = quantities[pileId] ?: 0,
                             onQuantityChange = { quantities = quantities + (pileId to it) },
@@ -555,6 +558,8 @@ private fun PileCard(
     modifier: Modifier = Modifier,
     pileId: TokenPileId,
     pile: TokenPile,
+    // How many tokens drawn from this pile are still on the board (undefeated); see [onBoardCount].
+    onBoard: Int,
     withReplacement: Boolean,
     quantity: Int,
     onQuantityChange: (Int) -> Unit,
@@ -565,8 +570,10 @@ private fun PileCard(
     // drops the quantity stepper and keeps only the tap-to-draw-1 shortcut (issue #201).
     tapToDrawOnly: Boolean = false,
 ) {
-    val remaining = pile.drawPile.size
-    val drawn = pile.discardPile.size
+    // Everything drawable now or after a Replenish: the draw pile plus the discard (defeated tokens
+    // reshuffle back in). On-board tokens are held out and never re-drawable, so they aren't counted
+    // here (issue #251). "Nothing to draw" = both are empty (everything drawn is on the board).
+    val toDraw = pile.drawPile.size + pile.discardPile.size
 
     ElevatedCard(modifier = modifier) {
         Column(
@@ -586,10 +593,17 @@ private fun PileCard(
             Text(pileId.displayName(), style = MaterialTheme.typography.titleMedium)
             // The count line doubles as the "view draw pile" trigger (issue #231): primary-colored
             // and underlined so it reads as tappable, opening the pile-composition dialog. With
-            // replacement nothing depletes, so "drawn" would always be 0 - hide it and say so.
+            // replacement nothing depletes, so the counts are meaningless - hide them and say so.
+            // Otherwise it shows what's left to draw and, when any, how many are still on the board.
             Text(
-                text = if (withReplacement) "View pile · never depletes"
-                else "$remaining in pile · $drawn drawn",
+                text = if (withReplacement) {
+                    "View pile · never depletes"
+                } else {
+                    buildString {
+                        append(if (toDraw > 0) "$toDraw to draw" else "Nothing to draw")
+                        if (onBoard > 0) append(" · $onBoard on board")
+                    }
+                },
                 style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.Underline),
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
@@ -606,8 +620,8 @@ private fun PileCard(
                 QuantityStepper(
                     quantity = quantity,
                     onQuantityChange = onQuantityChange,
-                    // Without replacement, can't draw more than the whole pile (draw + discard) at once.
-                    max = if (withReplacement) MAX_BATCH else (remaining + drawn).coerceAtMost(MAX_BATCH),
+                    // Without replacement, can't draw more than what's left to draw (draw + discard).
+                    max = if (withReplacement) MAX_BATCH else toDraw.coerceAtMost(MAX_BATCH),
                 )
             }
         }
@@ -1610,8 +1624,13 @@ private fun PileContentsDialog(
             else -> TokenCatalogue.byId(id)?.name ?: id
         }
     }
-    // remember keyed on the draw pile so the grouping only recomputes when the pile actually changes.
-    val composition = remember(pile.drawPile) { composePile(pile.drawPile, nameOf) }
+    // What's left to draw is the draw pile *plus* the discard: defeated tokens reshuffle back on a
+    // Replenish, so they're still tokens you might face; only on-board tokens (in neither list) are
+    // out for good (issue #251). Shown unordered, so combining the two never reveals draw order.
+    // remember keyed on both lists so the grouping recomputes when either changes.
+    val composition = remember(pile.drawPile, pile.discardPile) {
+        composePile(pile.drawPile + pile.discardPile, nameOf)
+    }
     val title = if (withReplacement) "${pileId.displayName()} · full pile (${composition.total})"
     else "${pileId.displayName()} · ${composition.total} remaining"
 
@@ -1621,9 +1640,9 @@ private fun PileContentsDialog(
         title = { Text(title) },
         text = {
             if (composition.groups.isEmpty()) {
-                // With eager Replenish (issue #231) a live pile never actually empties; this only
-                // shows for a degenerate/restored empty pile.
-                Text("This pile is empty.")
+                // Empty draw pile *and* discard means every token drawn from this pile is still on
+                // the board - the pile is genuinely empty until one is defeated back into it (#251).
+                Text("Nothing left to draw — every token from this pile is on the board.")
             } else {
                 // Same adaptive grid the draw-result overview uses (D9), for a consistent look.
                 LazyVerticalGrid(

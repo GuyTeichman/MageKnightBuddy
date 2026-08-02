@@ -38,10 +38,11 @@ class EnemyPickerSessionMapperTest {
         // Independent ground truth, reasoned out by hand from the fixture (green pile is
         // [orc_a, orc_a, orc_b] under identity shuffle), NOT read off `session` - a bare
         // assertEquals(session, roundTripped) can't tell a correct mapper from a buggy one that
-        // preserved wrong data (issue #150). Two draws take the two leading orc_a copies to the
-        // discard, leaving orc_b in the draw pile.
+        // preserved wrong data (issue #150). Two draws hold both orc_a copies on the board (issue
+        // #251), so the draw pile is [orc_b] and the discard is empty - until we defeat the first
+        // entry, which moves *only that one* orc_a into the discard.
         assertEquals(
-            TokenPile(drawPile = listOf("orc_b"), discardPile = listOf("orc_a", "orc_a")),
+            TokenPile(drawPile = listOf("orc_b"), discardPile = listOf("orc_a")),
             roundTripped.piles.getValue(TokenPileId.GREEN),
         )
         assertEquals(
@@ -84,17 +85,20 @@ class EnemyPickerSessionMapperTest {
 
         // Independent ground truth (not read off `session`, per CLAUDE.md's round-trip-test
         // guidance): green is [orc_a, orc_a, orc_b] under identity shuffle, so the parent draws the
-        // first "orc_a" and the summon draws the second.
+        // first "orc_a" and the summon draws the second. A true Summon child is ephemeral (issue
+        // #251) - discarded on draw - so its entry round-trips with ephemeral = true.
         assertEquals(
             listOf(
                 DrawLogEntry(tokenId = "orc_a", pile = TokenPileId.GREEN, batchId = 1L),
-                DrawLogEntry(tokenId = "orc_a", pile = TokenPileId.GREEN, batchId = 2L, parentIndex = 0),
+                DrawLogEntry(tokenId = "orc_a", pile = TokenPileId.GREEN, batchId = 2L, parentIndex = 0, ephemeral = true),
             ),
             roundTripped.drawLog,
         )
-        // The child's parentIndex specifically, called out on its own since it's the new field.
+        // The child's parentIndex + ephemeral specifically, called out since ephemeral is the new field.
         assertEquals(0, roundTripped.drawLog[1].parentIndex)
+        assertEquals(true, roundTripped.drawLog[1].ephemeral)
         assertEquals(null, roundTripped.drawLog[0].parentIndex)
+        assertEquals(false, roundTripped.drawLog[0].ephemeral)
     }
 
     @Test
@@ -113,9 +117,10 @@ class EnemyPickerSessionMapperTest {
         assertEquals(session, roundTripped)
 
         // Independent ground truth (reward pile is [reward_elem_a, reward_elem_a] under identity
-        // shuffle): one draw moves the top copy to the discard, leaving the other in the draw pile.
+        // shuffle): one draw holds the top copy on the board (issue #251) - it leaves the draw pile
+        // but the discard stays empty (nothing spent yet), leaving the other copy in the draw pile.
         assertEquals(
-            TokenPile(drawPile = listOf("reward_elem_a"), discardPile = listOf("reward_elem_a")),
+            TokenPile(drawPile = listOf("reward_elem_a"), discardPile = emptyList()),
             roundTripped.piles.getValue(TokenPileId.ELEMENTALIST_REWARDS),
         )
         assertEquals(

@@ -5,7 +5,16 @@ package com.guyteichman.mageknightbuddy.domain
  * [piles], the [drawLog], and the two config choices that shape them - the [tokenSet] (which
  * expansions' tokens are in play) and [drawWithReplacement]. The app is authoritative over both the
  * randomness and what is left in each pile, so this whole object is persisted for the length of a
- * game (ADR-0006); it models no map, and a drawn token is discarded immediately.
+ * game (ADR-0006); it models no map.
+ *
+ * A drawn token follows the pile-correct three-state lifecycle of issue #251: **in-pile → on-board
+ * → discarded**. Drawing removes it from the draw pile and holds it **on the board** (out of both
+ * piles, tracked only by its [DrawLogEntry]); [setDefeated] then moves it into that pile's discard
+ * when it is defeated. Only the discard is reshuffled on a Replenish, so an undefeated token is
+ * never re-drawn. On-board is *derived* from [drawLog] (undefeated, non-ephemeral entries), keeping
+ * the log the sole record of what is standing where; the pile itself stores only the draw pile and
+ * the discard. The one exception is an **ephemeral** Summon child ([DrawLogEntry.ephemeral]), which
+ * is discarded the instant it is drawn (it never sits on the board).
  *
  * Follows the same shape as [VolkareSession]/[DummyPlayerSession]: a private constructor with a
  * companion-object [start]/[restore] pair, and every mutating method ([draw], [setDefeated],
@@ -30,11 +39,13 @@ data class EnemyPickerSession private constructor(
      * the caller built the map; that enum order is itself the rulebook's enemy difficulty order.
      *
      * Without replacement (the rules-correct default): each draw takes the top of that pile's draw
-     * pile and moves it to its discard; if the draw pile is empty when a token is needed, the pile
-     * **Replenishes** first (its discard is `shuffle`d into a new draw pile - see `CONTEXT.md`).
-     * With replacement: each draw picks a `shuffle`-randomised token but leaves the pile untouched,
-     * so piles never deplete and no discard accumulates. Both rules apply independently per pile,
-     * even within one multi-pile batch - one pile replenishing has no effect on any other.
+     * pile and holds it **on the board** - out of both piles until it is defeated (issue #251), not
+     * moved to the discard. If the draw pile is empty when a token is needed, the pile **Replenishes**
+     * first (its discard is `shuffle`d into a new draw pile - see `CONTEXT.md`); if the discard is
+     * *also* empty (everything drawn is still on the board), the pile is genuinely empty and this
+     * throws. With replacement: each draw picks a `shuffle`-randomised token but leaves the pile
+     * untouched, so piles never deplete and no discard accumulates. Both rules apply independently
+     * per pile, even within one multi-pile batch - one pile replenishing has no effect on any other.
      *
      * [shuffle] is the injected randomness (default: a real shuffle); it is used both to Replenish
      * and to pick under replacement. Draws never touch a pile absent from [draws], and never touch
@@ -59,7 +70,8 @@ data class EnemyPickerSession private constructor(
             var pile = updatedPiles.getValue(pileId)
 
             repeat(count) {
-                val (drawnId, next) = drawOneFrom(pileId, pile, shuffle)
+                // discardImmediately = false: a normal draw holds the token on the board (issue #251).
+                val (drawnId, next) = drawOneFrom(pileId, pile, shuffle, discardImmediately = false)
                 pile = next
                 newEntries += DrawLogEntry(tokenId = drawnId, pile = pileId, batchId = batchId)
             }
@@ -84,12 +96,21 @@ data class EnemyPickerSession private constructor(
      * rather than replacing the old ones (the log stays append-only, like [setDefeated]); the
      * previous children remain in [drawLog] but are superseded - see [currentChildrenOf].
      *
-     * Reuses the same per-pile draw/replenish rules [draw] uses (with/without replacement, discard
-     * on draw), via the shared [drawOneFrom] helper.
+     * [ephemeral] distinguishes the two callers of this machinery (issue #251). `true` (the default,
+     * for a real **Summon ability**): the child is discarded the instant it is drawn - it just fills
+     * the summoner's fight slot and is never independently defeated - so it goes straight to the
+     * discard, exactly the pre-#251 behaviour. `false` (for a ruin **Enemies-With-Treasure** draw):
+     * the child is a real, independently-defeatable enemy, so it is held **on the board** like a
+     * normal [draw] until the player defeats it. The flag is recorded on each child's
+     * [DrawLogEntry.ephemeral] so restore and [setDefeated] treat it consistently.
+     *
+     * Reuses the same per-pile draw/replenish rules [draw] uses (with/without replacement), via the
+     * shared [drawOneFrom] helper.
      */
     fun summon(
         parentIndex: Int,
         pileIds: List<TokenPileId>,
+        ephemeral: Boolean = true,
         batchId: Long = System.currentTimeMillis(),
         shuffle: (List<String>) -> List<String> = { it.shuffled() },
     ): EnemyPickerSession {
@@ -99,8 +120,9 @@ data class EnemyPickerSession private constructor(
         var updatedPiles = piles
         val newEntries = ArrayList<DrawLogEntry>()
         for (pileId in pileIds) {
-            val (drawnId, next) = drawOneFrom(pileId, updatedPiles.getValue(pileId), shuffle)
-            newEntries += DrawLogEntry(tokenId = drawnId, pile = pileId, batchId = batchId, parentIndex = parentIndex)
+            // An ephemeral summon child discards on draw; a ruin enemy child is held on the board.
+            val (drawnId, next) = drawOneFrom(pileId, updatedPiles.getValue(pileId), shuffle, discardImmediately = ephemeral)
+            newEntries += DrawLogEntry(tokenId = drawnId, pile = pileId, batchId = batchId, parentIndex = parentIndex, ephemeral = ephemeral)
             updatedPiles = updatedPiles + (pileId to next)
         }
 
@@ -121,24 +143,30 @@ data class EnemyPickerSession private constructor(
 
     /**
      * Draws one token from [pile] (named [pileId] only for its error messages), following the same
-     * with/without-replacement rules [draw] and [summon] both need: with replacement, samples a
-     * token and leaves [pile] untouched; without, replenishes from a shuffled discard if the draw
-     * pile just ran out, then moves the drawn token from draw pile to discard immediately (ADR-0006).
-     * Returns the drawn token id alongside the [pile] state after the draw.
+     * with/without-replacement rules [draw] and [summon] both need. With replacement: samples a token
+     * and leaves [pile] untouched. Without: replenishes from a shuffled discard if the draw pile just
+     * ran out, then removes the drawn token from the draw pile.
+     *
+     * [discardImmediately] decides where the drawn token goes (issue #251): `false` (a normal [draw]
+     * or a ruin enemy) holds it **on the board** - removed from the draw pile but added to neither
+     * pile - so it can't be re-drawn while it stands; `true` (an ephemeral [summon] child) moves it
+     * straight to the discard, the pre-#251 behaviour. Returns the drawn token id alongside the
+     * [pile] state after the draw.
      */
     private fun drawOneFrom(
         pileId: TokenPileId,
         pile: TokenPile,
         shuffle: (List<String>) -> List<String>,
+        discardImmediately: Boolean,
     ): Pair<String, TokenPile> {
         if (drawWithReplacement) {
             require(pile.drawPile.isNotEmpty()) { "pile $pileId has no tokens to draw" }
             return shuffle(pile.drawPile).first() to pile
         }
 
-        // Defensive replenish if the draw pile is *already* empty on entry: normally the eager
-        // reshuffle below keeps that from ever happening, but a session restored from state
-        // persisted under the old lazy semantics can still carry an empty draw pile - so handle it.
+        // Replenish if the draw pile is empty on entry: reshuffle the discard into a new draw pile.
+        // If the discard is *also* empty, everything drawn is on the board - the pile is genuinely
+        // empty and cannot be drawn (issue #251's new edge case; the UI disables the draw for it).
         val replenished = if (pile.drawPile.isEmpty()) {
             require(pile.discardPile.isNotEmpty()) { "pile $pileId is completely empty" }
             TokenPile(drawPile = shuffle(pile.discardPile), discardPile = emptyList())
@@ -146,12 +174,17 @@ data class EnemyPickerSession private constructor(
             pile
         }
         val drawnId = replenished.drawPile.first()
-        // Drawn token leaves the draw pile and lands in the discard immediately (ADR-0006).
-        val afterDraw = TokenPile(drawPile = replenished.drawPile.drop(1), discardPile = replenished.discardPile + drawnId)
-        // Eager **Replenish** (issue #231): the moment that draw empties the pile, reshuffle the
-        // discard back into a fresh draw pile so a pile never rests at 0 remaining. Distribution is
-        // identical to reshuffling lazily on the next draw (the just-drawn token is in the discard
-        // either way); this only means the UI never displays an empty pile.
+        val afterDraw = if (discardImmediately) {
+            // Ephemeral summon child: to the discard immediately.
+            TokenPile(drawPile = replenished.drawPile.drop(1), discardPile = replenished.discardPile + drawnId)
+        } else {
+            // On the board: only leaves the draw pile; added to neither pile until defeated.
+            TokenPile(drawPile = replenished.drawPile.drop(1), discardPile = replenished.discardPile)
+        }
+        // Eager **Replenish** (issue #231, adapted for #251): the moment a draw empties the draw pile,
+        // reshuffle the discard back so the pile never rests at 0 while it still has discardable
+        // tokens - but *only* if the discard is non-empty. If both are empty (all drawn tokens are on
+        // the board), the pile is legitimately empty and is left that way.
         val next = if (afterDraw.drawPile.isEmpty() && afterDraw.discardPile.isNotEmpty()) {
             TokenPile(drawPile = shuffle(afterDraw.discardPile), discardPile = emptyList())
         } else {
@@ -162,16 +195,54 @@ data class EnemyPickerSession private constructor(
 
     /**
      * Sets the [defeated] flag and free-text [note] on the [drawLog] entry at [index] (chronological
-     * order, since the log is append-only) - the one-tap Defeat action, and its inverse. Purely a
-     * memory aid: it changes only that one log entry and touches **no** [TokenPile], so draw odds
-     * are unaffected (ADR-0006 - a defeated enemy was already discarded when it was drawn).
+     * order, since the log is append-only) - the one-tap Defeat action, and its inverse (for a
+     * faction reward token this same action is "Spend"). Since issue #251 this is **not** a pure
+     * memory aid: defeating an on-board token moves it into its pile's discard, and un-defeating
+     * pulls it back out, so a Replenish reshuffles exactly the defeated tokens.
+     *
+     * The pile move is skipped - only the flag/note change - in the two cases where there is no
+     * accumulated pile state to move the token in: under [drawWithReplacement] (piles never deplete
+     * and no discard accumulates, so the flag is a memory aid again), and for an ephemeral Summon
+     * child (already discarded when drawn, and never independently defeated). Stays pure (no
+     * `shuffle`), so it is cleanly reversible; the rare defeat → Replenish → un-defeat corner - where
+     * the token has already been reshuffled out of the discard - just flips the flag and leaves the
+     * pile untouched (the token id is no longer in the discard to remove).
      */
     fun setDefeated(index: Int, defeated: Boolean = true, note: String = ""): EnemyPickerSession {
-        val updated = drawLog[index].copy(defeated = defeated, note = note)
+        val entry = drawLog[index]
+        val updatedEntry = entry.copy(defeated = defeated, note = note)
         // toMutableList().also { it[index] = ... } replaces one element without mutating the
         // original list (drawLog stays untouched; a fresh list is stored on the copy).
-        return copy(drawLog = drawLog.toMutableList().also { it[index] = updated })
+        val updatedLog = drawLog.toMutableList().also { it[index] = updatedEntry }
+
+        // No pile effect for a replacement game or an ephemeral child - see the doc comment above.
+        if (drawWithReplacement || entry.ephemeral) return copy(drawLog = updatedLog)
+
+        val pile = piles[entry.pile] ?: return copy(drawLog = updatedLog)
+        val updatedPile = when {
+            // On the board -> discard (a fresh defeat).
+            defeated && !entry.defeated -> pile.copy(discardPile = pile.discardPile + entry.tokenId)
+            // Discard -> on the board (un-defeat): remove one copy of the id, if it's still there.
+            !defeated && entry.defeated -> pile.copy(
+                discardPile = pile.discardPile.toMutableList().also { discard ->
+                    val at = discard.indexOf(entry.tokenId)
+                    if (at >= 0) discard.removeAt(at)
+                },
+            )
+            // No lifecycle transition (e.g. a note-only edit): leave the pile alone.
+            else -> pile
+        }
+        return copy(piles = piles + (entry.pile to updatedPile), drawLog = updatedLog)
     }
+
+    /**
+     * How many tokens drawn from [pileId] are currently **on the board** - undefeated, non-ephemeral
+     * [drawLog] entries for that pile (issue #251). Derived from the log rather than stored, since the
+     * log is the sole record of what is still standing (ADR-0006); the UI shows this alongside a
+     * pile's remaining-to-draw count.
+     */
+    fun onBoardCount(pileId: TokenPileId): Int =
+        drawLog.count { it.pile == pileId && !it.defeated && !it.ephemeral }
 
     /**
      * Rebuilds every pile from [catalogue] (and [ruinCatalogue] for the RUIN pile) and clears the

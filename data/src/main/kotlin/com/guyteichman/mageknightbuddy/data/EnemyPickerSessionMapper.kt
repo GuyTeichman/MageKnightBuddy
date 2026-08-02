@@ -23,10 +23,10 @@ private fun TokenPile.toDto(): TokenPileDto = TokenPileDto(drawPile = drawPile, 
 private fun TokenPileDto.toDomain(): TokenPile = TokenPile(drawPile = drawPile, discardPile = discardPile)
 
 private fun DrawLogEntry.toDto(): DrawLogEntryDto =
-    DrawLogEntryDto(tokenId = tokenId, pile = pile.name, batchId = batchId, defeated = defeated, note = note, parentIndex = parentIndex)
+    DrawLogEntryDto(tokenId = tokenId, pile = pile.name, batchId = batchId, defeated = defeated, note = note, parentIndex = parentIndex, ephemeral = ephemeral)
 
 private fun DrawLogEntryDto.toDomain(): DrawLogEntry =
-    DrawLogEntry(tokenId = tokenId, pile = TokenPileId.valueOf(pile), batchId = batchId, defeated = defeated, note = note, parentIndex = parentIndex)
+    DrawLogEntry(tokenId = tokenId, pile = TokenPileId.valueOf(pile), batchId = batchId, defeated = defeated, note = note, parentIndex = parentIndex, ephemeral = ephemeral)
 
 // The pile map is keyed by the TokenPileId enum in the domain; JSON needs String keys, so the map
 // is serialized with each key's enum name and re-keyed back on the way in.
