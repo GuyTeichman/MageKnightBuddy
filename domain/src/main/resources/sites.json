@@ -248,5 +248,43 @@
       { "heading": "Movement", "body": "The move cost of the Graveyard space is determined by the terrain type shown on the space it covers (just like a Ruins tile). The fact that Night rules apply while in a graveyard does not affect the Move cost of the terrain it is in (so to move into a forest space that has a graveyard in it will still cost 3 Move points during the Day)." }
     ],
     "art": "graveyard_tile.jpg"
+  },
+  {
+    "id": "oasis",
+    "name": "Oasis",
+    "category": "SETTLEMENT",
+    "expansion": "APOCALYPSE_DRAGON",
+    "sections": [
+      { "heading": "Interaction", "body": "During interaction at an oasis, you may recruit Units that can be recruited at villages, buy healing, and buy and sell mana crystals." },
+      { "heading": "Revitalizing", "body": "An oasis also revitalizes you; if you start your turn on an oasis, you get Move 2." }
+    ]
+  },
+  {
+    "id": "ziggurat",
+    "name": "Ziggurat",
+    "category": "ADVENTURE_SITE",
+    "expansion": "APOCALYPSE_DRAGON",
+    "sections": [
+      { "heading": "Entering", "body": "You may enter a ziggurat as your action; as usual for an adventure site, you can ignore it even if you are on its space. You start on Floor 1 and continue until you leave. You cannot use any Units during the action (neither to activate their abilities nor to assign damage to them). Healing may be used before combat starts, and any Wounds added to your hand during combat count toward knockout." },
+      { "heading": "Floors", "body": "On each floor you encounter a trap and then decide whether to fight an apocalypse possessed enemy and leave, or ascend to the next floor. Floor 1: roll 3 mana dice, then fight an apocalypse possessed green enemy or ascend to floor 2. Floor 2: roll 2 mana dice, then fight an apocalypse possessed purple enemy or ascend to floor 3. Floor 3: roll 1 mana die, then fight an apocalypse possessed brown enemy and leave. To fight, reveal a random possessed enemy token together with a random enemy token of the floor's color and combine them into an apocalypse possessed enemy (see the Enemy Picker's possessed-enemy rules)." },
+      { "heading": "Traps", "body": "After rolling, choose one of the colors rolled (on floor 3 there is only one die, so no choice) and face the corresponding trap shown on the Site Description card. Block its attack or assign its damage as if in combat. A trap cannot be prevented from attacking, but effects that reduce the value of an attack still apply." },
+      { "heading": "Reward", "body": "If you defeat the enemy, claim that floor's reward - Floor 1: two random mana crystals; Floor 2: a Spell; Floor 3: an Artifact - and mark that floor with your Shield token on the corresponding number. Because you defeated an apocalypse possessed enemy, you also gain an Apocalypse Faction token. If you do not defeat the enemy, discard the tokens and the action ends with no reward." },
+      { "heading": "Partially Conquered", "body": "You may not enter the same ziggurat again once you have conquered a floor of it. Another player may enter, but may not leave on a floor already marked, and may not ascend to a floor if that floor and all floors after it are already marked. If all three floors are marked, no one may enter it again." },
+      { "heading": "Final Scoring", "body": "During final scoring, each ziggurat provides 2 Fame (toward the Greatest Adventurer title) for anyone who has a Shield token on it." }
+    ]
+  },
+  {
+    "id": "pyramid",
+    "name": "Pyramid",
+    "category": "ADVENTURE_SITE",
+    "expansion": "APOCALYPSE_DRAGON",
+    "sections": [
+      { "heading": "Entering", "body": "You may enter a pyramid as your action; as usual for an adventure site, you can ignore it even if you are on its space. You start on Floor 1 and continue until you leave. You cannot use any Units during the action (neither to activate their abilities nor to assign damage to them). Healing may be used before combat starts, and any Wounds added to your hand during combat count toward knockout." },
+      { "heading": "Floors", "body": "A pyramid works exactly like a ziggurat, differing only in the colors of the enemies you fight. On each floor you encounter a trap and then decide whether to fight an apocalypse possessed enemy and leave, or ascend to the next floor. Floor 1: roll 3 mana dice, then fight an apocalypse possessed gray enemy or ascend to floor 2. Floor 2: roll 2 mana dice, then fight an apocalypse possessed white enemy or ascend to floor 3. Floor 3: roll 1 mana die, then fight an apocalypse possessed red enemy and leave. To fight, reveal a random possessed enemy token together with a random enemy token of the floor's color and combine them into an apocalypse possessed enemy (see the Enemy Picker's possessed-enemy rules)." },
+      { "heading": "Traps", "body": "After rolling, choose one of the colors rolled (on floor 3 there is only one die, so no choice) and face the corresponding trap shown on the Site Description card. Block its attack or assign its damage as if in combat. A trap cannot be prevented from attacking, but effects that reduce the value of an attack still apply." },
+      { "heading": "Reward", "body": "If you defeat the enemy, claim that floor's reward - Floor 1: two random mana crystals; Floor 2: a Spell; Floor 3: an Artifact - and mark that floor with your Shield token on the corresponding number. Because you defeated an apocalypse possessed enemy, you also gain an Apocalypse Faction token. If you do not defeat the enemy, discard the tokens and the action ends with no reward." },
+      { "heading": "Partially Conquered", "body": "You may not enter the same pyramid again once you have conquered a floor of it. Another player may enter, but may not leave on a floor already marked, and may not ascend to a floor if that floor and all floors after it are already marked. If all three floors are marked, no one may enter it again." },
+      { "heading": "Final Scoring", "body": "During final scoring, each pyramid provides 2 Fame (toward the Greatest Adventurer title) for anyone who has a Shield token on it." }
+    ]
   }
 ]

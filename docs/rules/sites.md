@@ -7,15 +7,21 @@ the same role `docs/rules/enemy-tokens.md` plays for the Enemy Picker.
 
 ## Scope
 
-**In scope** — every map-feature box on the Quick Reference Sheet: the sites, the two rampaging
+**In scope** — every map-feature box on the Quick Reference Sheet (the sites, the two rampaging
 enemies (Marauding Orcs, Draconum), the Walls terrain feature, and the three Shades of Tezla
-location tiles. **21 entries.**
+location tiles), plus the three **Apocalypse Dragon Site Description cards** (Oasis, Ziggurat,
+Pyramid), which the Quick Reference Sheet predates and which are transcribed from the Apocalypse
+Dragon rulebook instead (issue #238). **24 entries.**
 
-**Out of scope** — the Quick Reference Sheet's **"Enemy Token Abilities"** block (Defensive /
-Offensive abilities, Unit Resistances, Multiple Attacks) on page 2. That reference already lives in
-the Enemy Picker's ability info window (`docs/rules/enemy-tokens.md` + `EnemyAbilityText.kt`);
-duplicating it here would invite drift. **Apocalypse Dragon sites** are deferred to Sub-issue F
-(issue #238) — the Quick Reference Sheet predates that expansion and doesn't cover them.
+**Out of scope:**
+- The Quick Reference Sheet's **"Enemy Token Abilities"** block (Defensive / Offensive abilities,
+  Unit Resistances, Multiple Attacks) on page 2. That reference already lives in the Enemy Picker's
+  ability info window (`docs/rules/enemy-tokens.md` + `EnemyAbilityText.kt`); duplicating it here
+  would invite drift.
+- **Destroyed Sites** (Apocalypse Dragon rulebook p.11) — a token/mechanic (16 Destroyed Site tokens
+  placed on sites the Four Horsemen or the Apocalypse Dragon wipe out), *not* a Site Description card,
+  so it is not one of the three AD map-features here. The Apocalypse Dragon adds no other in-scope
+  sites.
 
 ## Source & provenance
 
@@ -32,6 +38,12 @@ alongside:
 - **`Mage-Knight-Board-Game-Ultimate-Edition-Expansion-Rule-Books-September-2018.pdf`** (abbreviated
   **Expansion Rulebook** below) — "New Map Features" (Lost Legion, p.5) and "New Map Location Tiles"
   (Shades of Tezla, p.21).
+- **`Mage-Knight-The-Apocalypse-Dragon---Rulebook-WEB.pdf`** (abbreviated **AD Rulebook** below) —
+  the Apocalypse Dragon has no Quick Reference Sheet, so its three Site Description cards are
+  transcribed from this rulebook directly: the Oasis paragraph and the shared Ziggurat/Pyramid rules
+  under "New Map Features" (p.8), the floor→enemy-color table (p.8), and the Ziggurat Site Description
+  card reproduced in the p.9 example. See the Apocalypse Dragon section below for two deliberate
+  transcription limits (per-color trap values; the Pyramid card).
 
 ## Expansion attribution
 
@@ -42,10 +54,11 @@ Every entry's `expansion` is verified against a rulebook, not inferred from the 
 | `BASE` | QRS p.1 | Crystal Mines, Magical Glade, Marauding Orcs, Draconum, Village, Monastery, Mage Tower, Keep, Monster Den, Spawning Grounds, Dungeon, Tomb, Ancient Ruins (13) |
 | `LOST_LEGION` | QRS p.2 + Expansion Rulebook p.5 ("New Map Features") | Walls, Deep Mines, Refugee Camp, Maze, Labyrinth (5) |
 | `SHADES_OF_TEZLA` | QRS p.2 + Expansion Rulebook p.21 ("New Map Location Tiles") | Hidden Valley Tile, Necropolis Tile, Graveyard Tile (3) |
+| `APOCALYPSE_DRAGON` | AD Rulebook p.8 ("New Map Features") + p.9 (Ziggurat card) | Oasis, Ziggurat, Pyramid (3) |
 
 The **Krang** expansion adds **no** sites — its only new rule is the "Flip Back Ability" (Expansion
 Rulebook p.18) — which is why the Sites domain uses its own `SiteExpansion` enum
-(`BASE`/`LOST_LEGION`/`SHADES_OF_TEZLA`) rather than reusing the Enemy Picker's `Expansion` enum:
+(`BASE`/`LOST_LEGION`/`SHADES_OF_TEZLA`/`APOCALYPSE_DRAGON`) rather than reusing the Enemy Picker's `Expansion` enum:
 sites never split Shades of Tezla by faction (a token quirk), never come from Krang, and shouldn't
 be coupled to the Token Set's meaning. See `docs/context-sites.md`.
 
@@ -59,8 +72,8 @@ judgment calls open to revision. Definitions:
 |----------|---------|---------|
 | `RAMPAGING_ENEMY` | An enemy roaming the map, not a location you own | Marauding Orcs, Draconum |
 | `FORTIFIED_SITE` | A defended site you assault and then own | Keep, Mage Tower |
-| `ADVENTURE_SITE` | A site you spend an action to *enter and fight* for a reward | Monster Den, Spawning Grounds, Dungeon, Tomb, Ancient Ruins, Maze, Labyrinth |
-| `SETTLEMENT` | A friendly site you *interact* at (recruit / heal) | Village, Monastery, Refugee Camp |
+| `ADVENTURE_SITE` | A site you spend an action to *enter and fight* for a reward | Monster Den, Spawning Grounds, Dungeon, Tomb, Ancient Ruins, Maze, Labyrinth, Ziggurat, Pyramid |
+| `SETTLEMENT` | A friendly site you *interact* at (recruit / heal) | Village, Monastery, Refugee Camp, Oasis |
 | `RESOURCE_SITE` | A site giving a passive start/end-of-turn benefit | Crystal Mines, Deep Mines, Magical Glade |
 | `SPECIAL_TILE` | A location tile placed *over* a map space | Hidden Valley Tile, Necropolis Tile, Graveyard Tile |
 | `TERRAIN_FEATURE` | A map terrain feature, not a site you occupy | Walls |
@@ -70,6 +83,11 @@ Note the one deliberate inconsistency: the **Hidden Valley Tile** is functionall
 `RESOURCE_SITE`, because the rulebook introduces it as a "location tile" placed over a space
 alongside Necropolis/Graveyard (Expansion Rulebook p.21) — its structural nature wins over its
 functional twin.
+
+The **Oasis** is likewise a judgment call: it grants a Magical-Glade-like start-of-turn bonus (Move 2
+if you start your turn there), which would fit `RESOURCE_SITE`, but its dominant identity is a
+village-like *interaction* site (recruit Units, buy healing, buy and sell mana crystals), so it is
+categorised `SETTLEMENT`.
 
 ---
 
@@ -335,9 +353,123 @@ Essence and Imbued With Magic text — with an added move cost.
 
 ---
 
+# APOCALYPSE DRAGON (AD Rulebook — no Quick Reference Sheet)
+
+The Apocalypse Dragon expansion has no Quick Reference Sheet, so these three Site Description cards
+are transcribed from the AD Rulebook: the Oasis paragraph and the shared Ziggurat/Pyramid rules under
+"New Map Features" (p.8), the floor→enemy-color table (p.8), and the Ziggurat card reproduced in the
+p.9 example. Two deliberate transcription limits, called out here rather than resolved silently
+(per this repo's rules-doc discipline — don't code around an ambiguity while leaving the doc as-is):
+
+- **Per-color trap values are not transcribed.** Each floor's trap is chosen by rolling mana dice and
+  picking a rolled color; the specific attack for each color is a small icon table printed on the
+  physical Site Description card. The AD Rulebook reproduces only the Ziggurat card (p.9, at a size
+  too small to read the trap icons reliably) and never shows the Pyramid card at all, so enumerating
+  the per-color trap attacks would mean guessing — especially for the Pyramid. The entries below
+  describe the trap *mechanic* faithfully and point at the card, mirroring how the base **Ancient
+  Ruins** entry says "Draw the enemies depicted on the yellow token" without enumerating every
+  variant.
+- **The Pyramid's per-floor rewards are taken to mirror the Ziggurat's** (Floor 1 two crystals /
+  Floor 2 a Spell / Floor 3 an Artifact). The AD Rulebook shows those reward tiers only on the
+  Ziggurat card and distinguishes the two sites solely by enemy color (p.8 table) and terrain, so the
+  Pyramid is transcribed as the Ziggurat's twin — **pending verification against the physical Pyramid
+  card.**
+
+### Oasis
+`id: oasis` · `category: SETTLEMENT` · `expansion: APOCALYPSE_DRAGON` · AD Rulebook p.8
+
+A new inhabited map feature; it interacts like a village and also revitalizes you. Categorised
+`SETTLEMENT` for its village-like interaction despite the Magical-Glade-like Move bonus (see the
+"Category taxonomy" note above).
+
+- **Interaction:** During interaction at an oasis, you may recruit Units that can be recruited at
+  villages, buy healing, and buy and sell mana crystals.
+- **Revitalizing:** An oasis also revitalizes you; if you start your turn on an oasis, you get Move 2.
+  *(The physical Oasis reminder token states the same: "Gain +2 Move for starting on the Oasis
+  Site.")*
+
+### Ziggurat
+`id: ziggurat` · `category: ADVENTURE_SITE` · `expansion: APOCALYPSE_DRAGON` · AD Rulebook p.8-9
+
+Ziggurat and Pyramid are new adventure sites fought across three ascending floors. They share the
+same enter / trap / fight-or-ascend structure and reward tiers, differing only in the enemy colors
+drawn per floor (the two differ exactly as Maze and Labyrinth do — same structure, different foe).
+
+- **Entering:** You may enter a ziggurat as your action; as usual for an adventure site, you can
+  ignore it even if you are on its space. You start on Floor 1 and continue until you leave. You
+  cannot use any Units during the action (neither to activate their abilities nor to assign damage to
+  them). Healing may be used before combat starts, and any Wounds added to your hand during combat
+  count toward knockout.
+- **Floors:** On each floor you encounter a trap and then decide whether to fight an apocalypse
+  possessed enemy and leave, or ascend to the next floor. Floor 1: roll 3 mana dice, then fight an
+  apocalypse possessed **green** enemy or ascend to floor 2. Floor 2: roll 2 mana dice, then fight an
+  apocalypse possessed **purple** enemy or ascend to floor 3. Floor 3: roll 1 mana die, then fight an
+  apocalypse possessed **brown** enemy and leave. To fight, reveal a random possessed enemy token
+  together with a random enemy token of the floor's color and combine them into an *apocalypse
+  possessed enemy* — the same possessed-enemy combination the Enemy Picker handles (issue #189; the
+  Psychic Attack / possessed-token rules live with the Enemy Picker, not here), not re-specified in
+  this entry.
+- **Traps:** After rolling, choose one of the colors rolled (on floor 3 there is only one die, so no
+  choice) and face the corresponding trap shown on the Site Description card. Block its attack or
+  assign its damage as if in combat. A trap cannot be prevented from attacking, but effects that
+  reduce the value of an attack still apply. *(The per-color trap attacks themselves are not
+  transcribed — see the note at the top of this section.)*
+- **Reward:** If you defeat the enemy, claim that floor's reward — Floor 1: two random mana crystals;
+  Floor 2: a Spell; Floor 3: an Artifact — and mark that floor with your Shield token on the
+  corresponding number. Because you defeated an apocalypse possessed enemy, you also gain an
+  Apocalypse Faction token. If you do not defeat the enemy, discard the tokens and the action ends
+  with no reward.
+- **Partially Conquered:** You may not enter the same ziggurat again once you have conquered a floor
+  of it. Another player may enter, but may not leave on a floor already marked, and may not ascend to
+  a floor if that floor and all floors after it are already marked. If all three floors are marked, no
+  one may enter it again.
+- **Final Scoring:** During final scoring, each ziggurat provides 2 Fame (toward the Greatest
+  Adventurer title) for anyone who has a Shield token on it.
+
+### Pyramid
+`id: pyramid` · `category: ADVENTURE_SITE` · `expansion: APOCALYPSE_DRAGON` · AD Rulebook p.8
+
+The Pyramid is the Ziggurat's twin: identical enter / trap / fight-or-ascend structure, reward tiers,
+partial-conquest, and 2-Fame final scoring — differing only in the enemy colors drawn per floor
+(**gray / white / red** instead of green / purple / brown, per the AD Rulebook p.8 floor→color
+table). The rulebook reproduces only the Ziggurat card, so the Pyramid's shared text is transcribed
+from the Ziggurat card (see the reward-inference note at the top of this section).
+
+- **Entering:** You may enter a pyramid as your action; as usual for an adventure site, you can ignore
+  it even if you are on its space. You start on Floor 1 and continue until you leave. You cannot use
+  any Units during the action (neither to activate their abilities nor to assign damage to them).
+  Healing may be used before combat starts, and any Wounds added to your hand during combat count
+  toward knockout.
+- **Floors:** A pyramid works exactly like a ziggurat, differing only in the colors of the enemies
+  you fight. Floor 1: roll 3 mana dice, then fight an apocalypse possessed **gray** enemy or ascend
+  to floor 2. Floor 2: roll 2 mana dice, then fight an apocalypse possessed **white** enemy or ascend
+  to floor 3. Floor 3: roll 1 mana die, then fight an apocalypse possessed **red** enemy and leave.
+  To fight, reveal a random possessed enemy token together with a random enemy token of the floor's
+  color and combine them into an apocalypse possessed enemy (as with the Ziggurat).
+- **Traps:** After rolling, choose one of the colors rolled (on floor 3 there is only one die, so no
+  choice) and face the corresponding trap shown on the Site Description card. Block its attack or
+  assign its damage as if in combat. A trap cannot be prevented from attacking, but effects that
+  reduce the value of an attack still apply.
+- **Reward:** If you defeat the enemy, claim that floor's reward — Floor 1: two random mana crystals;
+  Floor 2: a Spell; Floor 3: an Artifact — and mark that floor with your Shield token on the
+  corresponding number. Because you defeated an apocalypse possessed enemy, you also gain an
+  Apocalypse Faction token. If you do not defeat the enemy, discard the tokens and the action ends
+  with no reward.
+- **Partially Conquered:** You may not enter the same pyramid again once you have conquered a floor of
+  it. Another player may enter, but may not leave on a floor already marked, and may not ascend to a
+  floor if that floor and all floors after it are already marked. If all three floors are marked, no
+  one may enter it again.
+- **Final Scoring:** During final scoring, each pyramid provides 2 Fame (toward the Greatest
+  Adventurer title) for anyone who has a Shield token on it.
+
+---
+
 ## Status
 
-First-draft transcription from the QRS + Expansion Rulebook, **pending verification by the project
-author against the physical Site Description cards** (same sourcing caveat as
+First-draft transcription from the QRS + Expansion Rulebook + AD Rulebook, **pending verification by
+the project author against the physical Site Description cards** (same sourcing caveat as
 `docs/rules/enemy-tokens.md`). The `category` taxonomy in particular is an app-side grouping open to
-revision (see above).
+revision (see above). For the three Apocalypse Dragon sites specifically, two transcription limits are
+still open: the per-color trap values are not transcribed, and the Pyramid's per-floor rewards are
+inferred to mirror the Ziggurat's — both detailed in the Apocalypse Dragon section above and worth
+resolving against the physical Ziggurat *and* Pyramid Site Description cards.
