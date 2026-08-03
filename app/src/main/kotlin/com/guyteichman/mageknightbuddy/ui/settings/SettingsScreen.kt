@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
@@ -28,16 +30,24 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import java.time.LocalDate
 
+/** Public GitHub repository, opened by the "View source on GitHub" link in the About section. */
+private const val GITHUB_URL = "https://github.com/GuyTeichman/MageKnightBuddy"
+
+/** The author's Buy Me A Coffee page, opened by the "Buy me a coffee" link (issue #104). */
+private const val BUY_ME_A_COFFEE_URL = "https://www.buymeacoffee.com/guyteichman"
+
 /**
- * The Settings screen (issue #121). Currently a minimal shell holding only Backup & Restore - the
- * other deferred Settings items (expansion toggles, help-citation visibility) stay out of scope for
- * now (see docs/design/architecture.md). Reached via the shared [SettingsAction] gear on each tab,
- * pushed as a full-screen destination outside the bottom-nav graph; [onBack] pops back to the tab.
+ * The Settings screen (issue #121). Holds Backup & Restore plus an About section with source/support
+ * links (issue #104); the other deferred Settings items (expansion toggles, help-citation visibility)
+ * stay out of scope for now (see docs/design/architecture.md). Reached via the shared [SettingsAction]
+ * gear on each tab, pushed as a full-screen destination outside the bottom-nav graph; [onBack] pops
+ * back to the tab.
  *
  * Backup/restore use the Storage Access Framework (ADR-0009): the launchers below open the system
  * file picker so the user chooses where the JSON snapshot goes (Google Drive, local, etc.) with no
@@ -54,6 +64,10 @@ fun SettingsScreen(
     // plain value but recomposes this screen whenever a new state is emitted.
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    // Compose's built-in way to open a URL in the user's browser: openUri fires the platform's
+    // ACTION_VIEW handling for us and copes with there being no browser, so the About links below
+    // don't need to build an Intent by hand.
+    val uriHandler = LocalUriHandler.current
 
     // SAF "create document": launches the system save-file picker with a suggested name; the
     // callback gets the chosen Uri (null if the user backed out) and hands it to the ViewModel.
@@ -119,6 +133,28 @@ fun SettingsScreen(
             ) {
                 Icon(Icons.Filled.Restore, contentDescription = null)
                 Text("  Restore from a file")
+            }
+
+            Text("About", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "MageKnightBuddy is a free, open-source companion app.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            OutlinedButton(
+                onClick = { uriHandler.openUri(GITHUB_URL) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Filled.Code, contentDescription = null)
+                Text("  View source on GitHub")
+            }
+
+            OutlinedButton(
+                onClick = { uriHandler.openUri(BUY_ME_A_COFFEE_URL) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Filled.Coffee, contentDescription = null)
+                Text("  Buy me a coffee")
             }
         }
     }
