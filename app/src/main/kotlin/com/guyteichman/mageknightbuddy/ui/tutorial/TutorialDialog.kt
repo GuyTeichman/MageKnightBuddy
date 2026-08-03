@@ -1,6 +1,8 @@
 package com.guyteichman.mageknightbuddy.ui.tutorial
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -84,12 +86,19 @@ fun TutorialDialog(tutorial: Tutorial, onDismiss: () -> Unit) {
 
                 HorizontalPager(
                     state = pagerState,
-                    // A min height keeps the dialog from resizing as steps of different lengths page by.
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 190.dp),
+                    // min keeps the dialog from resizing as steps of different lengths page by; max
+                    // bounds it so a long step (or a large system font scale) scrolls within the page
+                    // instead of pushing the Back/Next/Done row off-screen.
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 190.dp, max = 340.dp),
                     verticalAlignment = Alignment.Top,
                 ) { page ->
                     val step = tutorial.steps[page]
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            // Its own scroll state per page, so overly long bodies stay fully readable.
+                            .verticalScroll(rememberScrollState()),
+                    ) {
                         Text(
                             text = step.title,
                             style = MaterialTheme.typography.titleMedium,
@@ -135,7 +144,9 @@ fun TutorialDialog(tutorial: Tutorial, onDismiss: () -> Unit) {
                         Text("Back")
                     }
                     Spacer(Modifier.weight(1f))
-                    val isLastStep = pagerState.currentPage == tutorial.steps.lastIndex
+                    // >= rather than ==: on the empty-steps edge case (lastIndex == -1) this still
+                    // resolves to the finishing "Done" button instead of a Next that scrolls nowhere.
+                    val isLastStep = pagerState.currentPage >= tutorial.steps.lastIndex
                     Button(
                         onClick = {
                             // On the final step the primary button finishes; otherwise it advances a page.

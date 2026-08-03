@@ -4,14 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import com.guyteichman.mageknightbuddy.data.TutorialProgressRepository
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 
 /**
  * Drives one screen's tutorial pop-up (issue #161): whether it's currently open, how to open it (the
@@ -35,7 +34,7 @@ class ScreenTutorialState(
         if (tutorial != null) visibleState.value = true
     }
 
-    /** Closes the pop-up and records it as seen, so it won't auto-open on future visits. */
+    /** Closes the pop-up and records it as seen (durably), so it won't auto-open on future visits. */
     fun dismiss() {
         visibleState.value = false
         onMarkSeen()
@@ -55,15 +54,20 @@ fun rememberScreenTutorialState(
     progress: TutorialProgressRepository,
 ): ScreenTutorialState {
     val tutorial = tutorials[tutorialKey]
-    val scope: CoroutineScope = rememberCoroutineScope()
-    // rememberSaveable so an open pop-up survives a config change / process death (only a Boolean is
+    // rememberSaveable so an open pop-up survives a config change / process death (only Booleans are
     // stored, so there's no parcelability hazard - contrast the SavedStateHandle data-object crash).
     val visibleState = rememberSaveable(tutorialKey) { mutableStateOf(false) }
+    // The auto-show is a genuine one-shot: once resolved (whether it opened or not), it must not fire
+    // again on re-entry or a config change - otherwise a just-dismissed tutorial can pop back up when
+    // the recreated LaunchedEffect re-reads `hasSeen` before the async "seen" write has flushed.
+    var autoShowResolved by rememberSaveable(tutorialKey) { mutableStateOf(false) }
 
-    // Keyed on tutorialKey so it runs once per screen entry: auto-show only when never seen before.
     LaunchedEffect(tutorialKey) {
-        if (tutorial != null && !progress.hasSeen(tutorialKey).first()) {
-            visibleState.value = true
+        if (!autoShowResolved) {
+            autoShowResolved = true
+            if (tutorial != null && !progress.hasSeen(tutorialKey).first()) {
+                visibleState.value = true
+            }
         }
     }
 
@@ -73,8 +77,9 @@ fun rememberScreenTutorialState(
         ScreenTutorialState(
             tutorial = tutorial,
             visibleState = visibleState,
-            // Fire-and-forget: persisting the seen flag needn't block closing the dialog.
-            onMarkSeen = { scope.launch { progress.markSeen(tutorialKey) } },
+            // Durable fire-and-forget: the repo persists on its own process-lifetime scope, so this
+            // survives the screen being disposed the instant after the dialog closes.
+            onMarkSeen = { progress.markSeenAsync(tutorialKey) },
         )
     }
 }

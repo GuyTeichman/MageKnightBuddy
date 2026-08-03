@@ -7,8 +7,12 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStoreFile
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /**
  * Remembers which per-screen tutorials the user has already seen (issue #161), so each one can
@@ -22,15 +26,26 @@ interface TutorialProgressRepository {
 
     /** Records that [tutorialId] has now been seen, durably, so [hasSeen] reports true from here on. */
     suspend fun markSeen(tutorialId: String)
+
+    /**
+     * Fire-and-forget [markSeen] for callers with no long-lived scope of their own (the UI dismiss
+     * handler): the write runs on this repository's process-lifetime scope, so it isn't cancelled if
+     * the screen is disposed the instant after the tutorial closes - which would otherwise strand the
+     * "seen" flag and re-auto-show the tutorial forever.
+     */
+    fun markSeenAsync(tutorialId: String)
 }
 
 /**
  * [TutorialProgressRepository] backed by a Preferences [DataStore]: one boolean key per tutorial id.
- * The [DataStore] is injected rather than built here so production can point it at the app's data
- * dir while tests point it at a temp file (see `TutorialProgressRepositoryTest`).
+ * The [DataStore] and [scope] are injected rather than built here so production can point them at the
+ * app's data dir + a process-lifetime scope while tests use a temp file + the test scope (see
+ * `TutorialProgressRepositoryTest`). [scope] must outlive any single screen for [markSeenAsync] to be
+ * durable.
  */
 class DataStoreTutorialProgressRepository(
     private val dataStore: DataStore<Preferences>,
+    private val scope: CoroutineScope,
 ) : TutorialProgressRepository {
 
     // `map` transforms the DataStore's Flow<Preferences> into a Flow<Boolean>: for each emitted
@@ -42,18 +57,26 @@ class DataStoreTutorialProgressRepository(
     override suspend fun markSeen(tutorialId: String) {
         dataStore.edit { preferences -> preferences[booleanPreferencesKey(tutorialId)] = true }
     }
+
+    // Launched on the repository's own scope, not the caller's, so a disposed screen can't cancel it.
+    override fun markSeenAsync(tutorialId: String) {
+        scope.launch { markSeen(tutorialId) }
+    }
 }
 
 /**
  * Builds the production [TutorialProgressRepository], backed by a Preferences DataStore file
- * ("tutorial_progress") in the app's data dir. The "factory that looks like a constructor" idiom
- * (see [ScoreCalculatorDraftRepository]); a Preferences DataStore requires a single instance per
+ * ("tutorial_progress") in the app's data dir and a process-lifetime IO scope shared by the DataStore
+ * itself and [TutorialProgressRepository.markSeenAsync]. The "factory that looks like a constructor"
+ * idiom (see [ScoreCalculatorDraftRepository]); a Preferences DataStore requires a single instance per
  * file per process, so call this exactly once - see `MageKnightBuddyApplication`.
  */
-fun TutorialProgressRepository(context: Context): TutorialProgressRepository =
-    DataStoreTutorialProgressRepository(
+fun TutorialProgressRepository(context: Context): TutorialProgressRepository {
+    // SupervisorJob so one failed write can't tear down the whole scope; IO since it's disk work.
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val dataStore = PreferenceDataStoreFactory.create(scope = scope) {
         // applicationContext so the long-lived DataStore never holds onto a shorter-lived Activity.
-        PreferenceDataStoreFactory.create {
-            context.applicationContext.preferencesDataStoreFile("tutorial_progress")
-        },
-    )
+        context.applicationContext.preferencesDataStoreFile("tutorial_progress")
+    }
+    return DataStoreTutorialProgressRepository(dataStore, scope)
+}
