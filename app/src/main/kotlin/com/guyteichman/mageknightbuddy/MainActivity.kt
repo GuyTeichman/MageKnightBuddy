@@ -28,6 +28,8 @@ class MainActivity : ComponentActivity() {
                     proxyPlayerRepository = app.proxyPlayerSessionRepository,
                     enemyPickerRepository = app.enemyPickerSessionRepository,
                     fieldHelp = app.fieldHelp,
+                    tutorials = app.tutorials,
+                    tutorialProgress = app.tutorialProgressRepository,
                 )
             }
         }

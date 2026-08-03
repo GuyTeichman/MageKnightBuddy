@@ -84,6 +84,7 @@ import androidx.navigation.compose.rememberNavController
 import com.guyteichman.mageknightbuddy.R
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
+import com.guyteichman.mageknightbuddy.data.TutorialProgressRepository
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.CardIdentity
@@ -105,6 +106,11 @@ import com.guyteichman.mageknightbuddy.ui.components.swatch
 import com.guyteichman.mageknightbuddy.ui.settings.SettingsAction
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.help.HelpButton
+import com.guyteichman.mageknightbuddy.ui.tutorial.Tutorial
+import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialAction
+import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialDialog
+import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialKeys
+import com.guyteichman.mageknightbuddy.ui.tutorial.rememberScreenTutorialState
 import kotlinx.coroutines.launch
 
 private const val DUMMY_PLAYER_SETUP_ROUTE = "dummy_player_setup"
@@ -136,6 +142,8 @@ fun DummyPlayerTab(
     volkareRepository: VolkareSessionRepository,
     proxyPlayerRepository: ProxyPlayerSessionRepository,
     fieldHelp: Map<String, FieldHelp>,
+    tutorials: Map<String, Tutorial>,
+    tutorialProgress: TutorialProgressRepository,
     onOpenSettings: () -> Unit,
 ) {
     val nestedNavController = rememberNavController()
@@ -146,6 +154,8 @@ fun DummyPlayerTab(
                 repository = repository,
                 volkareRepository = volkareRepository,
                 proxyPlayerRepository = proxyPlayerRepository,
+                tutorials = tutorials,
+                tutorialProgress = tutorialProgress,
                 onOpenSettings = onOpenSettings,
                 // Both Start and Restore Game land on the same AI-screen route - once a session
                 // exists (freshly started or restored), the AI screen just loads whatever's saved.
@@ -160,13 +170,30 @@ fun DummyPlayerTab(
         composable(DUMMY_PLAYER_AI_ROUTE) {
             // Back is a plain pop with no confirmation - autosave means nothing is ever unsaved
             // (per #27).
-            DummyPlayerAiScreen(repository = repository, fieldHelp = fieldHelp, onBack = { nestedNavController.popBackStack() })
+            DummyPlayerAiScreen(
+                repository = repository,
+                fieldHelp = fieldHelp,
+                tutorials = tutorials,
+                tutorialProgress = tutorialProgress,
+                onBack = { nestedNavController.popBackStack() },
+            )
         }
         composable(VOLKARE_AI_ROUTE) {
-            VolkareAiScreen(repository = volkareRepository, onBack = { nestedNavController.popBackStack() })
+            VolkareAiScreen(
+                repository = volkareRepository,
+                tutorials = tutorials,
+                tutorialProgress = tutorialProgress,
+                onBack = { nestedNavController.popBackStack() },
+            )
         }
         composable(PROXY_PLAYER_AI_ROUTE) {
-            ProxyPlayerAiScreen(repository = proxyPlayerRepository, fieldHelp = fieldHelp, onBack = { nestedNavController.popBackStack() })
+            ProxyPlayerAiScreen(
+                repository = proxyPlayerRepository,
+                fieldHelp = fieldHelp,
+                tutorials = tutorials,
+                tutorialProgress = tutorialProgress,
+                onBack = { nestedNavController.popBackStack() },
+            )
         }
     }
 }
@@ -192,6 +219,8 @@ private fun DummyPlayerSetupScreen(
     repository: DummyPlayerSessionRepository,
     volkareRepository: VolkareSessionRepository,
     proxyPlayerRepository: ProxyPlayerSessionRepository,
+    tutorials: Map<String, Tutorial>,
+    tutorialProgress: TutorialProgressRepository,
     onStart: () -> Unit,
     onRestore: () -> Unit,
     onStartVolkare: () -> Unit,
@@ -200,6 +229,9 @@ private fun DummyPlayerSetupScreen(
     onRestoreProxyPlayer: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
+    // The setup/selection screen's own mini-tutorial (issue #161): auto-shows on first visit, and
+    // re-openable via the graduation-cap action in the top bar below.
+    val tutorial = rememberScreenTutorialState(TutorialKeys.SETUP, tutorials, tutorialProgress)
     val viewModel: DummyPlayerSetupViewModel = viewModel(factory = DummyPlayerSetupViewModel.factory(repository))
     val volkareViewModel: VolkareSetupViewModel = viewModel(factory = VolkareSetupViewModel.factory(volkareRepository))
     val proxyPlayerViewModel: ProxyPlayerSetupViewModel = viewModel(factory = ProxyPlayerSetupViewModel.factory(proxyPlayerRepository))
@@ -226,12 +258,17 @@ private fun DummyPlayerSetupScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Dummy Player") },
-                // The shared settings gear, present on every tab's top bar so Settings is reachable
-                // from anywhere without its own bottom-nav tab (see SettingsAction).
-                actions = { SettingsAction(onClick = onOpenSettings) },
+                // The tutorial (graduation-cap) action sits before the shared settings gear, which is
+                // present on every tab's top bar so Settings is reachable from anywhere (SettingsAction).
+                actions = {
+                    TutorialAction(onClick = tutorial::show)
+                    SettingsAction(onClick = onOpenSettings)
+                },
             )
         },
     ) { padding ->
+    // Render the tutorial pop-up over the setup content when open (auto on first visit, or on demand).
+    if (tutorial.isVisible) tutorial.tutorial?.let { TutorialDialog(it, onDismiss = tutorial::dismiss) }
     Column(
         // verticalScroll so the setup controls stay reachable on shorter screens - the added top bar
         // eats vertical space the un-scrolling Column used to have, which could otherwise clip the
@@ -564,10 +601,21 @@ internal fun VolkareShieldIcon(size: Dp = 24.dp) {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldHelp: Map<String, FieldHelp>, onBack: () -> Unit) {
+private fun DummyPlayerAiScreen(
+    repository: DummyPlayerSessionRepository,
+    fieldHelp: Map<String, FieldHelp>,
+    tutorials: Map<String, Tutorial>,
+    tutorialProgress: TutorialProgressRepository,
+    onBack: () -> Unit,
+) {
     val viewModel: DummyPlayerAiViewModel = viewModel(factory = DummyPlayerAiViewModel.factory(repository))
     val scope = rememberCoroutineScope()
     val session = viewModel.session
+
+    // The Dummy Player AI screen's tutorial (issue #161): auto-shows first visit, re-openable via the
+    // top-bar graduation-cap action.
+    val tutorial = rememberScreenTutorialState(TutorialKeys.DUMMY, tutorials, tutorialProgress)
+    if (tutorial.isVisible) tutorial.tutorial?.let { TutorialDialog(it, onDismiss = tutorial::dismiss) }
 
     var showSummary by remember { mutableStateOf(false) }
     var showEndRoundDialog by remember { mutableStateOf(false) }
@@ -610,6 +658,7 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                         RoundChip(round = session.round, turn = session.turnInRound, isDay = session.isDay)
                         Spacer(modifier = Modifier.width(8.dp))
                     }
+                    TutorialAction(onClick = tutorial::show)
                 },
             )
         },

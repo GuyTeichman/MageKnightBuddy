@@ -31,10 +31,12 @@ import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.ui.dummyplayer.DummyPlayerTab
 import com.guyteichman.mageknightbuddy.ui.enemypicker.EnemyPickerTab
+import com.guyteichman.mageknightbuddy.data.TutorialProgressRepository
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.scoreboard.ScoreboardTab
 import com.guyteichman.mageknightbuddy.ui.settings.SettingsScreen
 import com.guyteichman.mageknightbuddy.ui.sites.SitesTab
+import com.guyteichman.mageknightbuddy.ui.tutorial.Tutorial
 
 // The Settings destination's route. Not a [Tab]: it's reached via the shared settings gear on each
 // tab's top bar (see SettingsAction), and registered in the NavHost outside the bottom-nav `tabs`
@@ -73,6 +75,8 @@ fun MageKnightBuddyApp(
     proxyPlayerRepository: ProxyPlayerSessionRepository,
     enemyPickerRepository: EnemyPickerSessionRepository,
     fieldHelp: Map<String, FieldHelp>,
+    tutorials: Map<String, Tutorial>,
+    tutorialProgress: TutorialProgressRepository,
 ) {
     // rememberNavController creates the NavController once and keeps the same instance
     // across recompositions (Compose's "remember" idiom), so navigation state survives
@@ -147,6 +151,8 @@ fun MageKnightBuddyApp(
                     volkareRepository = volkareRepository,
                     proxyPlayerRepository = proxyPlayerRepository,
                     fieldHelp = fieldHelp,
+                    tutorials = tutorials,
+                    tutorialProgress = tutorialProgress,
                     onOpenSettings = { openSettings() },
                 )
             }

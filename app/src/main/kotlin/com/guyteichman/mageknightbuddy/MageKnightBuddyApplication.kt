@@ -6,10 +6,13 @@ import com.guyteichman.mageknightbuddy.data.EnemyPickerSessionRepository
 import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.ScoreCalculatorDraftRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
+import com.guyteichman.mageknightbuddy.data.TutorialProgressRepository
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.data.createDatabase
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.help.loadFieldHelp
+import com.guyteichman.mageknightbuddy.ui.tutorial.Tutorial
+import com.guyteichman.mageknightbuddy.ui.tutorial.loadTutorials
 
 /**
  * App-wide singleton (one instance for the whole process). Holds the objects that
@@ -28,4 +31,10 @@ class MageKnightBuddyApplication : Application() {
     val proxyPlayerSessionRepository by lazy { ProxyPlayerSessionRepository(database.proxyPlayerSessionDao()) }
     val enemyPickerSessionRepository by lazy { EnemyPickerSessionRepository(database.enemyPickerSessionDao()) }
     val fieldHelp: Map<String, FieldHelp> by lazy { loadFieldHelp(this) }
+
+    // Tutorial content (per-screen pop-ups, issue #161) and the store remembering which have been
+    // seen. The repository is built once here because a Preferences DataStore needs a single instance
+    // per file per process.
+    val tutorials: Map<String, Tutorial> by lazy { loadTutorials(this) }
+    val tutorialProgressRepository by lazy { TutorialProgressRepository(this) }
 }

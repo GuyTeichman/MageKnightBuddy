@@ -1,0 +1,94 @@
+{
+  "setup": {
+    "title": "Dummy Player Setup",
+    "steps": [
+      {
+        "title": "What this tab is for",
+        "body": "This tab runs an automated opponent that paces your solo or cooperative game. It never plays on the board for you — each turn it tells you what the opponent does, and you carry that out at the table."
+      },
+      {
+        "title": "First: Volkare or a Knight",
+        "body": "Choose Volkare — the Lost Legion antagonist, who has no Knight — or a Knight you aren't playing, which stands in as the opponent."
+      },
+      {
+        "title": "Then: Standard or Proxy",
+        "body": "If you picked a Knight, choose how richly to run it. Standard Dummy Player just flips cards to keep the game moving. Proxy Player (from Apocalypse Dragon) is a fuller opponent that chases objectives around the map."
+      },
+      {
+        "title": "One mode per game",
+        "body": "Use whichever mode your scenario calls for — exactly one per game. Set it up once here and start. If you left a game unfinished, this screen also offers to restore it."
+      }
+    ]
+  },
+  "dummy": {
+    "title": "Dummy Player",
+    "steps": [
+      {
+        "title": "A pacing opponent",
+        "body": "The Dummy Player is a stand-in that races you through the rounds. It never fights or moves on the map — watching its deck shrink is how you gauge how much time you have left."
+      },
+      {
+        "title": "Play Turn",
+        "body": "Each turn it flips 3 cards from its deck. Then it checks the colour of the 3rd card and flips one extra card for every crystal it holds of that colour. Tap Play Turn and the app does all of this for you."
+      },
+      {
+        "title": "Ending the round",
+        "body": "When its deck runs empty it announces End of the Round, and everyone takes one last turn. Tap End Round to advance."
+      },
+      {
+        "title": "Preparing the next round",
+        "body": "At round end it gains the lowest Advanced Action from the offer, and its deck and discard pile are shuffled back together into a fresh deck. The End Round dialog just asks you which offer cards came up."
+      },
+      {
+        "title": "Why the deck count matters",
+        "body": "Some scenarios (such as Solo Conquest) score you on how many cards are left in the Dummy Player's deck at the end — so keep an eye on the count in the header."
+      }
+    ]
+  },
+  "proxy": {
+    "title": "Proxy Player",
+    "steps": [
+      {
+        "title": "A richer opponent",
+        "body": "The Proxy Player, from Apocalypse Dragon, replaces the Dummy Player with a Hero that chases objectives around the map. As with Volkare, the app narrates what it does; you resolve the real movement and combat at the table."
+      },
+      {
+        "title": "Objective cards",
+        "body": "Each turn it works toward an Objective Card drawn from its deck. The colour tells you its target: green heads for an adventure site, red for a fortified site or monastery, white for recruiting or learning, and blue for any of those but further from the portal."
+      },
+      {
+        "title": "Play Turn",
+        "body": "Tap Play Turn: if it already has an objective it adds a Shield token and flips 3 cards; otherwise it draws a new objective and flips 2 more. Crystals matching the last card's colour flip extra cards, just like the Dummy Player."
+      },
+      {
+        "title": "Movement points",
+        "body": "The app totals the objective's movement points for you — from the card type, its Shield tokens, and a Source-die bonus (including the gold die on days). Move the Hero that many spaces toward its target."
+      },
+      {
+        "title": "Reporting the result",
+        "body": "After you resolve it at the table, tell the app what happened: still travelling (keep the objective), or resolved — Explored or Completed — which discards the objective and its Shield tokens."
+      }
+    ]
+  },
+  "volkare": {
+    "title": "Volkare",
+    "steps": [
+      {
+        "title": "The Lost Legion antagonist",
+        "body": "Volkare replaces the Dummy Player in Volkare's Return and Volkare's Quest, racing you across the map. The app narrates each card he reveals; you move his figure and resolve any fight at the table."
+      },
+      {
+        "title": "One card per turn",
+        "body": "Volkare's deck is dealt once and never reshuffled. Each turn reveals a single card — tap the button and the app tells you what it means: which way he moves, whether the Source die rerolls, or whether he attacks."
+      },
+      {
+        "title": "City Revealed (Return only)",
+        "body": "In Volkare's Return, flip the City Revealed switch once the city tile appears on the board. Before it's set, moves are narrated as fixed compass directions; after, as moving toward the city."
+      },
+      {
+        "title": "When the deck runs out",
+        "body": "In Volkare's Return an empty deck triggers Frenzy: every turn afterward is narrated as a double move, forever. In Volkare's Quest, his last move card means he has reached the portal — and you've lost the race."
+      }
+    ]
+  }
+}
