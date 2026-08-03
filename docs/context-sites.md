@@ -5,8 +5,10 @@ Knight* **Site Description cards** / help cards describe (name + art + "what you
 how"). See `CONTEXT.md` for the other glossary slices (Scoring, Dummy Player, Enemy Picker).
 
 **Sites tab**:
-The 5th bottom-nav tab (issue #177): a flat, alphabetical, searchable list of **Site**s, each opening
-a full-screen detail with its art and rules. Purely a **reference** — unlike the Enemy Picker it owns
+The 5th bottom-nav tab (issue #177): a searchable list of **Site**s — flat and alphabetical by
+default, with optional grouping (by **Site Category** or **Site Expansion**, as sticky section
+headers) and multi-select expansion/category filtering (Sub-issue E / issue #237) — each opening a
+full-screen detail with its art and rules. Purely a **reference** — unlike the Enemy Picker it owns
 no real game state, models no map, and simulates nothing; its catalogue is static and the only thing
 it will ever persist is the player's **Site** favorites (Sub-issue D / issue #236). The tab itself is
 Sub-issue B (issue #234); this doc and the domain catalogue (Sub-issue A / issue #233) are its data
@@ -39,9 +41,10 @@ _Avoid_: Field, entry (reserved for the Score Calculator's inputs and the Draw L
 **Site Category**:
 An **app-side grouping** of **Site**s (`SiteCategory`: `RAMPAGING_ENEMY`, `FORTIFIED_SITE`,
 `ADVENTURE_SITE`, `SETTLEMENT`, `RESOURCE_SITE`, `SPECIAL_TILE`, `TERRAIN_FEATURE`) — *not* an
-official rulebook taxonomy, but a set of buckets chosen to power the future sort/group/filter controls
-(Sub-issue E / issue #237). Carried on every **Site** from the start (even though v1 renders a flat
-alphabetical list) so adding those controls needs no data migration. The definitions and each
+official rulebook taxonomy, but a set of buckets that power the sort/group/filter controls (Sub-issue
+E / issue #237). The enum's **declaration order is the section-header order** when grouping by
+category (`RAMPAGING_ENEMY` first … `TERRAIN_FEATURE` last), matching the "Category taxonomy" table.
+Carried on every **Site** from the start so those controls needed no data migration. The definitions and each
 **Site**'s assignment — which are judgment calls open to revision — live in `docs/rules/sites.md`'s
 "Category taxonomy" table.
 _Avoid_: treating a category as rules-authoritative (it's an app grouping); "type" (ambiguous)

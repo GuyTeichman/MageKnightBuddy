@@ -3,10 +3,13 @@ package com.guyteichman.mageknightbuddy.domain
 import kotlinx.serialization.Serializable
 
 /**
- * The kind of map-feature a [Site] is. This is an **app-side grouping** chosen to power the future
+ * The kind of map-feature a [Site] is. This is an **app-side grouping** that powers the Sites tab's
  * sort/group/filter controls (issue #237), not an official rulebook taxonomy - see the "Category
  * taxonomy" table in `docs/rules/sites.md` for the definitions and each site's assignment (which are
  * judgment calls open to revision).
+ *
+ * **Declaration order matters:** it's the order the section headers appear in when the list is grouped
+ * by category (see `SiteSearch.searchedFilteredGrouped`), so keep it aligned with the taxonomy table.
  *
  * `@Serializable` so it can tag each [Site] in the JSON catalogue (ADR-0007).
  */
