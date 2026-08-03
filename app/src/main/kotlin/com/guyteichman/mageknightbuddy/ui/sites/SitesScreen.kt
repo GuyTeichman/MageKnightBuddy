@@ -1,9 +1,12 @@
 package com.guyteichman.mageknightbuddy.ui.sites
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,18 +19,29 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +59,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.guyteichman.mageknightbuddy.domain.Site
 import com.guyteichman.mageknightbuddy.domain.SiteCatalogue
+import com.guyteichman.mageknightbuddy.domain.SiteCategory
 import com.guyteichman.mageknightbuddy.domain.SiteExpansion
 import com.guyteichman.mageknightbuddy.ui.settings.SettingsAction
 
@@ -93,20 +108,32 @@ fun SitesTab(onOpenSettings: () -> Unit) {
 }
 
 /**
- * The list screen: a search field pinned above a scrolling list of matching sites. Search query and
- * the filtered result are hoisted here; tapping a row hands its id up to [onSiteClick].
+ * The list screen: a search field and the group/filter controls pinned above a scrolling list of
+ * matching sites (issues #234 and #237). Search query, grouping mode, and the two filter selections
+ * are all hoisted here as `rememberSaveable` state; tapping a row hands its id up to [onSiteClick].
+ * The visible, sectioned list is recomputed by [searchedFilteredGrouped] whenever any input changes.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun SitesListScreen(onSiteClick: (String) -> Unit, onOpenSettings: () -> Unit) {
-    // rememberSaveable keeps the typed query across configuration changes (rotation) and across
-    // tab switches (the top-level nav saves/restores this tab's state), so returning to Sites keeps
-    // whatever was being searched.
+    // rememberSaveable keeps each control's state across configuration changes (rotation) and tab
+    // switches (the top-level nav saves/restores this tab's state). Every value here is
+    // Parcelable-safe on its own - a String, an enum, and Sets of enums (enums serialize by name) -
+    // so no custom Saver is needed.
     var query by rememberSaveable { mutableStateOf("") }
+    var grouping by rememberSaveable { mutableStateOf(SiteGrouping.NONE) }
+    var selectedExpansions by rememberSaveable { mutableStateOf(emptySet<SiteExpansion>()) }
+    var selectedCategories by rememberSaveable { mutableStateOf(emptySet<SiteCategory>()) }
+    // Whether the filter bottom sheet is open. Saveable so an open sheet survives rotation.
+    var showFilterSheet by rememberSaveable { mutableStateOf(false) }
 
-    // remember(query) recomputes the filtered+sorted list only when the query changes, not on every
-    // unrelated recomposition. The catalogue itself is static, so it's the only input that varies.
-    val results = remember(query) { SiteCatalogue.sites.searchedAndSorted(query) }
+    // remember(...) recomputes the grouped result only when one of these inputs changes, not on every
+    // unrelated recomposition. The catalogue itself is static, so these are the only inputs that vary.
+    val groups = remember(query, grouping, selectedExpansions, selectedCategories) {
+        SiteCatalogue.sites.searchedFilteredGrouped(query, selectedExpansions, selectedCategories, grouping)
+    }
+    // Total active filter chips across both axes - drives the badge on the Filter button.
+    val activeFilterCount = selectedExpansions.size + selectedCategories.size
 
     Scaffold(
         topBar = {
@@ -136,22 +163,222 @@ private fun SitesListScreen(onSiteClick: (String) -> Unit, onOpenSettings: () ->
                 placeholder = { Text("Search sites") },
             )
 
-            if (results.isEmpty()) {
+            // Group-by dropdown on the left, Filter button (with active-count badge) on the right.
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                GroupByControl(grouping = grouping, onSelect = { grouping = it })
+                // weight pushes the Filter button to the trailing edge.
+                Spacer(Modifier.weight(1f))
+                FilterButton(activeCount = activeFilterCount, onClick = { showFilterSheet = true })
+            }
+
+            if (groups.isEmpty()) {
+                // Generalized empty state: name the query when there is one, otherwise blame the filters
+                // (the only other thing that can empty the list now).
+                val message =
+                    if (query.isNotBlank()) "No sites match “$query”" else "No sites match the selected filters"
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No sites match “$query”")
+                    Text(message)
                 }
             } else {
                 // LazyColumn only composes the rows on screen, so the whole catalogue isn't laid out at once.
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    // key = each site's id so Compose reuses the right row across filtering, rather than
-                    // re-composing by position when the result set changes.
-                    items(results, key = { it.id }) { site ->
-                        SiteRow(site = site, onClick = { onSiteClick(site.id) })
+                    // Each group contributes an optional sticky header (none when ungrouped, i.e. the
+                    // single group's key is null) followed by its rows. Site ids are unique across the
+                    // whole catalogue, so they stay valid LazyColumn keys even spanning several groups.
+                    groups.forEach { group ->
+                        val key = group.key
+                        if (key != null) {
+                            stickyHeader(key = "header_${key.name}") {
+                                GroupHeader(label = key.siteGroupHeader(), count = group.sites.size)
+                            }
+                        }
+                        items(group.sites, key = { it.id }) { site ->
+                            SiteRow(site = site, onClick = { onSiteClick(site.id) })
+                        }
                     }
                 }
             }
         }
     }
+
+    // The filter sheet is a modal overlay, so it sits outside the Column and is shown conditionally.
+    if (showFilterSheet) {
+        val sheetState = rememberModalBottomSheetState()
+        ModalBottomSheet(onDismissRequest = { showFilterSheet = false }, sheetState = sheetState) {
+            FilterSheetContent(
+                selectedExpansions = selectedExpansions,
+                selectedCategories = selectedCategories,
+                // toggled() flips one chip in/out of the selection Set (see below).
+                onToggleExpansion = { selectedExpansions = selectedExpansions.toggled(it) },
+                onToggleCategory = { selectedCategories = selectedCategories.toggled(it) },
+                onReset = {
+                    selectedExpansions = emptySet()
+                    selectedCategories = emptySet()
+                },
+            )
+        }
+    }
+}
+
+/**
+ * The always-visible "Group by" control: an outlined button showing the current [SiteGrouping] that
+ * opens a small [DropdownMenu] of the three options. A dropdown (rather than a segmented button row)
+ * keeps this compact on a narrow phone and leaves room for the Filter button beside it.
+ */
+@Composable
+private fun GroupByControl(grouping: SiteGrouping, onSelect: (SiteGrouping) -> Unit) {
+    // Local open/closed state for the menu - pure UI, so plain remember (not hoisted state).
+    var expanded by remember { mutableStateOf(false) }
+    // Box so the DropdownMenu anchors to the button below it.
+    Box {
+        OutlinedButton(onClick = { expanded = true }) {
+            Text("Group: ${grouping.label()}")
+            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            SiteGrouping.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label()) },
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The Filter button: opens the filter bottom sheet, with a [Badge] showing how many filter chips are
+ * active ([activeCount]) so the user can tell at a glance the list is narrowed even with the sheet
+ * closed. No badge is drawn when nothing is filtered.
+ */
+@Composable
+private fun FilterButton(activeCount: Int, onClick: () -> Unit) {
+    // BadgedBox overlays the count bubble on the top-end corner of its content (the button).
+    BadgedBox(
+        badge = { if (activeCount > 0) Badge { Text("$activeCount") } },
+    ) {
+        OutlinedButton(onClick = onClick) {
+            Icon(Icons.Filled.FilterList, contentDescription = null)
+            Spacer(Modifier.width(4.dp))
+            Text("Filter")
+        }
+    }
+}
+
+/**
+ * Contents of the filter bottom sheet: two wrapping rows of [FilterChip]s (one per [SiteExpansion],
+ * one per [SiteCategory]) plus a Reset action. A selected chip narrows the list; nothing selected in
+ * an axis leaves that axis unconstrained (see [searchedFilteredGrouped]). Reset is disabled when
+ * there's nothing to clear.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun FilterSheetContent(
+    selectedExpansions: Set<SiteExpansion>,
+    selectedCategories: Set<SiteCategory>,
+    onToggleExpansion: (SiteExpansion) -> Unit,
+    onToggleCategory: (SiteCategory) -> Unit,
+    onReset: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Filter", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            TextButton(
+                onClick = onReset,
+                // Nothing to reset when both axes are already empty.
+                enabled = selectedExpansions.isNotEmpty() || selectedCategories.isNotEmpty(),
+            ) { Text("Reset") }
+        }
+
+        Text("Expansion", style = MaterialTheme.typography.labelLarge)
+        // FlowRow wraps chips onto extra lines instead of squeezing them; entries preserves enum order.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SiteExpansion.entries.forEach { expansion ->
+                FilterChip(
+                    selected = expansion in selectedExpansions,
+                    onClick = { onToggleExpansion(expansion) },
+                    label = { Text(expansion.badgeLabel()) },
+                )
+            }
+        }
+
+        Text("Category", style = MaterialTheme.typography.labelLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SiteCategory.entries.forEach { category ->
+                FilterChip(
+                    selected = category in selectedCategories,
+                    onClick = { onToggleCategory(category) },
+                    label = { Text(category.groupLabel()) },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A sticky section header for the grouped list: the group's [label] and how many sites it holds
+ * ([count]). Drawn on an opaque [Surface] so list rows don't show through while it's pinned to the top.
+ */
+@Composable
+private fun GroupHeader(label: String, count: Int) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            text = "$label ($count)",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        )
+    }
+}
+
+/** Returns a copy of this set with [value] toggled: removed if present, added otherwise. */
+private fun <T> Set<T>.toggled(value: T): Set<T> = if (value in this) this - value else this + value
+
+/** Short label for the group-by control and its menu items. */
+private fun SiteGrouping.label(): String = when (this) {
+    SiteGrouping.NONE -> "None"
+    SiteGrouping.CATEGORY -> "Category"
+    SiteGrouping.EXPANSION -> "Expansion"
+}
+
+/**
+ * Header text for a [SiteGroup]'s key. A group is keyed on either a [SiteCategory] or a
+ * [SiteExpansion]; each has its own display string (categories get a pluralized [groupLabel],
+ * expansions reuse the row [badgeLabel]). The `else` can't occur - those are the only two key
+ * types - but keeps the `when` exhaustive over the open `Enum<*>` type.
+ */
+private fun Enum<*>.siteGroupHeader(): String = when (this) {
+    is SiteCategory -> groupLabel()
+    is SiteExpansion -> badgeLabel()
+    else -> name
+}
+
+/**
+ * Human-readable, pluralized label for a [SiteCategory] - used as a group header and a filter-chip
+ * label. Kept here (a UI concern) rather than on the enum, mirroring [badgeLabel].
+ */
+private fun SiteCategory.groupLabel(): String = when (this) {
+    SiteCategory.RAMPAGING_ENEMY -> "Rampaging Enemies"
+    SiteCategory.FORTIFIED_SITE -> "Fortified Sites"
+    SiteCategory.ADVENTURE_SITE -> "Adventure Sites"
+    SiteCategory.SETTLEMENT -> "Settlements"
+    SiteCategory.RESOURCE_SITE -> "Resource Sites"
+    SiteCategory.SPECIAL_TILE -> "Special Tiles"
+    SiteCategory.TERRAIN_FEATURE -> "Terrain Features"
 }
 
 /** One list row: art thumbnail + name, with a small expansion badge trailing. Tapping opens the detail. */

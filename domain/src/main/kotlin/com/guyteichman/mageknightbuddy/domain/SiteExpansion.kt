@@ -3,8 +3,9 @@ package com.guyteichman.mageknightbuddy.domain
 import kotlinx.serialization.Serializable
 
 /**
- * Which *Mage Knight* product a [Site] first appeared in, used by the Sites tab to badge and (later)
- * group/filter the catalogue - see `docs/rules/sites.md`'s "Expansion attribution" table.
+ * Which *Mage Knight* product a [Site] first appeared in, used by the Sites tab to badge, group, and
+ * filter the catalogue - see `docs/rules/sites.md`'s "Expansion attribution" table. Declaration order
+ * is release order, which is also the section-header order when grouping by expansion (issue #237).
  *
  * This is deliberately a **separate enum from [Expansion]** (the Enemy Picker's Token Set uses that
  * one), for three reasons the sites domain doesn't share with tokens:
