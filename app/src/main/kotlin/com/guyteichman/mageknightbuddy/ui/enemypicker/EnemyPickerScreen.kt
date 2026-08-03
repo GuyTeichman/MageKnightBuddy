@@ -649,10 +649,14 @@ private fun PileCard(
     // draw (the possess toggle), so its card is a pure display: count + composition, no draw control.
     displayOnly: Boolean = false,
 ) {
-    // Everything drawable now or after a Replenish: the draw pile plus the discard (defeated tokens
-    // reshuffle back in). On-board tokens are held out and never re-drawable, so they aren't counted
-    // here (issue #251). "Nothing to draw" = both are empty (everything drawn is on the board).
-    val toDraw = pile.drawPile.size + pile.discardPile.size
+    // The three states are shown as three separate counts (issue #251), never folded together: the
+    // face-down draw pile ([toDraw]), the [discarded] pile (defeated tokens that only re-enter the
+    // draw pile on a Replenish - NOT drawable now, so kept out of [toDraw] so defeating a token no
+    // longer makes the "to draw" count jump back up), and on-board tokens (held out of both piles).
+    // A draw can still pull more than [toDraw] because an empty draw pile replenishes from the
+    // discard mid-draw - that larger capacity drives the stepper/tap-to-draw below, not this label.
+    val toDraw = pile.drawPile.size
+    val discarded = pile.discardPile.size
 
     ElevatedCard(modifier = modifier) {
         Column(
@@ -679,7 +683,11 @@ private fun PileCard(
                     "View pile · never depletes"
                 } else {
                     buildString {
-                        append(if (toDraw > 0) "$toDraw to draw" else "Nothing to draw")
+                        // Three distinct states, each only shown when non-zero; "Nothing to draw"
+                        // stands in for a zero draw pile *and* zero discard (all tokens on the board).
+                        if (toDraw == 0 && discarded == 0) append("Nothing to draw")
+                        else append("$toDraw to draw")
+                        if (discarded > 0) append(" · $discarded discarded")
                         if (onBoard > 0) append(" · $onBoard on board")
                     }
                 },
@@ -706,8 +714,10 @@ private fun PileCard(
                 QuantityStepper(
                     quantity = quantity,
                     onQuantityChange = onQuantityChange,
-                    // Without replacement, can't draw more than what's left to draw (draw + discard).
-                    max = if (withReplacement) MAX_BATCH else toDraw.coerceAtMost(MAX_BATCH),
+                    // The batch cap is the full drawable capacity - draw pile *plus* discard, since an
+                    // empty draw pile replenishes from the discard mid-draw - not just [toDraw] (which
+                    // is now the face-down draw pile alone). Without replacement only; with it, no cap.
+                    max = if (withReplacement) MAX_BATCH else (toDraw + discarded).coerceAtMost(MAX_BATCH),
                 )
             }
         }
@@ -1771,55 +1781,99 @@ private fun PileContentsDialog(
             else -> TokenCatalogue.byId(id)?.name ?: id
         }
     }
-    // What's left to draw is the draw pile *plus* the discard: defeated tokens reshuffle back on a
-    // Replenish, so they're still tokens you might face; only on-board tokens (in neither list) are
-    // out for good (issue #251). Shown unordered, so combining the two never reveals draw order.
-    // remember keyed on both lists so the grouping recomputes when either changes.
-    val composition = remember(pile.drawPile, pile.discardPile) {
-        composePile(pile.drawPile + pile.discardPile, nameOf)
+    // The face-down draw pile and the discard are composed and shown as two *separate* sections
+    // (issue #251), never merged into one grid: defeated tokens reshuffle back on a Replenish, so
+    // they're still tokens you might face, but they are not in the draw pile now - conflating the two
+    // is exactly what made a discard look like it went straight back into the draw pile. On-board
+    // tokens are in neither list (out for good until defeated). Each is shown unordered, so it never
+    // reveals draw order. remember keyed per list so each grouping recomputes only when it changes.
+    val drawComposition = remember(pile.drawPile) { composePile(pile.drawPile, nameOf) }
+    val discardComposition = remember(pile.discardPile) { composePile(pile.discardPile, nameOf) }
+    // Title still counts everything that could yet be faced (draw + discard); with replacement the
+    // discard is always empty, so this is just the full pile.
+    val total = drawComposition.total + discardComposition.total
+    val title = if (withReplacement) "${pileId.displayName()} · full pile ($total)"
+    else "${pileId.displayName()} · $total remaining"
+
+    val onOpen: (String) -> Unit = { id ->
+        // Possessed tokens have no detail dialog (they're modifiers, not enemies), so they just display.
+        when {
+            isRuin -> RuinTokenCatalogue.byId(id)?.let(onOpenRuinInfo)
+            isReward -> FactionRewardTokenCatalogue.byId(id)?.let(onOpenRewardInfo)
+            isPossessed -> Unit
+            else -> TokenCatalogue.byId(id)?.let(onOpenEnemyInfo)
+        }
     }
-    val title = if (withReplacement) "${pileId.displayName()} · full pile (${composition.total})"
-    else "${pileId.displayName()} · ${composition.total} remaining"
 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
         title = { Text(title) },
         text = {
-            if (composition.groups.isEmpty()) {
+            if (drawComposition.groups.isEmpty() && discardComposition.groups.isEmpty()) {
                 // Empty draw pile *and* discard means every token drawn from this pile is still on
                 // the board - the pile is genuinely empty until one is defeated back into it (#251).
                 Text("Nothing left to draw — every token from this pile is on the board.")
             } else {
-                // Same adaptive grid the draw-result overview uses (D9), for a consistent look.
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = GRID_CELL_MIN_SIZE),
-                    modifier = Modifier.heightIn(max = GRID_MAX_HEIGHT),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(composition.groups, key = { it.tokenId }) { group ->
-                        PileContentsCell(
-                            group = group,
-                            isRuin = isRuin,
-                            isReward = isReward,
-                            isPossessed = isPossessed,
-                            onOpen = {
-                                // Possessed tokens have no detail dialog (they're modifiers, not
-                                // enemies), so their cells just display.
-                                when {
-                                    isRuin -> RuinTokenCatalogue.byId(group.tokenId)?.let(onOpenRuinInfo)
-                                    isReward -> FactionRewardTokenCatalogue.byId(group.tokenId)?.let(onOpenRewardInfo)
-                                    isPossessed -> Unit
-                                    else -> TokenCatalogue.byId(group.tokenId)?.let(onOpenEnemyInfo)
-                                }
-                            },
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Face-down draw pile: what a draw takes from right now. Under replacement this is
+                    // the whole pile, so its own header would be redundant with the title - omit it.
+                    if (drawComposition.groups.isNotEmpty()) {
+                        if (!withReplacement) {
+                            Text(
+                                "Face-down draw pile · ${drawComposition.total}",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        PileContentsGrid(drawComposition.groups, isRuin, isReward, isPossessed, onOpen)
+                    }
+                    // Discard: separate from the draw pile until a Replenish shuffles it back in.
+                    if (discardComposition.groups.isNotEmpty()) {
+                        Text(
+                            "Discard · ${discardComposition.total} — reshuffles in when the draw pile runs out",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        PileContentsGrid(discardComposition.groups, isRuin, isReward, isPossessed, onOpen)
                     }
                 }
             }
         },
     )
+}
+
+/**
+ * One section of the [PileContentsDialog]: an adaptive grid of a composed pile's token [groups] (the
+ * same grid the draw-result overview uses, D9, for a consistent look). Extracted so the face-down
+ * draw pile and the discard render identically (issue #251); [onOpen] receives the tapped token id
+ * and routes it to the right detail dialog.
+ */
+@Composable
+private fun PileContentsGrid(
+    groups: List<PileTokenGroup>,
+    isRuin: Boolean,
+    isReward: Boolean,
+    isPossessed: Boolean,
+    onOpen: (String) -> Unit,
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = GRID_CELL_MIN_SIZE),
+        modifier = Modifier.heightIn(max = GRID_MAX_HEIGHT),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(groups, key = { it.tokenId }) { group ->
+            PileContentsCell(
+                group = group,
+                isRuin = isRuin,
+                isReward = isReward,
+                isPossessed = isPossessed,
+                onOpen = { onOpen(group.tokenId) },
+            )
+        }
+    }
 }
 
 /**
