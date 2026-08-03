@@ -747,8 +747,10 @@ private fun DummyPlayerAiScreen(
     }
 
     // No visibility toggle like showEndRoundDialog - this dialog's visibility is entirely derived
-    // from needsTacticPick, so it appears/disappears with the session state itself.
-    if (session != null && needsTacticPick) {
+    // from needsTacticPick, so it appears/disappears with the session state itself. Held back while
+    // the tutorial is open (issue #161) so a first-time player can actually read it before being made
+    // to pick a Tactic - otherwise the picker stacks on top and blocks the tutorial.
+    if (session != null && needsTacticPick && !tutorial.isVisible) {
         TacticPickerDialog(
             isDay = session.isDay,
             tacticState = session.tacticState,

@@ -271,7 +271,9 @@ fun VolkareAiScreen(
         }
     }
 
-    if (session != null && needsTacticPick) {
+    // Held back while the tutorial is open (issue #161) so a first-time player can read it before
+    // being made to pick a Tactic - otherwise the picker stacks on top and blocks the tutorial.
+    if (session != null && needsTacticPick && !tutorial.isVisible) {
         TacticPickerDialog(
             isDay = session.isDay,
             tacticState = session.tacticState,

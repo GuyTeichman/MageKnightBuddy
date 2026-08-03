@@ -31,6 +31,7 @@ object TutorialKeys {
     const val DUMMY = "dummy"
     const val PROXY = "proxy"
     const val VOLKARE = "volkare"
+    const val ENEMIES = "enemies"
 }
 
 /**

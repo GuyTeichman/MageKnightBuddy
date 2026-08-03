@@ -15,8 +15,12 @@
         "body": "If you picked a Knight, choose how richly to run it. Standard Dummy Player just flips cards to keep the game moving. Proxy Player (from Apocalypse Dragon) is a fuller opponent that chases objectives around the map."
       },
       {
-        "title": "One mode per game",
-        "body": "Use whichever mode your scenario calls for — exactly one per game. Set it up once here and start. If you left a game unfinished, this screen also offers to restore it."
+        "title": "Set the options and Start",
+        "body": "Toggle Cooperative play and whether the game starts at night, then tap Start. Use whichever mode your scenario calls for — exactly one per game."
+      },
+      {
+        "title": "Resuming a game",
+        "body": "The app autosaves after every action, so you can close it mid-game. Next time, the Restore Game button on this screen picks up exactly where you left off — deck, round, and log intact."
       }
     ]
   },
@@ -28,16 +32,20 @@
         "body": "The Dummy Player is a stand-in that races you through the rounds. It never fights or moves on the map — watching its deck shrink is how you gauge how much time you have left."
       },
       {
+        "title": "Tactics each round",
+        "body": "Each round opens with a Tactic draft for turn order. Pick your card in the popup — the app applies the correct pick order and Tactic removal for your specific scenario, so you never have to look those rules up."
+      },
+      {
         "title": "Play Turn",
-        "body": "Each turn it flips 3 cards from its deck. Then it checks the colour of the 3rd card and flips one extra card for every crystal it holds of that colour. Tap Play Turn and the app does all of this for you."
+        "body": "Each turn it flips 3 cards, then checks the 3rd card's colour and flips one extra card per crystal it holds of that colour. Tap Play Turn and the app does all of this for you."
       },
       {
-        "title": "Ending the round",
-        "body": "When its deck runs empty it announces End of the Round, and everyone takes one last turn. Tap End Round to advance."
+        "title": "Ending and preparing a round",
+        "body": "When its deck runs empty it announces End of the Round — everyone takes one last turn, then tap End Round. At round end it gains the lowest Advanced Action from the offer and reshuffles its deck; the dialog just asks which offer cards came up."
       },
       {
-        "title": "Preparing the next round",
-        "body": "At round end it gains the lowest Advanced Action from the offer, and its deck and discard pile are shuffled back together into a fresh deck. The End Round dialog just asks you which offer cards came up."
+        "title": "Undo anything",
+        "body": "Tapped the wrong thing? The undo arrow at the bottom-left reverts your last action, so mistakes are cheap."
       },
       {
         "title": "Why the deck count matters",
@@ -53,6 +61,10 @@
         "body": "The Proxy Player, from Apocalypse Dragon, replaces the Dummy Player with a Hero that chases objectives around the map. As with Volkare, the app narrates what it does; you resolve the real movement and combat at the table."
       },
       {
+        "title": "Tactics each round",
+        "body": "Each round opens with a Tactic draft for turn order. Pick your card in the popup — the app applies the pick order and Tactic removal your scenario uses, so you don't have to track them."
+      },
+      {
         "title": "Objective cards",
         "body": "Each turn it works toward an Objective Card drawn from its deck. The colour tells you its target: green heads for an adventure site, red for a fortified site or monastery, white for recruiting or learning, and blue for any of those but further from the portal."
       },
@@ -65,8 +77,8 @@
         "body": "The app totals the objective's movement points for you — from the card type, its Shield tokens, and a Source-die bonus (including the gold die on days). Move the Hero that many spaces toward its target."
       },
       {
-        "title": "Reporting the result",
-        "body": "After you resolve it at the table, tell the app what happened: still travelling (keep the objective), or resolved — Explored or Completed — which discards the objective and its Shield tokens."
+        "title": "Report the result — and undo",
+        "body": "After you resolve it at the table, tell the app: still travelling (keep the objective) or resolved — Explored or Completed. Made a wrong tap anywhere? The undo arrow at the bottom-left reverts your last action."
       }
     ]
   },
@@ -78,6 +90,10 @@
         "body": "Volkare replaces the Dummy Player in Volkare's Return and Volkare's Quest, racing you across the map. The app narrates each card he reveals; you move his figure and resolve any fight at the table."
       },
       {
+        "title": "Tactics each round",
+        "body": "Each round opens with a Tactic draft for turn order. The app applies the right rules for you — including Volkare's own quirk that in cooperative play the real players pick first, unlike every other scenario."
+      },
+      {
         "title": "One card per turn",
         "body": "Volkare's deck is dealt once and never reshuffled. Each turn reveals a single card — tap the button and the app tells you what it means: which way he moves, whether the Source die rerolls, or whether he attacks."
       },
@@ -86,8 +102,37 @@
         "body": "In Volkare's Return, flip the City Revealed switch once the city tile appears on the board. Before it's set, moves are narrated as fixed compass directions; after, as moving toward the city."
       },
       {
-        "title": "When the deck runs out",
-        "body": "In Volkare's Return an empty deck triggers Frenzy: every turn afterward is narrated as a double move, forever. In Volkare's Quest, his last move card means he has reached the portal — and you've lost the race."
+        "title": "Deck's end — and undo",
+        "body": "In Volkare's Return an empty deck triggers Frenzy: every turn afterward is a double move, forever. In Volkare's Quest, his last move card means he reached the portal and you've lost the race. Tapped wrong? The undo arrow reverts your last action."
+      }
+    ]
+  },
+  "enemies": {
+    "title": "Enemies",
+    "steps": [
+      {
+        "title": "Replaces the token piles",
+        "body": "This tab stands in for the physical face-down enemy, ruin, and faction token piles. It's the real source of what each pile holds and what's been drawn, so it saves your progress for the whole game."
+      },
+      {
+        "title": "Drawing a token",
+        "body": "Tap a pile to draw from it — use the stepper to draw several at once. The token appears zoomed, and its \"?\" window explains any abilities. It's discarded immediately: the app tracks no map and no combat, just the draw."
+      },
+      {
+        "title": "The Draw Log is your board memory",
+        "body": "Every draw is recorded in the Draw Log, newest first. Because the app models no board, this log is your only record of which enemies are still standing on which spaces — treat it as your memory of the table."
+      },
+      {
+        "title": "Marking defeats",
+        "body": "Tap a log entry and mark it Defeated once you beat it. Undefeated tokens stay \"on the board\" at the top; defeated ones drop into the pile's discard and are reshuffled back only once that pile runs out."
+      },
+      {
+        "title": "Choosing your tokens",
+        "body": "The config section sets the Token Set (which expansions' tokens are in play) and an optional Draw with Replacement. Changing these rebuilds the piles and clears the log, so they only take effect when you tap Apply & Reset."
+      },
+      {
+        "title": "Surveying a pile",
+        "body": "Tap a pile's count line to see which tokens remain — grouped by type, with counts, but never in draw order — handy for weighing your odds before you commit to a fight."
       }
     ]
   }

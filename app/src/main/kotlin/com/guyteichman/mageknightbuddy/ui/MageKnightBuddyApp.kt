@@ -159,6 +159,8 @@ fun MageKnightBuddyApp(
             composable(Tab.EnemyPicker.route) {
                 EnemyPickerTab(
                     repository = enemyPickerRepository,
+                    tutorials = tutorials,
+                    tutorialProgress = tutorialProgress,
                     onOpenSettings = { openSettings() },
                 )
             }

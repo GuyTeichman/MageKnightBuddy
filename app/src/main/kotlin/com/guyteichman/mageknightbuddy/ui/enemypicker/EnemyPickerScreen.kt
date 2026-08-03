@@ -78,9 +78,15 @@ import com.guyteichman.mageknightbuddy.domain.RuinTokenCatalogue
 import com.guyteichman.mageknightbuddy.domain.TokenCatalogue
 import com.guyteichman.mageknightbuddy.domain.TokenPile
 import com.guyteichman.mageknightbuddy.domain.TokenPileId
+import com.guyteichman.mageknightbuddy.data.TutorialProgressRepository
 import com.guyteichman.mageknightbuddy.ui.settings.SettingsAction
 import com.guyteichman.mageknightbuddy.ui.components.LabeledCheckbox
 import com.guyteichman.mageknightbuddy.ui.components.LabeledSwitch
+import com.guyteichman.mageknightbuddy.ui.tutorial.Tutorial
+import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialAction
+import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialDialog
+import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialKeys
+import com.guyteichman.mageknightbuddy.ui.tutorial.rememberScreenTutorialState
 import kotlinx.coroutines.launch
 
 /**
@@ -93,9 +99,19 @@ import kotlinx.coroutines.launch
  * - the picker models no map (ADR-0006), so the log is the memory of what's still on the board.
  */
 @Composable
-fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () -> Unit) {
+fun EnemyPickerTab(
+    repository: EnemyPickerSessionRepository,
+    tutorials: Map<String, Tutorial>,
+    tutorialProgress: TutorialProgressRepository,
+    onOpenSettings: () -> Unit,
+) {
     val viewModel: EnemyPickerViewModel = viewModel(factory = EnemyPickerViewModel.factory(repository))
     val scope = rememberCoroutineScope()
+
+    // This tab's tutorial (issue #161): auto-shows on first visit, re-openable via the top-bar
+    // graduation-cap action. Created before the session-null early return below so its auto-show
+    // effect isn't skipped while the first session is still loading.
+    val tutorial = rememberScreenTutorialState(TutorialKeys.ENEMIES, tutorials, tutorialProgress)
 
     val session = viewModel.session
     // Tokens currently shown zoomed (a whole draw batch, one grid cell, or one tapped log entry),
@@ -233,10 +249,14 @@ fun EnemyPickerTab(repository: EnemyPickerSessionRepository, onOpenSettings: () 
         session.currentChildrenOf(index).firstOrNull()?.let { session.drawLog[it] }
     }
 
+    // Render the tutorial pop-up over the content when open (auto on first visit, or on demand).
+    if (tutorial.isVisible) tutorial.tutorial?.let { TutorialDialog(it, onDismiss = tutorial::dismiss) }
+
     EnemyPickerContent(
         session = session,
         isBusy = viewModel.isBusy,
         onOpenSettings = onOpenSettings,
+        onShowTutorial = tutorial::show,
         onDraw = onDraw,
         onOpenToken = { index -> zoom = ZoomState(listOf(index), 0); summonGrid = null; summonZoom = null },
         // Reopening a batch from the Draw Log (#203/D18) is fully identical to the grid a fresh
@@ -459,6 +479,7 @@ private fun EnemyPickerContent(
     session: EnemyPickerSession,
     isBusy: Boolean,
     onOpenSettings: () -> Unit,
+    onShowTutorial: () -> Unit,
     onDraw: (Map<TokenPileId, Int>, Boolean) -> Unit,
     onOpenToken: (Int) -> Unit,
     onOpenBatch: (List<Int>) -> Unit,
@@ -485,7 +506,7 @@ private fun EnemyPickerContent(
     val effectivePossess = possess && possessedAvailable
 
     Scaffold(
-        topBar = { EnemyPickerTopBar(onOpenSettings = onOpenSettings) },
+        topBar = { EnemyPickerTopBar(onOpenSettings = onOpenSettings, onShowTutorial = onShowTutorial) },
         bottomBar = {
             DrawBar(
                 total = totalQuantity,
@@ -591,10 +612,16 @@ private fun EnemyPickerContent(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EnemyPickerTopBar(onOpenSettings: () -> Unit) {
-    // The shared settings gear, present on every tab's top bar so Settings is reachable from
-    // anywhere without its own bottom-nav tab (see SettingsAction).
-    TopAppBar(title = { Text("Enemies") }, actions = { SettingsAction(onClick = onOpenSettings) })
+private fun EnemyPickerTopBar(onOpenSettings: () -> Unit, onShowTutorial: () -> Unit) {
+    // The tutorial (graduation-cap) action sits before the shared settings gear, which is present on
+    // every tab's top bar so Settings is reachable from anywhere without its own bottom-nav tab.
+    TopAppBar(
+        title = { Text("Enemies") },
+        actions = {
+            TutorialAction(onClick = onShowTutorial)
+            SettingsAction(onClick = onOpenSettings)
+        },
+    )
 }
 
 /**

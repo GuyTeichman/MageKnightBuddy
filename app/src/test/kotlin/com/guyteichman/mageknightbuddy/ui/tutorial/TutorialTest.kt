@@ -42,12 +42,13 @@ class TutorialTest {
     fun `bundled tutorials json parses and covers all four screens with non-empty steps`() {
         // Reads the real shipped asset from disk (unit tests run with the module dir as cwd), so a
         // malformed or incomplete tutorials.json fails here instead of crashing loadTutorials at
-        // app startup. The four keys are the spec: setup screen + the three AI-screen modes.
+        // app startup. The five keys are the spec: the Dummy Player setup screen + the three
+        // AI-screen modes + the Enemies tab.
         val json = File("src/main/assets/tutorials.json").readText()
 
         val tutorials = parseTutorials(json)
 
-        assertEquals(setOf("setup", "dummy", "proxy", "volkare"), tutorials.keys)
+        assertEquals(setOf("setup", "dummy", "proxy", "volkare", "enemies"), tutorials.keys)
         tutorials.forEach { (screen, tutorial) ->
             assertTrue(tutorial.title.isNotBlank(), "$screen tutorial needs a title")
             assertTrue(tutorial.steps.isNotEmpty(), "$screen tutorial needs at least one step")
