@@ -11,12 +11,12 @@
         "body": "Choose Volkare — the Lost Legion antagonist, who has no Knight — or a Knight you aren't playing, which stands in as the opponent."
       },
       {
-        "title": "Then: Standard or Proxy",
-        "body": "If you picked a Knight, choose how richly to run it. Standard Dummy Player just flips cards to keep the game moving. Proxy Player (from Apocalypse Dragon) is a fuller opponent that chases objectives around the map."
+        "title": "Then: Standard or Proxy Player",
+        "body": "If you picked a Knight, choose how richly to run it. Standard just flips cards to keep the game moving. Proxy Player (from Apocalypse Dragon) is a fuller opponent that chases objectives around the map."
       },
       {
         "title": "Set the options and Start",
-        "body": "Toggle Cooperative play and whether the game starts at night, then tap Start. Use whichever mode your scenario calls for — exactly one per game."
+        "body": "Toggle Cooperative play and whether the game starts at night, then tap Start."
       },
       {
         "title": "Resuming a game",
@@ -37,11 +37,11 @@
       },
       {
         "title": "Play Turn",
-        "body": "Each turn it flips 3 cards, then checks the 3rd card's colour and flips one extra card per crystal it holds of that colour. Tap Play Turn and the app does all of this for you."
+        "body": "Tap Play Turn and the app plays the whole turn for you, flipping the Dummy Player's cards by your scenario's rules. You never track that yourself — just watch its deck shrink, because that shrinking deck is your clock."
       },
       {
         "title": "Ending and preparing a round",
-        "body": "When its deck runs empty it announces End of the Round — everyone takes one last turn, then tap End Round. At round end it gains the lowest Advanced Action from the offer and reshuffles its deck; the dialog just asks which offer cards came up."
+        "body": "When its deck runs empty it announces End of the Round — everyone takes one last turn, then tap End Round. The app reshuffles its deck and swaps the offers for you; the dialog just asks which colour was removed from the Advanced Action offer and which from the Spell offer, so it can keep the deck right."
       },
       {
         "title": "Undo anything",
@@ -58,7 +58,7 @@
     "steps": [
       {
         "title": "A richer opponent",
-        "body": "The Proxy Player, from Apocalypse Dragon, replaces the Dummy Player with a Hero that chases objectives around the map. As with Volkare, the app narrates what it does; you resolve the real movement and combat at the table."
+        "body": "The Proxy Player, from Apocalypse Dragon, is a fuller opponent than the Standard Dummy Player: instead of just flipping cards, it actively chases objectives around the map. As with Volkare, the app narrates what it does; you resolve the real movement and combat at the table."
       },
       {
         "title": "Tactics each round",
@@ -66,7 +66,7 @@
       },
       {
         "title": "Objective cards",
-        "body": "Each turn it works toward an Objective Card drawn from its deck. The colour tells you its target: green heads for an adventure site, red for a fortified site or monastery, white for recruiting or learning, and blue for any of those but further from the portal."
+        "body": "Each turn it works toward an Objective Card drawn from its deck. The app tells you in plain words where that card's colour is headed — and there's a \"?\" next to it if you want the full breakdown."
       },
       {
         "title": "Play Turn",
@@ -74,11 +74,11 @@
       },
       {
         "title": "Movement points",
-        "body": "The app totals the objective's movement points for you — from the card type, its Shield tokens, and a Source-die bonus (including the gold die on days). Move the Hero that many spaces toward its target."
+        "body": "The app totals the objective's movement points for you — from the card type, its Shield tokens, and a Source-die bonus (including the gold die on days). Move its figure that many spaces toward its target."
       },
       {
-        "title": "Report the result — and undo",
-        "body": "After you resolve it at the table, tell the app: still travelling (keep the objective) or resolved — Explored or Completed. Made a wrong tap anywhere? The undo arrow at the bottom-left reverts your last action."
+        "title": "Finishing an objective — and undo",
+        "body": "Keep tapping Play Turn while it travels; it piles on Shield tokens and edges toward its target. Once you resolve the objective at the table, tap Complete Objective to clear it. Made a wrong tap anywhere? The undo arrow at the bottom-left reverts your last action."
       }
     ]
   },
@@ -95,7 +95,7 @@
       },
       {
         "title": "One card per turn",
-        "body": "Volkare's deck is dealt once and never reshuffled. Each turn reveals a single card — tap the button and the app tells you what it means: which way he moves, whether the Source die rerolls, or whether he attacks."
+        "body": "Volkare's deck is dealt once and never reshuffled. Each turn reveals a single card — tap Play Turn and the app tells you what it means: which way he moves, whether the Source die (one of the shared mana dice) is rerolled, or whether he attacks."
       },
       {
         "title": "City Revealed (Return only)",
@@ -116,7 +116,7 @@
       },
       {
         "title": "Drawing a token",
-        "body": "Tap a pile to draw from it — use the stepper to draw several at once. The token appears zoomed, and its \"?\" window explains any abilities. It's discarded immediately: the app tracks no map and no combat, just the draw."
+        "body": "Tap a pile's face to draw one straight away. To draw several at once — even across different piles — set their steppers and then tap the Draw button in the bottom bar (it shows the running total). Each drawn token appears zoomed, and its \"?\" window explains any abilities. Tokens are discarded immediately: the app tracks no map and no combat, just the draw."
       },
       {
         "title": "The Draw Log is your board memory",
@@ -124,11 +124,11 @@
       },
       {
         "title": "Marking defeats",
-        "body": "Tap a log entry and mark it Defeated once you beat it. Undefeated tokens stay \"on the board\" at the top; defeated ones drop into the pile's discard and are reshuffled back only once that pile runs out."
+        "body": "Tap the checkmark on a log entry to mark it Defeated once you beat it. Undefeated tokens stay \"on the board\" at the top; defeated ones drop into the pile's discard and are reshuffled back only once that pile runs out."
       },
       {
         "title": "Choosing your tokens",
-        "body": "The config section sets the Token Set (which expansions' tokens are in play) and an optional Draw with Replacement. Changing these rebuilds the piles and clears the log, so they only take effect when you tap Apply & Reset."
+        "body": "The Setup section, near the bottom, is where you pick which expansions' tokens are in play and toggle Draw with replacement. Because changing them rebuilds the piles and clears the log, they only take effect when you tap Apply & Reset."
       },
       {
         "title": "Surveying a pile",
