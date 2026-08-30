@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
 // behind the scenes. `exportSchema = false` skips writing that schema to a JSON file on disk,
 // since this project isn't tracking schema history for migrations yet.
 @Database(
-    entities = [ScoringSessionEntity::class, DummyPlayerSessionEntity::class, VolkareSessionEntity::class, ProxyPlayerSessionEntity::class, EnemyPickerSessionEntity::class, ScoreCalculatorDraftEntity::class],
+    entities = [ScoringSessionEntity::class, DummyPlayerSessionEntity::class, VolkareSessionEntity::class, ProxyPlayerSessionEntity::class, EnemyPickerSessionEntity::class, ScoreCalculatorDraftEntity::class, FavoriteSiteEntity::class],
     // Bumped 2 -> 3: ScoringSessionEntity's ~22 wide columns collapsed into a single inputJson
     // column (see ScoringInputDto). Bumped 3 -> 4: ScoringInputDto.ForTheCouncil's own shape
     // changed (reputationModifier/shieldOnXSpace/reputation -> one reputationTrackPosition).
@@ -67,8 +67,14 @@ import androidx.room.RoomDatabase
     // The columns didn't change, but the JSON *semantics* did, so an old row would be misinterpreted
     // (its discarded-on-draw tokens would be re-drawable) - a destructive wipe avoids that, the same
     // "JSON content/semantics changed" reasoning as the 3 -> 4 / 4 -> 5 / 10 -> 11 bumps, and
-    // fallbackToDestructiveMigration is fine pre-release as always.
-    version = 14,
+    // fallbackToDestructiveMigration is fine pre-release as always. Bumped 14 -> 15: added the new
+    // FavoriteSiteEntity table (favorite_sites) for the Sites tab's persisted favorites (issue #236).
+    // A purely additive table, so a hand-written CREATE-TABLE migration would preserve existing data -
+    // but per the issue's explicit decision we keep relying on fallbackToDestructiveMigration here,
+    // accepting that installing this build wipes any on-device scoring history/sessions. (Note: unlike
+    // the older bump comments above, the app *has* had a debug-signed release, so that wipe is a real
+    // data loss the author signed off on, not the "no user data yet" situation those comments assume.)
+    version = 15,
     exportSchema = false,
 )
 abstract class MageKnightBuddyDatabase : RoomDatabase() {
@@ -80,4 +86,5 @@ abstract class MageKnightBuddyDatabase : RoomDatabase() {
     abstract fun proxyPlayerSessionDao(): ProxyPlayerSessionDao
     abstract fun enemyPickerSessionDao(): EnemyPickerSessionDao
     abstract fun scoreCalculatorDraftDao(): ScoreCalculatorDraftDao
+    abstract fun favoriteSiteDao(): FavoriteSiteDao
 }

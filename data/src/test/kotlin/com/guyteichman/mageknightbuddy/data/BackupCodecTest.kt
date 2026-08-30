@@ -67,13 +67,15 @@ class BackupCodecTest {
     fun `encode writes the exact documented JSON wire format`() {
         val exportedAt = Instant.parse("2026-08-01T00:00:00Z")
 
-        val json = BackupCodec.encode(listOf(forTheCouncilSession), exportedAt)
+        val json = BackupCodec.encode(listOf(forTheCouncilSession), favoriteSiteIds = emptyList(), exportedAt)
 
         // Hand-derived from the DTO field order (not read off the code's output): the envelope's
         // formatVersion/exportedAt/records, then the record's columns, with `input` nested as a
         // structured object whose kotlinx "type" discriminator comes first. Pinning the byte-exact
         // format is what makes the round-trip test below meaningful rather than self-referential.
-        val expected = """{"formatVersion":1,"exportedAtEpochMillis":${exportedAt.toEpochMilli()},""" +
+        // No favoriteSiteIds key: the codec's Json omits default-valued fields (encodeDefaults=false),
+        // so an empty favorites list is absent rather than an empty array (see the favorites test below).
+        val expected = """{"formatVersion":2,"exportedAtEpochMillis":${exportedAt.toEpochMilli()},""" +
             """"records":[{"scenario":"for_the_council","knight":"NOROWAS","playerName":null,""" +
             """"input":{"type":"for_the_council","questPoints":12,""" +
             """"reputationTrackSpaceName":"NEGATIVE_X"},"score":2,"outcome":"LOST",""" +
@@ -85,12 +87,12 @@ class BackupCodecTest {
     fun `encode writes the exact wire format for a Solo Conquest session, achievements and all`() {
         val exportedAt = Instant.parse("2026-08-01T00:00:00Z")
 
-        val json = BackupCodec.encode(listOf(soloConquestSession), exportedAt)
+        val json = BackupCodec.encode(listOf(soloConquestSession), favoriteSiteIds = emptyList(), exportedAt)
 
         // Independently hand-derived (per CLAUDE.md's round-trip warning) so the complex shape - Solo
         // Conquest's fame + nested StandardAchievements + per-level unit list - is pinned by an
         // explicit expected value, not left resting only on the encode-then-decode equality below.
-        val expected = """{"formatVersion":1,"exportedAtEpochMillis":${exportedAt.toEpochMilli()},""" +
+        val expected = """{"formatVersion":2,"exportedAtEpochMillis":${exportedAt.toEpochMilli()},""" +
             """"records":[{"scenario":"solo_conquest","knight":"ARYTHEA","playerName":"Guy",""" +
             """"input":{"type":"solo_conquest","fame":72,"standardAchievements":{""" +
             """"spellsInDeck":3,"advancedActionsInDeck":2,"units":[""" +
@@ -108,7 +110,9 @@ class BackupCodecTest {
     fun `encode then decode round-trips every field of structurally different sessions`() {
         val sessions = listOf(soloConquestSession, forTheCouncilSession)
 
-        val decoded = BackupCodec.decode(BackupCodec.encode(sessions, Instant.parse("2026-08-01T00:00:00Z")))
+        val decoded = BackupCodec.decode(
+            BackupCodec.encode(sessions, favoriteSiteIds = emptyList(), Instant.parse("2026-08-01T00:00:00Z")),
+        )
 
         assertIs<BackupDecodeResult.Success>(decoded)
         assertEquals(sessions, decoded.sessions)
@@ -116,10 +120,13 @@ class BackupCodecTest {
 
     @Test
     fun `encode of empty history round-trips to an empty session list`() {
-        val decoded = BackupCodec.decode(BackupCodec.encode(emptyList(), Instant.parse("2026-08-01T00:00:00Z")))
+        val decoded = BackupCodec.decode(
+            BackupCodec.encode(emptyList(), favoriteSiteIds = emptyList(), Instant.parse("2026-08-01T00:00:00Z")),
+        )
 
         assertIs<BackupDecodeResult.Success>(decoded)
         assertEquals(emptyList(), decoded.sessions)
+        assertEquals(emptyList(), decoded.favoriteSiteIds)
     }
 
     @Test
@@ -147,7 +154,7 @@ class BackupCodecTest {
         // the unknown fields first and returning Malformed - otherwise the version stamp would be
         // useless for exactly the situation it exists for. (The records:[] test above can't catch
         // this, since with no records there are no new fields for the strict parse to trip over.)
-        val futureWithNewFields = """{"formatVersion":2,"exportedAtEpochMillis":0,"newTopLevelField":true,"records":[""" +
+        val futureWithNewFields = """{"formatVersion":3,"exportedAtEpochMillis":0,"newTopLevelField":true,"records":[""" +
             """{"scenario":"for_the_council","knight":"NOROWAS","playerName":null,""" +
             """"input":{"type":"for_the_council","questPoints":1,"reputationTrackSpaceName":"NEGATIVE_X"},""" +
             """"score":0,"outcome":"LOST","playedAtEpochMillis":0,"newRecordField":42}]}"""
@@ -155,7 +162,7 @@ class BackupCodecTest {
         val result = BackupCodec.decode(futureWithNewFields)
 
         assertIs<BackupDecodeResult.UnsupportedVersion>(result)
-        assertEquals(2, result.version)
+        assertEquals(3, result.version)
     }
 
     @Test
@@ -181,5 +188,61 @@ class BackupCodecTest {
             """"score":0,"outcome":"LOST","playedAtEpochMillis":0}]}"""
 
         assertIs<BackupDecodeResult.Malformed>(BackupCodec.decode(badScenario))
+    }
+
+    // --- Favorites in the backup (issue #236, format version 2) ---
+
+    @Test
+    fun `encode writes favoriteSiteIds after records in the documented wire format`() {
+        val exportedAt = Instant.parse("2026-08-01T00:00:00Z")
+
+        val json = BackupCodec.encode(
+            listOf(forTheCouncilSession),
+            favoriteSiteIds = listOf("keep", "village"),
+            exportedAt,
+        )
+
+        // Independently hand-derived: same envelope as the version-2 test above, with favoriteSiteIds
+        // appended as the last top-level field (its declaration order in BackupDocument), preserving
+        // the given id order. Pins the format so the round-trip below isn't self-referential.
+        val expected = """{"formatVersion":2,"exportedAtEpochMillis":${exportedAt.toEpochMilli()},""" +
+            """"records":[{"scenario":"for_the_council","knight":"NOROWAS","playerName":null,""" +
+            """"input":{"type":"for_the_council","questPoints":12,""" +
+            """"reputationTrackSpaceName":"NEGATIVE_X"},"score":2,"outcome":"LOST",""" +
+            """"playedAtEpochMillis":${forTheCouncilSession.playedAt.toEpochMilli()}}],""" +
+            """"favoriteSiteIds":["keep","village"]}"""
+        assertEquals(expected, json)
+    }
+
+    @Test
+    fun `encode then decode round-trips favorites alongside sessions`() {
+        val sessions = listOf(soloConquestSession, forTheCouncilSession)
+        val favorites = listOf("village", "keep")
+
+        val decoded = BackupCodec.decode(
+            BackupCodec.encode(sessions, favoriteSiteIds = favorites, Instant.parse("2026-08-01T00:00:00Z")),
+        )
+
+        assertIs<BackupDecodeResult.Success>(decoded)
+        assertEquals(sessions, decoded.sessions)
+        // Independently expected: exactly the ids passed in, in the same order.
+        assertEquals(favorites, decoded.favoriteSiteIds)
+    }
+
+    @Test
+    fun `decode of a version-1 file with no favoriteSiteIds yields empty favorites`() {
+        // A pre-#236 backup: format version 1, no favoriteSiteIds key at all. Version 1 <= this build's
+        // 2, so it strict-parses, and the missing field falls back to its empty default - a clean
+        // upgrade read, not a Malformed rejection.
+        val v1File = """{"formatVersion":1,"exportedAtEpochMillis":0,"records":[""" +
+            """{"scenario":"for_the_council","knight":"NOROWAS","playerName":null,""" +
+            """"input":{"type":"for_the_council","questPoints":1,"reputationTrackSpaceName":"NEGATIVE_X"},""" +
+            """"score":0,"outcome":"LOST","playedAtEpochMillis":0}]}"""
+
+        val result = BackupCodec.decode(v1File)
+
+        assertIs<BackupDecodeResult.Success>(result)
+        assertEquals(1, result.sessions.size)
+        assertEquals(emptyList(), result.favoriteSiteIds)
     }
 }

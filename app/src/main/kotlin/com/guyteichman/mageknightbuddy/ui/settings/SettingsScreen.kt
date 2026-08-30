@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.guyteichman.mageknightbuddy.data.FavoriteSitesRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import java.time.LocalDate
 
@@ -81,9 +82,11 @@ private const val ICON_SHIELD_URL = "https://svgsilh.com/image/294573.html"
 @Composable
 fun SettingsScreen(
     repository: ScoringSessionRepository,
+    favoritesRepository: FavoriteSitesRepository,
     onBack: () -> Unit,
 ) {
-    val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(repository))
+    val viewModel: SettingsViewModel =
+        viewModel(factory = SettingsViewModel.factory(repository, favoritesRepository))
     // collectAsState turns the ViewModel's StateFlow into Compose state: `uiState` reads like a
     // plain value but recomposes this screen whenever a new state is emitted.
     val uiState by viewModel.uiState.collectAsState()
