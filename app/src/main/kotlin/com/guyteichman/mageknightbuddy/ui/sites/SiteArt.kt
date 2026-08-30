@@ -35,11 +35,12 @@ import com.guyteichman.mageknightbuddy.domain.Site
 import com.guyteichman.mageknightbuddy.domain.SiteCategory
 
 /**
- * Draws a [Site]'s art, with a graceful placeholder while the art isn't bundled yet (issue #235
- * fills it in). Same asset-backed, degrade-to-a-stand-in approach as the Enemy Picker's
- * [com.guyteichman.mageknightbuddy.ui.enemypicker.EnemyTokenFace] - so the whole Sites tab (issue
- * #234) is usable and reviewable before a single image lands. Sites are rectangular tiles/cards, so
- * these clip to a rounded rectangle rather than the Enemy Picker's circle.
+ * Draws a [Site]'s art, degrading to a category-hinting placeholder for any site whose art is
+ * missing. Art is now bundled for all current sites (issue #235 supplied it, Apocalypse Dragon
+ * sites included via #261), but the same asset-backed, degrade-to-a-stand-in approach as the Enemy
+ * Picker's [com.guyteichman.mageknightbuddy.ui.enemypicker.EnemyTokenFace] is kept so a newly-added
+ * site still renders before its image lands. Sites are rectangular tiles/cards, so these clip to a
+ * rounded rectangle rather than the Enemy Picker's circle.
  *
  * Art lives as Android *assets* (`app/src/main/assets/site-art/<filename>`) keyed by each site's
  * [Site.art] filename, not `res/drawable`, because it's a large id-referenced set that grows

@@ -36,9 +36,9 @@ data class VolkareSession private constructor(
     // removal rule - it's fixed (TacticRules.kt's tacticRemovalRule, isVolkare branch), keyed only
     // off [isSolo] below.
     val tacticState: TacticState = TacticState(),
-    // Whether this is a solo game (issue #179) - mirrors [DummyPlayerSession.isSolo]; defaults
-    // preserve every pre-existing caller's behavior until the setup UI (a later PR) starts
-    // threading a real player choice through here.
+    // Whether this is a solo game (issue #179) - mirrors [DummyPlayerSession.isSolo]. The setup UI
+    // now threads a real solo/co-op choice through here (issue #220); the default just preserves
+    // every pre-existing caller's behavior.
     val isSolo: Boolean = true,
 ) {
     /**
