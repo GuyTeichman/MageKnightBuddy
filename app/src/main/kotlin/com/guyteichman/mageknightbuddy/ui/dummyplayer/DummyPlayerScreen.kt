@@ -827,7 +827,7 @@ private fun TableauBody(session: DummyPlayerSession) {
     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
         Text(
-            "left in deck",
+            "cards left in deck",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
