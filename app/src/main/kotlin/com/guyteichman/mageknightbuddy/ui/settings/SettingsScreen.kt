@@ -36,6 +36,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
@@ -184,30 +188,28 @@ fun SettingsScreen(
             Text("Credits", style = MaterialTheme.typography.titleMedium)
             Text(
                 "MageKnightBuddy is a companion for the Mage Knight board game and reproduces its " +
-                    "art and rules text. Credit and thanks to the people whose work it builds on, " +
-                    "most important first:",
+                    "art and rules text. Credit and thanks to the people whose work it builds on:",
                 style = MaterialTheme.typography.bodyMedium,
             )
 
-            // Game creators and publisher come first (most important), per issue #193. The design
-            // credit collapses to two lines because the base game and every modeled expansion share
-            // Vlaada Chvátil's design, except The Apocalypse Dragon (Phil Pettifer). Names verified
-            // against the official WizKids Ultimate Edition rulebook; the Apocalypse Dragon artist
-            // is per the physical AD rulebook (p.47).
-            Text(
-                "Game design: Vlaada Chvátil (Mage Knight, plus The Lost Legion and Shades of " +
-                    "Tezla expansions). The Apocalypse Dragon: Phil Pettifer, from Vlaada " +
-                    "Chvátil's original design.",
-                style = MaterialTheme.typography.bodyMedium,
+            // Game creators and publisher come first, per issue #193. Each line is a bold role
+            // label plus detail text via [CreditLine]. Names verified against the official WizKids
+            // Ultimate Edition rulebook; the Apocalypse Dragon artist is per the physical AD
+            // rulebook, p.47.
+            CreditLine(
+                role = "Game design:",
+                detail = "Vlaada Chvátil, for the base game and its Lost Legion and Shades of " +
+                    "Tezla expansions. The Apocalypse Dragon expansion is by Phil Pettifer, from " +
+                    "Vlaada Chvátil's original design.",
             )
-            Text(
-                "Illustration: J. Lonnee, Milan Vavroň, and Octographics.net; Gong Studios for " +
-                    "The Apocalypse Dragon.",
-                style = MaterialTheme.typography.bodyMedium,
+            CreditLine(
+                role = "Illustration:",
+                detail = "J. Lonnee, Milan Vavroň, and Octographics.net. Apocalypse Dragon art " +
+                    "by Gong Studios.",
             )
-            Text(
-                "Published by WizKids/NECA, LLC.",
-                style = MaterialTheme.typography.bodyMedium,
+            CreditLine(
+                role = "Publisher:",
+                detail = "WizKids/NECA, LLC.",
             )
 
             OutlinedButton(
@@ -237,10 +239,10 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            // App-icon art credits last (least important): CC0, so attribution is a courtesy only.
+            // App-logo art credits last (least important): the source images are CC0, so this is a
+            // courtesy credit only (see the ICON_*_URL doc comments for provenance).
             Text(
-                "The app icon combines a tribal dragon and a heater-shield silhouette, both released " +
-                    "under CC0 (public domain). Credit isn't required, but thanks to their creators:",
+                "Thanks to the creators of the dragon and shield silhouettes used in the app logo:",
                 style = MaterialTheme.typography.bodyMedium,
             )
 
@@ -283,4 +285,22 @@ fun SettingsScreen(
             },
         )
     }
+}
+
+/**
+ * One credit line in the Credits section: a bold [role] label (e.g. "Game design:") followed by
+ * regular-weight [detail] text. Keeps those lines scannable without a separate label/value layout.
+ */
+@Composable
+private fun CreditLine(role: String, detail: String) {
+    // buildAnnotatedString lets a single Text mix font weights: withStyle applies bold only to the
+    // role label, then the appended detail stays at the default weight.
+    Text(
+        text = buildAnnotatedString {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(role) }
+            append(" ")
+            append(detail)
+        },
+        style = MaterialTheme.typography.bodyMedium,
+    )
 }
