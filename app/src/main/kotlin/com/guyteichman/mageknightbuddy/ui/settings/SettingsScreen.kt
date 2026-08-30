@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.Restore
@@ -43,8 +44,16 @@ private const val GITHUB_URL = "https://github.com/GuyTeichman/MageKnightBuddy"
 private const val BUY_ME_A_COFFEE_URL = "https://www.buymeacoffee.com/guyteichman"
 
 /**
+ * App-icon art sources, credited in the About section. Both are released under CC0 (public domain),
+ * so attribution is not legally required - these links are a courtesy to the original creators.
+ */
+private const val ICON_DRAGON_URL = "https://freesvg.org/dragon-tribal-style-tattoo-vector-illustration"
+private const val ICON_SHIELD_URL = "https://svgsilh.com/image/294573.html"
+
+/**
  * The Settings screen (issue #121). Holds Backup & Restore plus an About section with source/support
- * links (issue #104); the other deferred Settings items (expansion toggles, help-citation visibility)
+ * links (issue #104) and art credits for the app icon; the other deferred Settings items (expansion
+ * toggles, help-citation visibility)
  * stay out of scope for now (see docs/design/architecture.md). Reached via the shared [SettingsAction]
  * gear on each tab, pushed as a full-screen destination outside the bottom-nav graph; [onBack] pops
  * back to the tab.
@@ -155,6 +164,29 @@ fun SettingsScreen(
             ) {
                 Icon(Icons.Filled.Coffee, contentDescription = null)
                 Text("  Buy me a coffee")
+            }
+
+            Text("Credits", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "The app icon combines a tribal dragon and a heater-shield silhouette, both released " +
+                    "under CC0 (public domain). Credit isn't required, but thanks to their creators:",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            OutlinedButton(
+                onClick = { uriHandler.openUri(ICON_DRAGON_URL) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Filled.Brush, contentDescription = null)
+                Text("  Dragon art — OpenClipart (FreeSVG)")
+            }
+
+            OutlinedButton(
+                onClick = { uriHandler.openUri(ICON_SHIELD_URL) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Filled.Brush, contentDescription = null)
+                Text("  Shield silhouette — svgsilh")
             }
         }
     }
