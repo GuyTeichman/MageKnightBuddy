@@ -5,7 +5,8 @@ Knight* **Site Description cards** / help cards describe (name + art + "what you
 how"). See `CONTEXT.md` for the other glossary slices (Scoring, Dummy Player, Enemy Picker).
 
 **Sites tab**:
-The 5th bottom-nav tab (issue #177): a searchable list of **Site**s — flat and alphabetical by
+The 4th (and last) bottom-nav tab (issue #177 — its planning notes still say "5th", from before
+issue #248 folded the standalone Score tab into Scoreboard): a searchable list of **Site**s — flat and alphabetical by
 default, with optional grouping (by **Site Category** or **Site Expansion**, as sticky section
 headers) and multi-select expansion/category filtering (Sub-issue E / issue #237) — each opening a
 full-screen detail with its art and rules. Purely a **reference** — unlike the Enemy Picker it owns

@@ -17,9 +17,10 @@ import kotlinx.serialization.Serializable
  * @property name Display title (e.g. "Mage Tower").
  * @property category App-side grouping for the future sort/filter (see [SiteCategory]).
  * @property expansion Which product this site first appeared in (see [SiteExpansion]).
- * @property art Filename of the site's art asset in `app/src/main/assets/site-art/`, or `null` until
- *   Sub-issue C (issue #235) supplies it - the UI renders a placeholder while it's absent, so this
- *   catalogue can ship before the art. When non-null it must be unique across the catalogue (the
+ * @property art Filename of the site's art asset in `app/src/main/assets/site-art/`, or `null` if a
+ *   site has no art yet - the UI renders a category-hinting placeholder when it's absent, so the
+ *   catalogue never depends on art being present. (Issue #235 bundled art for all current sites,
+ *   Apocalypse Dragon included via #261.) When non-null it must be unique across the catalogue (the
  *   validation test enforces that).
  * @property sections The site's titled rule paragraphs, in printed order (never empty).
  *

@@ -10,4 +10,4 @@ Full Hero identity-card art for all 8 Knights this app models (`domain/.../Knigh
 
 ## Licensing
 
-All art is official WizKids/Vlaada Chvátil art. The 7 non-Coral cards come from a fan-made Tabletop Simulator mod (community-hosted reproduction, not the publisher's own files); Coral's is a personal photo of a physical component this project's author owns. Fine for this project's current personal, non-distributed status (see `CONTEXT.md` / project memory) - re-flag and re-evaluate before any public release.
+All art is official WizKids/Vlaada Chvátil art. The 7 non-Coral cards come from a fan-made Tabletop Simulator mod (community-hosted reproduction, not the publisher's own files); Coral's is a personal photo of a physical component this project's author owns. Note the app already attaches a debug APK to GitHub Releases on each `v*.*.*` tag (v1.0.0 shipped 2026-07-24), so this is **not** strictly "non-distributed" — a proper credits screen and licensing review are tracked as issue #193. Re-evaluate bundling official WizKids art before any wider release.

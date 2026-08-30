@@ -31,9 +31,9 @@ data class ProxyPlayerSession private constructor(
     // This Round's Tactic Card draft - mirrors [DummyPlayerSession.tacticState] exactly, see its
     // own doc comment.
     val tacticState: TacticState = TacticState(),
-    // Whether this is a solo game (issue #179) - mirrors [DummyPlayerSession.isSolo]/[scenario];
-    // defaults preserve every pre-existing caller's behavior (solo, "Conquest") until the setup
-    // UI (a later PR) starts threading a real player choice through here.
+    // Whether this is a solo game (issue #179) - mirrors [DummyPlayerSession.isSolo]/[scenario].
+    // The setup UI now threads a real solo/co-op choice through here (issue #220); the default just
+    // preserves every pre-existing caller's behavior (solo, "Conquest").
     val isSolo: Boolean = true,
     val scenario: Scenario = Scenario.SoloConquest,
 ) {
