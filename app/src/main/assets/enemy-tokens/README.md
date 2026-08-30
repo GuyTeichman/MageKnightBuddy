@@ -67,9 +67,10 @@ author's own Tabletop Simulator saved game (`Saves/TS_AutoSave.json`). Unlike th
 flat `CustomImage`), each possessed token is a 3D `Custom_Model`, so its art lives in `CustomMesh.DiffuseURL`
 (the starfield texture) shaped by `CustomMesh.MeshURL` (the token's outline). The bag's *own* mesh + diffuse
 are the face-down pile's appearance — a starfield **D-tile** — which was downloaded from Steam's CDN, its
-white background keyed out to transparent, and re-encoded to a ~706×512 transparent PNG (the D's own aspect)
-whose alpha *is* the tile silhouette. `PileBackFace` then draws it at the pile's full height and
-proportionally wider, so it sits the same height as the round backs.
+white background keyed out to transparent, a **black edge border** baked on to match the round backs' ring,
+and re-encoded to a compact transparent PNG (the D's own aspect) whose alpha *is* the tile silhouette.
+`PileBackFace` then draws it at the pile's full height and proportionally wider, so it sits the same height
+as the round backs.
 
 The `backs/` pile-back art (issue #198) came from the same mod, one level up: every token object in
 a pile's bag (e.g. "Marauding Orcs" for green) carries a `CustomImage.ImageSecondaryURL` for its
