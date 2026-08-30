@@ -31,8 +31,10 @@ fun estimateTurnsRemaining(chainBonuses: List<Int>): TurnEstimate {
     // groupingBy/eachCount collapses the per-card list into a `bonusValue -> count` multiset - the
     // only state the optimization actually depends on.
     val buckets = chainBonuses.groupingBy { it }.eachCount()
-    val (minProductive, maxProductive) = solveProductiveTurns(buckets, HashMap())
-    return TurnEstimate(minProductive + 1, maxProductive + 1)
+    return TurnEstimate(
+        min = productiveTurns(buckets, biggestBites = true) + 1,
+        max = productiveTurns(buckets, biggestBites = false) + 1,
+    )
 }
 
 /**
@@ -51,48 +53,36 @@ val ProxyPlayerSession.turnsRemaining: TurnEstimate
     get() = estimateTurnsRemaining(deckOrder.map { it.matchingCrystalCount(crystals) })
 
 /**
- * Exact fewest/most *productive* turns (turns that actually flip cards, excluding the End of Round
- * declaration) to empty a deck given as a `bonusValue -> count` multiset. Memoized on that multiset
- * in [memo]. Returns `min to max` productive turns.
+ * Exact fewest ([biggestBites] = true) or most ([biggestBites] = false) *productive* turns (turns
+ * that actually flip cards, excluding the End of Round declaration) to empty a deck given as a
+ * `bonusValue -> count` multiset. Linear in the deck size.
  *
- * `min` and `max` decompose independently over the same choice tree: any real draw order is a
- * sequence of turns, so the fewest total turns is 1 + the best child's `min` and the most is
- * 1 + the best child's `max`, taken over every legal way to play the next turn.
+ * It's a greedy walk, and the greedy choice is provably optimal (an exchange argument, exhaustively
+ * confirmed against the real [DummyPlayerSession.playTurn] loop in TurnsRemainingEstimatorTest):
+ * - **Fewest turns** wants the biggest turn each time, so trigger with the *highest*-bonus card
+ *   available, and spend the *lowest*-bonus cards as the turn's other cards - keeping high-bonus
+ *   cards in reserve to trigger (and enlarge) later turns too.
+ * - **Most turns** wants the smallest turn each time, so trigger with the *lowest*-bonus card and
+ *   spend the *highest*-bonus cards as filler - a high-bonus card only ever enlarges a turn when it
+ *   triggers, so burning it as filler keeps future turns small.
+ * A trigger's bonus (extra cards chained) is capped by what's left after the mandatory 3.
  */
-private fun solveProductiveTurns(
-    buckets: Map<Int, Int>,
-    memo: HashMap<Map<Int, Int>, Pair<Int, Int>>,
-): Pair<Int, Int> {
-    val total = buckets.values.sum()
-    if (total == 0) return 0 to 0
-    // 3 or fewer cards: the mandatory flip-3 takes them all in one turn, with no room left over for
-    // any chained bonus card - so exactly one productive turn remains regardless of colors.
-    if (total <= 3) return 1 to 1
-
-    memo[buckets]?.let { return it }
-
-    var minTurns = Int.MAX_VALUE
-    var maxTurns = Int.MIN_VALUE
-    // Enumerate every value we could arrange as this turn's trigger (3rd) card. Its bonus fixes the
-    // turn's total size at 3 + bonus, where bonus is capped by the cards left after the base 3.
-    for ((triggerValue, count) in buckets) {
-        if (count == 0) continue
+private fun productiveTurns(buckets: Map<Int, Int>, biggestBites: Boolean): Int {
+    var remaining = buckets
+    var turns = 0
+    while (true) {
+        val total = remaining.values.sum()
+        if (total == 0) return turns
+        turns++
+        // 3 or fewer cards: the mandatory flip-3 takes them all in one turn, with no room left for a
+        // chained card, so this is the last productive turn.
+        if (total <= 3) return turns
+        val triggerValue = if (biggestBites) remaining.keys.max() else remaining.keys.min()
         val bonus = minOf(triggerValue, total - 3)
-        // Cards removed this turn besides the trigger itself: the other 2 of the base 3, plus bonus.
+        // Cards removed this turn besides the trigger: the other 2 of the base 3, plus `bonus` chained.
         val othersToRemove = 2 + bonus
-        val afterTrigger = buckets.decrement(triggerValue)
-        // Those other cards can be any remaining cards; which we spend now changes what's available
-        // to trigger later turns, so we branch over every distinct removal and let memoization dedup.
-        for (child in removalOutcomes(afterTrigger, othersToRemove)) {
-            val (childMin, childMax) = solveProductiveTurns(child, memo)
-            minTurns = minOf(minTurns, 1 + childMin)
-            maxTurns = maxOf(maxTurns, 1 + childMax)
-        }
+        remaining = remaining.decrement(triggerValue).removeCards(othersToRemove, fromLowest = biggestBites)
     }
-
-    val result = minTurns to maxTurns
-    memo[buckets] = result
-    return result
 }
 
 /** A copy of this multiset with one card of [value] removed, dropping the key entirely when it hits 0. */
@@ -103,28 +93,22 @@ private fun Map<Int, Int>.decrement(value: Int): Map<Int, Int> {
 }
 
 /**
- * Every distinct multiset that can result from removing exactly [k] cards from [buckets] (spread
- * across the bonus-value buckets however we like, bounded by each bucket's count), returned as the
- * *remaining* bucket maps. `k` is always <= the cards available here, so the list is never empty.
+ * A copy of this multiset with exactly [count] cards removed, taken from the lowest bonus values
+ * first when [fromLowest] (else the highest first). [count] is always <= the cards available, so the
+ * whole quota is met.
  */
-private fun removalOutcomes(buckets: Map<Int, Int>, k: Int): List<Map<Int, Int>> {
-    val keys = buckets.keys.toList()
-    val outcomes = mutableListOf<Map<Int, Int>>()
-    // Walk the distinct bucket values, deciding how many to remove from each so the removals sum to k.
-    fun recurse(index: Int, remaining: Int, kept: Map<Int, Int>) {
-        if (index == keys.size) {
-            if (remaining == 0) outcomes.add(kept)
-            return
-        }
-        val key = keys[index]
-        val available = buckets.getValue(key)
-        val maxRemove = minOf(available, remaining)
-        for (remove in 0..maxRemove) {
-            val keptHere = available - remove
-            val nextKept = if (keptHere == 0) kept else kept + (key to keptHere)
-            recurse(index + 1, remaining - remove, nextKept)
-        }
+private fun Map<Int, Int>.removeCards(count: Int, fromLowest: Boolean): Map<Int, Int> {
+    val result = toMutableMap()
+    var toRemove = count
+    // Visit bonus values in the chosen direction; `reversed()` flips the ascending sort to descending.
+    val order = keys.sorted().let { if (fromLowest) it else it.reversed() }
+    for (value in order) {
+        if (toRemove == 0) break
+        val available = result.getValue(value)
+        val take = minOf(available, toRemove)
+        val kept = available - take
+        if (kept == 0) result.remove(value) else result[value] = kept
+        toRemove -= take
     }
-    recurse(0, k, emptyMap())
-    return outcomes
+    return result
 }

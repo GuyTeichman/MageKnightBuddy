@@ -68,20 +68,17 @@ class TurnsRemainingEstimatorTest {
         assertEquals(false, estimateTurnsRemaining(listOf(0, 0, 0, 2)).isExact)
     }
 
-    // ---- Session accessor wiring ----
+    // ---- Session accessor wiring (independently-derived expected values, not a re-spelling of the
+    //      accessor's own body) ----
 
     @Test
-    fun `DummyPlayerSession turnsRemaining matches the estimator on its own deck bonuses`() {
-        val session = DummyPlayerSession.start(Knight.TOVAK)
-        val expected = estimateTurnsRemaining(session.deckOrder.map { it.matchingCrystalCount(session.crystals) })
-        assertEquals(expected, session.turnsRemaining)
-    }
-
-    @Test
-    fun `ProxyPlayerSession turnsRemaining matches the estimator on its own deck bonuses`() {
-        val session = ProxyPlayerSession.start(Knight.NOROWAS)
-        val expected = estimateTurnsRemaining(session.deckOrder.map { it.matchingCrystalCount(session.crystals) })
-        assertEquals(expected, session.turnsRemaining)
+    fun `DummyPlayerSession turnsRemaining is the hand-derived estimate for Tovak's start deck`() {
+        // Tovak starts with 16 cards (4 of each colour) and 1 red + 2 blue crystals, so the deck's
+        // chain bonuses are 8x0 (green/white cards), 4x1 (red), 4x2 (blue). Fastest: trigger the
+        // blue (+2) cards - three 5-card turns clear 15, then a 1-card turn, + declaration = 5.
+        // Slowest: never chain (trigger a green/white card) - ceil(16/3) = 6 flip turns, + the
+        // declaration = 7. (The Proxy accessor is covered independently by the Proxy oracle below.)
+        assertEquals(TurnEstimate(5, 7), DummyPlayerSession.start(Knight.TOVAK).turnsRemaining)
     }
 
     // ---- Brute-force oracle: exhaustively simulate the REAL turn logic over every deck order ----
@@ -145,7 +142,116 @@ class TurnsRemainingEstimatorTest {
         assertMatchesOracle(listOf(GREEN, GREEN, GREEN, BLUE).map(::single), crystalsOf(blue = 2))
     }
 
+    // ---- Proxy oracle: the SAME estimator, verified against the real ProxyPlayerSession turn loop
+    //      (which has its own objective-card branch), and asserting the ProxyPlayerSession accessor ----
+
+    @Test
+    fun `proxy oracle - basic and unique cards with mixed crystals`() {
+        assertProxyMatchesOracle(
+            deck = listOf(
+                ProxyPlayerCard.BasicAction(RED),
+                ProxyPlayerCard.BasicAction(RED),
+                ProxyPlayerCard.UniqueAction(WHITE), // chains on crystals[white] like any white card
+                ProxyPlayerCard.BasicAction(GREEN),
+                ProxyPlayerCard.BasicAction(BLUE),
+            ),
+            crystals = crystalsOf(red = 1, white = 2),
+        )
+    }
+
+    @Test
+    fun `proxy oracle - dual-color advanced action chains on the higher colour`() {
+        assertProxyMatchesOracle(
+            deck = listOf(
+                ProxyPlayerCard.AdvancedAction(CardIdentity.DualColor(GREEN, BLUE)),
+                ProxyPlayerCard.BasicAction(GREEN),
+                ProxyPlayerCard.BasicAction(BLUE),
+                ProxyPlayerCard.BasicAction(RED),
+            ),
+            crystals = crystalsOf(green = 1, blue = 2),
+        )
+    }
+
+    @Test
+    fun `proxy oracle - crystals of every colour and a boundary size`() {
+        assertProxyMatchesOracle(
+            deck = listOf(RED, GREEN, BLUE, WHITE, RED, GREEN).map { ProxyPlayerCard.BasicAction(it) },
+            crystals = crystalsOf(red = 1, green = 1, blue = 1, white = 1),
+        )
+        assertProxyMatchesOracle(
+            deck = listOf(RED, GREEN, BLUE).map { ProxyPlayerCard.BasicAction(it) },
+            crystals = crystalsOf(blue = 2),
+        )
+    }
+
+    // ---- Exhaustive property test: the greedy solver vs the real turn loop over a bounded space ----
+
+    @Test
+    fun `property - matches the real turn loop for every small deck and crystal config`() {
+        // Exhaustive over a bounded space: decks of 0..6 cards drawn from 3 colours, with 0..3
+        // crystals of each colour. This covers multiple bonus buckets, the bonus cap (bonus > cards
+        // left after the base 3), and short final turns. If the greedy solver ever disagreed with the
+        // real playTurn loop, one of these thousands of cases would catch it - which is what lets the
+        // shipped estimator use the fast greedy walk instead of an exponential exact search.
+        val colours = listOf(RED, GREEN, BLUE)
+        var checked = 0
+        for (size in 0..6) {
+            for (deck in colourMultisets(colours, size)) {
+                val identities = deck.map(::single)
+                for (crystals in crystalConfigs(colours, maxEach = 3)) {
+                    assertEquals(
+                        dummyOracle(identities, crystals),
+                        estimateTurnsRemaining(identities.map { it.matchingCrystalCount(crystals) }),
+                        "deck=$deck crystals=$crystals",
+                    )
+                    checked++
+                }
+            }
+        }
+        println("PROPERTY checked $checked deck/crystal combinations")
+    }
+
     // ---- helpers ----
+
+    /**
+     * Proxy-Player counterpart of [assertMatchesOracle]: drives the real [ProxyPlayerSession.playTurn]
+     * loop (objective-card branch and all) over every distinct order of [deck], and asserts the
+     * shipped [ProxyPlayerSession.turnsRemaining] accessor equals the true min/max. Independent of the
+     * estimator's own logic and of the Dummy path.
+     */
+    private fun assertProxyMatchesOracle(deck: List<ProxyPlayerCard>, crystals: Map<CardColor, Int>) {
+        var oracleMin = Int.MAX_VALUE
+        var oracleMax = Int.MIN_VALUE
+        for (order in distinctPermutations(deck)) {
+            var session = ProxyPlayerSession.restore(
+                knight = Knight.GOLDYX, // irrelevant: crystals supplied explicitly
+                wasRandom = false,
+                deckOrder = order,
+                discardPile = emptyList(),
+                crystals = crystals,
+                round = 1,
+                roundEnded = false,
+                objectiveCard = null,
+                objectiveShields = 0,
+                log = emptyList(),
+            )
+            var turns = 0
+            // Never resolve the objective - it just persists; the deck still empties at 3+chain/turn,
+            // which is all the turn count depends on.
+            while (!session.roundEnded) {
+                session = session.playTurn()
+                turns++
+            }
+            oracleMin = minOf(oracleMin, turns)
+            oracleMax = maxOf(oracleMax, turns)
+        }
+        val fixed = ProxyPlayerSession.restore(
+            knight = Knight.GOLDYX, wasRandom = false, deckOrder = deck, discardPile = emptyList(),
+            crystals = crystals, round = 1, roundEnded = false, objectiveCard = null,
+            objectiveShields = 0, log = emptyList(),
+        )
+        assertEquals(TurnEstimate(oracleMin, oracleMax), fixed.turnsRemaining)
+    }
 
     /**
      * Asserts the fast [estimateTurnsRemaining] matches an independent brute force: for EVERY distinct
@@ -154,6 +260,15 @@ class TurnsRemainingEstimatorTest {
      * estimator's own logic - it drives the shipped turn mechanic directly.
      */
     private fun assertMatchesOracle(deck: List<CardIdentity>, crystals: Map<CardColor, Int>) {
+        assertEquals(
+            dummyOracle(deck, crystals),
+            estimateTurnsRemaining(deck.map { it.matchingCrystalCount(crystals) }),
+            "deck=$deck crystals=$crystals",
+        )
+    }
+
+    /** The true (min, max) turns via the real [DummyPlayerSession.playTurn] loop over every distinct order of [deck]. */
+    private fun dummyOracle(deck: List<CardIdentity>, crystals: Map<CardColor, Int>): TurnEstimate {
         var oracleMin = Int.MAX_VALUE
         var oracleMax = Int.MIN_VALUE
         for (order in distinctPermutations(deck)) {
@@ -177,8 +292,7 @@ class TurnsRemainingEstimatorTest {
             oracleMin = minOf(oracleMin, turns)
             oracleMax = maxOf(oracleMax, turns)
         }
-        val estimate = estimateTurnsRemaining(deck.map { it.matchingCrystalCount(crystals) })
-        assertEquals(TurnEstimate(oracleMin, oracleMax), estimate)
+        return TurnEstimate(oracleMin, oracleMax)
     }
 
     private companion object {
@@ -205,6 +319,30 @@ class TurnsRemainingEstimatorTest {
                 for (tail in distinctPermutations(rest)) result.add(listOf(head) + tail)
             }
             return result
+        }
+
+        /** Every multiset of [size] cards drawn from [colours], as a sorted colour list (no duplicate orderings). */
+        fun colourMultisets(colours: List<CardColor>, size: Int): List<List<CardColor>> {
+            if (size == 0) return listOf(emptyList())
+            if (colours.isEmpty()) return emptyList()
+            val head = colours.first()
+            val rest = colours.drop(1)
+            val result = mutableListOf<List<CardColor>>()
+            // Take k copies of the first colour, then fill the remaining size from the other colours.
+            for (k in 0..size) {
+                for (tail in colourMultisets(rest, size - k)) result.add(List(k) { head } + tail)
+            }
+            return result
+        }
+
+        /** Every crystal map giving each of [colours] a count in 0..[maxEach] (all other colours 0). */
+        fun crystalConfigs(colours: List<CardColor>, maxEach: Int): List<Map<CardColor, Int>> {
+            var configs = listOf(CardColor.entries.associateWith { 0 })
+            // Fold each colour in, branching over its 0..maxEach possibilities (Cartesian product).
+            for (colour in colours) {
+                configs = configs.flatMap { base -> (0..maxEach).map { base + (colour to it) } }
+            }
+            return configs
         }
     }
 }
