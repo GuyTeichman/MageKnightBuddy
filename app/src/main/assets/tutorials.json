@@ -4,7 +4,7 @@
     "steps": [
       {
         "title": "What this tab is for",
-        "body": "This tab runs an automated opponent that paces your solo or cooperative game. It never plays on the board for you — each turn it tells you what the opponent does, and you carry that out at the table."
+        "body": "This tab runs an automated opponent that paces your solo or cooperative game. It never plays the board for you: the Standard opponent simply paces the round, while Volkare and the Proxy Player also tell you how to move their figure and when they fight — which you carry out at the table."
       },
       {
         "title": "First: Volkare or a Knight",
@@ -77,8 +77,12 @@
         "body": "The app totals the objective's movement points for you — from the card type, its Shield tokens, and a Source-die bonus (including the gold die on days). Move its figure that many spaces toward its target."
       },
       {
-        "title": "Finishing an objective — and undo",
-        "body": "Keep tapping Play Turn while it travels; it piles on Shield tokens and edges toward its target. Once you resolve the objective at the table, tap Complete Objective to clear it. Made a wrong tap anywhere? The undo arrow at the bottom-left reverts your last action."
+        "title": "Finishing an objective",
+        "body": "Keep tapping Play Turn while it travels; it piles on Shield tokens and edges toward its target. Once you resolve the objective at the table, tap Complete Objective to clear it."
+      },
+      {
+        "title": "Ending and preparing a round — and undo",
+        "body": "When its deck runs empty it announces End of the Round — everyone takes one last turn, then tap End Round. Just like the Dummy Player, the dialog asks which colour was removed from the Advanced Action offer and which from the Spell offer, so it can rebuild the deck; any unfinished objective is cleared for you. Tapped the wrong thing? The undo arrow at the bottom-left reverts your last action."
       }
     ]
   },
@@ -91,11 +95,11 @@
       },
       {
         "title": "Tactics each round",
-        "body": "Each round opens with a Tactic draft for turn order. The app applies the right rules for you — including Volkare's own quirk that in cooperative play the real players pick first, unlike every other scenario."
+        "body": "Each round opens with a Tactic draft for turn order. Whatever your scenario, and whether you're playing solo or cooperatively, the app applies the right pick order and Tactic removal for you — so you never look those rules up."
       },
       {
         "title": "One card per turn",
-        "body": "Volkare's deck is dealt once and never reshuffled. Each turn reveals a single card — tap Play Turn and the app tells you what it means: which way he moves, whether the Source die (one of the shared mana dice) is rerolled, or whether he attacks."
+        "body": "Volkare's deck is dealt once and never reshuffled. Each turn reveals a single card — tap Play Turn and the app tells you what it means: which way he moves, whether the Source die (one of the shared mana dice) is rerolled, or whether he attacks. Volkare never calls End of the Round himself, so when your own round ends, tap End Round to advance to the next one."
       },
       {
         "title": "City Revealed (Return only)",
@@ -116,11 +120,11 @@
       },
       {
         "title": "Drawing a token",
-        "body": "Tap a pile's face to draw one straight away. To draw several at once — even across different piles — set their steppers and then tap the Draw button in the bottom bar (it shows the running total). Each drawn token appears zoomed, and its \"?\" window explains any abilities. Tokens are discarded immediately: the app tracks no map and no combat, just the draw."
+        "body": "Tap a pile's face to draw one straight away. To draw several at once — even across different piles — set their steppers and then tap the Draw button in the bottom bar (it shows the running total). Each drawn token appears zoomed, and its \"?\" window explains any abilities. The app tracks no map and no combat — it just handles the draw; you fight the token at the table."
       },
       {
         "title": "The Draw Log is your board memory",
-        "body": "Every draw is recorded in the Draw Log, newest first. Because the app models no board, this log is your only record of which enemies are still standing on which spaces — treat it as your memory of the table."
+        "body": "Every draw is recorded in the Draw Log, newest first. Because the app models no board, this log is your only record of which enemies are still standing on which spaces — treat it as your memory of the table. Tap a single draw to jot a note on it (like 'keep, NE tile'), so the log remembers exactly where each enemy stands."
       },
       {
         "title": "Marking defeats",

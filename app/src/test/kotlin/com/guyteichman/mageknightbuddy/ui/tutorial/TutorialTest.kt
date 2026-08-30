@@ -39,7 +39,7 @@ class TutorialTest {
     }
 
     @Test
-    fun `bundled tutorials json parses and covers all four screens with non-empty steps`() {
+    fun `bundled tutorials json parses and covers all five screens with non-empty steps`() {
         // Reads the real shipped asset from disk (unit tests run with the module dir as cwd), so a
         // malformed or incomplete tutorials.json fails here instead of crashing loadTutorials at
         // app startup. The five keys are the spec: the Dummy Player setup screen + the three
