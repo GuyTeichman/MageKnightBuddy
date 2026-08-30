@@ -44,7 +44,10 @@ piles (they share the base tokens' backs): green `orc_skirmishers`/`orc_trackers
 `lava_dragon`/`dragon_summoner`/`storm_dragon`; white `fire_catapult`/`ice_catapult`/
 `delphana_masters`/`grim_legionnaires`. The **Shades of Tezla** enemy tokens are present too — all 22
 (11 Elementalist + 11 Dark Crusader), mixed into the same colour piles — as are the 3 **Lost Legion
-ruin** tokens and the 9 Apocalypse Dragon **possessed** token faces (`possessed_0*.png`, issue #189).
+ruin** tokens and the 9 Apocalypse Dragon **possessed** token faces (`possessed_0*.png`, issue #189) -
+now **crescent**-shaped (issue #289): each is masked to the possessed token's own 3D mesh silhouette
+(from the "Possessed Tokens" bag), so the circular enemy nests into the bite in `PossessedEnemyFace`
+instead of overlapping a square, with the delta icons kept on the left.
 The enemy-token catalogue is therefore complete (base + Lost Legion + Shades of Tezla, 73 faces), and
 with the Possessed pile *back* (`backs/possessed.png`, issue #277) now added, every pile in the Enemy
 Picker has its back art (see `docs/rules/enemy-tokens.md`).
