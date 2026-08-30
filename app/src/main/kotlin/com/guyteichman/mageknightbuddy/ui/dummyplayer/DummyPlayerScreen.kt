@@ -92,8 +92,10 @@ import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.PickOrder
 import com.guyteichman.mageknightbuddy.domain.Scenario
+import com.guyteichman.mageknightbuddy.domain.TurnEstimate
 import com.guyteichman.mageknightbuddy.domain.coopTacticScenarios
 import com.guyteichman.mageknightbuddy.domain.tacticPickOrder
+import com.guyteichman.mageknightbuddy.domain.turnsRemaining
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
 import com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon
@@ -675,7 +677,7 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 // still swaps mutually exclusively rather than showing both at once.
                 item {
                     DeckPanel(showSummary = showSummary, onToggleSummary = { showSummary = !showSummary }) {
-                        if (showSummary) StatGridBody(session = session) else TableauBody(session = session)
+                        if (showSummary) StatGridBody(session = session) else TableauBody(session = session, fieldHelp = fieldHelp)
                     }
                 }
                 item {
@@ -823,7 +825,7 @@ private fun DeckPanel(showSummary: Boolean, onToggleSummary: () -> Unit, content
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TableauBody(session: DummyPlayerSession) {
+private fun TableauBody(session: DummyPlayerSession, fieldHelp: Map<String, FieldHelp>) {
     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
         Text(
@@ -832,6 +834,18 @@ private fun TableauBody(session: DummyPlayerSession) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+
+    // Estimated turns left in the Round (issue #283). remember keyed on the deck+crystals so the
+    // (small) optimization only reruns when those actually change, not on every recomposition (e.g.
+    // toggling the deck summary).
+    val estimate = remember(session.deckOrder, session.crystals) { session.turnsRemaining }
+    TurnsRemainingLine(
+        estimate = estimate,
+        deckEmpty = session.deckOrder.isEmpty(),
+        roundEnded = session.roundEnded,
+        aiLabel = "Dummy",
+        fieldHelp = fieldHelp,
+    )
 
     // heightIn(min) reserves 2 rows' worth of space always, so the panel shrinks/grows by at most
     // a few dp as the pile empties instead of visibly collapsing row-by-row (a 16-card starting
@@ -882,6 +896,49 @@ private fun TableauBody(session: DummyPlayerSession) {
                     repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
                 }
             }
+        }
+    }
+}
+
+/**
+ * The "~N-M turns left this round" caption shown under the deck count (issue #283), with a "?" help
+ * button explaining the estimate. [estimate] is
+ * [com.guyteichman.mageknightbuddy.domain.turnsRemaining] for the current session. Two states get
+ * special treatment:
+ * - [roundEnded]: End of Round has already been announced, so the count is meaningless - render
+ *   nothing at all.
+ * - [deckEmpty] (but the Round still live): the automated player's very next turn is purely the End
+ *   of Round declaration, so say that directly with [aiLabel] ("Dummy"/"Proxy") instead of a number.
+ *
+ * `internal`, not `private`: reused by both this screen's [TableauBody] and `ProxyPlayerScreen.kt`'s
+ * deck tableau, matching [RoundChip]/[MiniCard]'s shared-helper pattern across the two screens.
+ */
+@Composable
+internal fun TurnsRemainingLine(
+    estimate: TurnEstimate,
+    deckEmpty: Boolean,
+    roundEnded: Boolean,
+    aiLabel: String,
+    fieldHelp: Map<String, FieldHelp>,
+) {
+    // Nothing to show once the Round's been declared over - `return` from a @Composable simply emits
+    // no UI for this call.
+    if (roundEnded) return
+
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        val label = when {
+            deckEmpty -> "Round ends next $aiLabel turn"
+            // isExact means every possible draw order gives the same turn count (e.g. no crystals
+            // match anything), so show one number instead of a "N-M" range.
+            estimate.isExact -> "~${estimate.min} turns left this round"
+            // – is an en dash, the conventional range separator ("~4-6").
+            else -> "~${estimate.min}–${estimate.max} turns left this round"
+        }
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // The numeric estimate is the only part that needs a rules explanation; the plain "round ends
+        // next turn" message speaks for itself, so skip the help button there.
+        if (!deckEmpty) {
+            HelpButton(keys = listOf("Turns Remaining"), fieldHelp = fieldHelp)
         }
     }
 }

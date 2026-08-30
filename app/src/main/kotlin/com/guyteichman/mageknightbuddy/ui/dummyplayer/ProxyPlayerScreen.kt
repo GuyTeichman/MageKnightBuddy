@@ -61,6 +61,7 @@ import com.guyteichman.mageknightbuddy.domain.objectiveLabel
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.tacticPickOrder
+import com.guyteichman.mageknightbuddy.domain.turnsRemaining
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
 import com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon
@@ -238,7 +239,7 @@ fun ProxyPlayerAiScreen(
                 // DummyPlayerScreen.kt's DeckPanel. The body still swaps mutually exclusively.
                 item {
                     ProxyPlayerDeckPanel(showSummary = showSummary, onToggleSummary = { showSummary = !showSummary }) {
-                        if (showSummary) ProxyPlayerStatGridBody(session = session) else ProxyPlayerTableauBody(session = session)
+                        if (showSummary) ProxyPlayerStatGridBody(session = session) else ProxyPlayerTableauBody(session = session, fieldHelp = fieldHelp)
                     }
                 }
                 item {
@@ -510,7 +511,7 @@ private fun ProxyPlayerDeckPanel(showSummary: Boolean, onToggleSummary: () -> Un
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProxyPlayerTableauBody(session: ProxyPlayerSession) {
+private fun ProxyPlayerTableauBody(session: ProxyPlayerSession, fieldHelp: Map<String, FieldHelp>) {
     Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -521,6 +522,16 @@ private fun ProxyPlayerTableauBody(session: ProxyPlayerSession) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            // Estimated turns left in the Round (issue #283) - same shared line the Dummy screen
+            // uses. remember keyed on deck+crystals keeps the estimate off every recomposition.
+            val estimate = remember(session.deckOrder, session.crystals) { session.turnsRemaining }
+            TurnsRemainingLine(
+                estimate = estimate,
+                deckEmpty = session.deckOrder.isEmpty(),
+                roundEnded = session.roundEnded,
+                aiLabel = "Proxy",
+                fieldHelp = fieldHelp,
+            )
         }
     }
     FlowRow(
