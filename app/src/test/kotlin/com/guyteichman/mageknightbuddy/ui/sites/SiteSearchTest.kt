@@ -252,4 +252,106 @@ class SiteSearchTest {
         assertEquals(listOf(SiteCategory.ADVENTURE_SITE), groups.map { it.key })
         assertEquals(listOf("Crystal Mine"), groups.single().sites.map { it.name })
     }
+
+    // --- Favorites (★ pinned section, issue #236) ---
+    // The chosen behaviour: favorited sites are pulled into a single leading "★ Favorites" group,
+    // removed from their normal group, shown once and name-sorted, in every grouping mode - and that
+    // group still obeys the active search query and filters (it is not a bypass).
+
+    @Test
+    fun `favorites are pulled into a leading Favorites group and removed from their category group`() {
+        val keep = site("keep", "Keep", category = SiteCategory.FORTIFIED_SITE)
+        val mageTower = site("mage_tower", "Mage Tower", category = SiteCategory.FORTIFIED_SITE)
+        val village = site("village", "Village", category = SiteCategory.SETTLEMENT)
+        val sites = listOf(keep, mageTower, village)
+
+        val groups = sites.searchedFilteredGrouped(
+            query = "",
+            grouping = SiteGrouping.CATEGORY,
+            favorites = setOf("keep", "village"),
+        )
+
+        // First group is the favorites block, name-sorted, spanning categories.
+        assertTrue(groups.first().isFavorites)
+        assertEquals(listOf("Keep", "Village"), groups.first().sites.map { it.name })
+        // The remaining groups no longer contain the favorited sites: Fortified Sites has only Mage
+        // Tower left, and the Settlements group is gone (its only member, Village, was pulled up).
+        val rest = groups.drop(1)
+        assertEquals(listOf(SiteCategory.FORTIFIED_SITE), rest.map { it.key })
+        assertEquals(listOf("Mage Tower"), rest.single().sites.map { it.name })
+    }
+
+    @Test
+    fun `favorites form a single alphabetical block at the top in NONE grouping`() {
+        val sites = listOf(site("k", "Keep"), site("a", "Ancient Ruins"), site("d", "Dungeon"))
+
+        val groups = sites.searchedFilteredGrouped(
+            query = "",
+            grouping = SiteGrouping.NONE,
+            favorites = setOf("k", "d"),
+        )
+
+        // Favorites group first (Dungeon, Keep - alpha), then the flat remainder (Ancient Ruins).
+        assertTrue(groups.first().isFavorites)
+        assertEquals(listOf("Dungeon", "Keep"), groups.first().sites.map { it.name })
+        assertEquals(null, groups[1].key)
+        assertFalse(groups[1].isFavorites)
+        assertEquals(listOf("Ancient Ruins"), groups[1].sites.map { it.name })
+    }
+
+    @Test
+    fun `the Favorites group obeys the search query`() {
+        val sites = listOf(site("keep", "Keep"), site("village", "Village"))
+
+        // Both favorited, but only "Keep" matches the query - the Favorites group must be filtered too.
+        val groups = sites.searchedFilteredGrouped(
+            query = "keep",
+            grouping = SiteGrouping.NONE,
+            favorites = setOf("keep", "village"),
+        )
+
+        assertTrue(groups.first().isFavorites)
+        assertEquals(listOf("Keep"), groups.first().sites.map { it.name })
+    }
+
+    @Test
+    fun `the Favorites group obeys the filters`() {
+        val base = site("b", "Base Keep", expansion = SiteExpansion.BASE)
+        val lost = site("l", "Lost Keep", expansion = SiteExpansion.LOST_LEGION)
+        val sites = listOf(base, lost)
+
+        val groups = sites.searchedFilteredGrouped(
+            query = "",
+            expansions = setOf(SiteExpansion.BASE),
+            grouping = SiteGrouping.NONE,
+            favorites = setOf("b", "l"),
+        )
+
+        // Only the Base favorite survives the expansion filter; the Lost Legion favorite is filtered
+        // out of the Favorites group entirely (favorites don't bypass filters).
+        assertTrue(groups.first().isFavorites)
+        assertEquals(listOf("Base Keep"), groups.first().sites.map { it.name })
+    }
+
+    @Test
+    fun `no Favorites group when nothing is favorited`() {
+        val sites = listOf(site("a", "Ancient Ruins"), site("k", "Keep"))
+
+        val groups = sites.searchedFilteredGrouped(query = "", grouping = SiteGrouping.NONE, favorites = emptySet())
+
+        // Same as before favorites existed: a single flat group, no ★ section.
+        assertEquals(1, groups.size)
+        assertFalse(groups.single().isFavorites)
+    }
+
+    @Test
+    fun `no Favorites group when the favorited sites are filtered out by search`() {
+        val sites = listOf(site("keep", "Keep"), site("v", "Village"))
+
+        // "keep" is favorited but the query matches only Village - so no favorite is visible, no ★ section.
+        val groups = sites.searchedFilteredGrouped(query = "village", grouping = SiteGrouping.NONE, favorites = setOf("keep"))
+
+        assertTrue(groups.none { it.isFavorites })
+        assertEquals(listOf("Village"), groups.single().sites.map { it.name })
+    }
 }

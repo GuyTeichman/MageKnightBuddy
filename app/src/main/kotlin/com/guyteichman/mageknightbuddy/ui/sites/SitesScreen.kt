@@ -23,6 +23,8 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DropdownMenu
@@ -32,6 +34,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -43,6 +46,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,11 +56,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.guyteichman.mageknightbuddy.data.FavoriteSitesRepository
 import com.guyteichman.mageknightbuddy.domain.Site
 import com.guyteichman.mageknightbuddy.domain.SiteCatalogue
 import com.guyteichman.mageknightbuddy.domain.SiteCategory
@@ -74,20 +80,32 @@ private const val SITES_DETAIL_ROUTE = "sites_detail/{id}"
 /**
  * Root composable for the Sites tab (issue #234): a searchable, alphabetical list of every [Site] in
  * the [SiteCatalogue] and, on tapping a row, a full-screen detail with that site's art and rules.
+ * Favorited sites (issue #236) pin to a "★ Favorites" section at the top and can be starred from
+ * either the row or the detail.
  *
  * Runs its own nested [NavHost] - separate from the app's top-level tab navigation, exactly like the
  * Scoreboard tab's breakdown - so pushing a detail only touches this tab's back stack, and switching
- * away to another tab and back leaves the list-vs-detail state untouched. The catalogue is static, so
- * unlike the other tabs this needs no ViewModel or repository: it reads [SiteCatalogue.sites] directly.
+ * away to another tab and back leaves the list-vs-detail state untouched. The catalogue itself is
+ * static (read from [SiteCatalogue.sites] directly), so the only state the [SitesViewModel] holds is
+ * the persisted favorites, sourced from [favoritesRepository].
  */
 @Composable
-fun SitesTab(onOpenSettings: () -> Unit) {
+fun SitesTab(favoritesRepository: FavoriteSitesRepository, onOpenSettings: () -> Unit) {
     // A NavController scoped to this tab's own nested graph, distinct from the app's tab-switching one.
     val nestedNavController = rememberNavController()
+    // The tab's one ViewModel: scoped to this tab, so it (and the favorites it exposes) outlives
+    // navigating into and back out of a detail, keeping the star state in sync between list and detail.
+    val viewModel: SitesViewModel = viewModel(factory = SitesViewModel.factory(favoritesRepository))
+    // collectAsState turns the favorites Flow into Compose state (emptySet until Room's first
+    // emission), so toggling a star anywhere recomposes both the list and any open detail.
+    val favorites by viewModel.favorites.collectAsState(initial = emptySet())
 
     NavHost(navController = nestedNavController, startDestination = SITES_LIST_ROUTE) {
         composable(SITES_LIST_ROUTE) {
             SitesListScreen(
+                favorites = favorites,
+                // Method reference: (id, favorite) -> Unit, matching SitesViewModel.setFavorite.
+                onToggleFavorite = viewModel::setFavorite,
                 onSiteClick = { id -> nestedNavController.navigate("sites_detail/$id") },
                 onOpenSettings = onOpenSettings,
             )
@@ -101,7 +119,13 @@ fun SitesTab(onOpenSettings: () -> Unit) {
             // byId returns null for an unknown id (shouldn't happen from our own navigation, but is
             // the safe thing to do); ?.let only renders the detail when a site actually exists.
             id?.let { SiteCatalogue.byId(it) }?.let { site ->
-                SiteDetailScreen(site = site, onBack = { nestedNavController.popBackStack() })
+                SiteDetailScreen(
+                    site = site,
+                    // `in` on the collected Set is an O(1) membership test (see FavoriteSitesRepository).
+                    isFavorite = site.id in favorites,
+                    onToggleFavorite = viewModel::setFavorite,
+                    onBack = { nestedNavController.popBackStack() },
+                )
             }
         }
     }
@@ -109,13 +133,21 @@ fun SitesTab(onOpenSettings: () -> Unit) {
 
 /**
  * The list screen: a search field and the group/filter controls pinned above a scrolling list of
- * matching sites (issues #234 and #237). Search query, grouping mode, and the two filter selections
- * are all hoisted here as `rememberSaveable` state; tapping a row hands its id up to [onSiteClick].
- * The visible, sectioned list is recomputed by [searchedFilteredGrouped] whenever any input changes.
+ * matching sites (issues #234, #237, #236). Search query, grouping mode, and the two filter
+ * selections are all hoisted here as `rememberSaveable` state; [favorites] (the currently starred
+ * ids) comes down from the ViewModel, and toggling a row's star calls [onToggleFavorite]. Tapping a
+ * row hands its id up to [onSiteClick]. The visible, sectioned list - including the pinned "★
+ * Favorites" section - is recomputed by [searchedFilteredGrouped] whenever any input (favorites
+ * included) changes.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-private fun SitesListScreen(onSiteClick: (String) -> Unit, onOpenSettings: () -> Unit) {
+private fun SitesListScreen(
+    favorites: Set<String>,
+    onToggleFavorite: (String, Boolean) -> Unit,
+    onSiteClick: (String) -> Unit,
+    onOpenSettings: () -> Unit,
+) {
     // rememberSaveable keeps each control's state across configuration changes (rotation) and tab
     // switches (the top-level nav saves/restores this tab's state). Every value here is
     // Parcelable-safe on its own - a String, an enum, and Sets of enums (enums serialize by name) -
@@ -129,8 +161,8 @@ private fun SitesListScreen(onSiteClick: (String) -> Unit, onOpenSettings: () ->
 
     // remember(...) recomputes the grouped result only when one of these inputs changes, not on every
     // unrelated recomposition. The catalogue itself is static, so these are the only inputs that vary.
-    val groups = remember(query, grouping, selectedExpansions, selectedCategories) {
-        SiteCatalogue.sites.searchedFilteredGrouped(query, selectedExpansions, selectedCategories, grouping)
+    val groups = remember(query, grouping, selectedExpansions, selectedCategories, favorites) {
+        SiteCatalogue.sites.searchedFilteredGrouped(query, selectedExpansions, selectedCategories, grouping, favorites)
     }
     // Total active filter chips across both axes - drives the badge on the Filter button.
     val activeFilterCount = selectedExpansions.size + selectedCategories.size
@@ -191,13 +223,28 @@ private fun SitesListScreen(onSiteClick: (String) -> Unit, onOpenSettings: () ->
                     // whole catalogue, so they stay valid LazyColumn keys even spanning several groups.
                     groups.forEach { group ->
                         val key = group.key
-                        if (key != null) {
-                            stickyHeader(key = "header_${key.name}") {
+                        when {
+                            // The pinned favorites section (issue #236): a fixed "★ Favorites" header.
+                            // A plain item, NOT a stickyHeader: in the flat (Group: None) list the
+                            // remainder has no header of its own, so a sticky Favorites header would
+                            // stay pinned above the non-favorites as you scroll (nothing replaces it).
+                            // As a regular item it scrolls away with its favorites, which also reads
+                            // fine in grouped mode (the first real category/expansion header takes over
+                            // the sticky slot once you scroll past the favorites).
+                            group.isFavorites -> item(key = "header_favorites") {
+                                GroupHeader(label = "★ Favorites", count = group.sites.size)
+                            }
+                            key != null -> stickyHeader(key = "header_${key.name}") {
                                 GroupHeader(label = key.siteGroupHeader(), count = group.sites.size)
                             }
                         }
                         items(group.sites, key = { it.id }) { site ->
-                            SiteRow(site = site, onClick = { onSiteClick(site.id) })
+                            SiteRow(
+                                site = site,
+                                isFavorite = site.id in favorites,
+                                onToggleFavorite = onToggleFavorite,
+                                onClick = { onSiteClick(site.id) },
+                            )
                         }
                     }
                 }
@@ -381,39 +428,76 @@ private fun SiteCategory.groupLabel(): String = when (this) {
     SiteCategory.TERRAIN_FEATURE -> "Terrain Features"
 }
 
-/** One list row: art thumbnail + name, with a small expansion badge trailing. Tapping opens the detail. */
+/**
+ * One list row: art thumbnail + name, a small expansion badge, and a trailing star toggle (issue
+ * #236). Tapping the row opens the detail; tapping the star instead toggles the favorite - the star's
+ * own [IconButton] consumes that tap, so it doesn't also fire the row's click. [isFavorite] chooses
+ * the filled vs outlined star; [onToggleFavorite] is called with the site id and the desired new state.
+ */
 @Composable
-private fun SiteRow(site: Site, onClick: () -> Unit) {
+private fun SiteRow(
+    site: Site,
+    isFavorite: Boolean,
+    onToggleFavorite: (String, Boolean) -> Unit,
+    onClick: () -> Unit,
+) {
     Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                // No end padding: the trailing star's IconButton carries its own touch padding, which
+                // supplies the right-edge spacing instead.
+                .padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SiteThumbnail(site = site)
             Spacer(Modifier.width(16.dp))
-            // weight(1f) lets the name take the leftover width and push the badge to the right edge.
+            // weight(1f) lets the name take the leftover width and push the badge + star to the right edge.
             Text(
                 text = site.name,
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f),
             )
             ExpansionBadge(site.expansion)
+            FavoriteStar(isFavorite = isFavorite, onClick = { onToggleFavorite(site.id, !isFavorite) })
         }
         HorizontalDivider()
     }
 }
 
 /**
+ * The star toggle shown on both a list row and the detail top bar (issue #236): a filled, primary-
+ * tinted star when [isFavorite], an outlined one in the default content color otherwise. [onClick]
+ * flips the state. The content description flips too, so a screen reader announces the *action*
+ * ("Favorite" / "Unfavorite"), not just "star".
+ */
+@Composable
+private fun FavoriteStar(isFavorite: Boolean, onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(
+            imageVector = if (isFavorite) Icons.Filled.Star else Icons.Filled.StarBorder,
+            contentDescription = if (isFavorite) "Unfavorite" else "Favorite",
+            tint = if (isFavorite) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+        )
+    }
+}
+
+/**
  * Full-screen detail for one site, pushed by tapping a row: a large art header, the expansion badge,
  * then every [com.guyteichman.mageknightbuddy.domain.SiteSection] in printed order. The back arrow
- * pops this off the nested NavHost's back stack.
+ * pops this off the nested NavHost's back stack. A star action in the top bar (issue #236) toggles
+ * this site's favorite; [isFavorite] draws its filled/outlined state and [onToggleFavorite] is called
+ * with the desired new state.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SiteDetailScreen(site: Site, onBack: () -> Unit) {
+private fun SiteDetailScreen(
+    site: Site,
+    isFavorite: Boolean,
+    onToggleFavorite: (String, Boolean) -> Unit,
+    onBack: () -> Unit,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -422,6 +506,10 @@ private fun SiteDetailScreen(site: Site, onBack: () -> Unit) {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
+                },
+                // Same star toggle as the list row, here as a top-bar action.
+                actions = {
+                    FavoriteStar(isFavorite = isFavorite, onClick = { onToggleFavorite(site.id, !isFavorite) })
                 },
             )
         },

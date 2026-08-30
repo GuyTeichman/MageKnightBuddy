@@ -11,9 +11,9 @@ default, with optional grouping (by **Site Category** or **Site Expansion**, as 
 headers) and multi-select expansion/category filtering (Sub-issue E / issue #237) — each opening a
 full-screen detail with its art and rules. Purely a **reference** — unlike the Enemy Picker it owns
 no real game state, models no map, and simulates nothing; its catalogue is static and the only thing
-it will ever persist is the player's **Site** favorites (Sub-issue D / issue #236). The tab itself is
-Sub-issue B (issue #234); this doc and the domain catalogue (Sub-issue A / issue #233) are its data
-foundation.
+it persists is the player's **Site Favorites** (see that term — Sub-issue D / issue #236). The tab
+itself is Sub-issue B (issue #234); this doc and the domain catalogue (Sub-issue A / issue #233) are
+its data foundation.
 _Avoid_: Site tracker, map tracker (it tracks nothing about a live game); "cards" as a synonym for
 the tab (a **Site** models a card's *content*, not a stack you draw from)
 
@@ -70,3 +70,18 @@ mandatory `SiteCatalogueTest` that validates the whole file on every `make test`
 here: images are app assets in `app/src/main/assets/site-art/`, referenced by each **Site**'s `id`
 (Sub-issue C / issue #235), so `domain` stays free of anything it cannot test.
 _Avoid_: Token Catalogue (that's the Enemy Picker's, a sibling but separate catalogue)
+
+**Site Favorites**:
+The set of **Site**s the player has starred (issue #236) — the *only* thing the otherwise-stateless
+**Sites tab** persists. Stored in Room as one row per site `id` in the `favorite_sites` table
+(`FavoriteSiteDao` → `FavoriteSitesRepository`, injected in `MageKnightBuddyApp` like the other
+repositories), observed as a `Set<String>` via `SitesViewModel`. A favorited **Site** is pulled into a
+single **★ Favorites** section pinned to the top of the list in *every* grouping mode — moved out of
+its normal **Site Category** / **Site Expansion** group (shown once, name-sorted) — and that section
+still obeys the active search query and filters (favorites are not a filter bypass). Toggled by a star
+on each list row and in the detail top bar. Carried in the Settings backup/restore file (backup
+**format version 2**; a pre-v2 backup restores as "no favorites"). An id that no longer names a
+catalogue **Site** is harmless — it simply matches nothing when the UI intersects favorites with the
+catalogue.
+_Avoid_: "pinned" / "pin-to-top" as a name for the whole feature (that's how favorites are *shown*,
+not what they are); confusing with any Enemy Picker state (favorites are Sites-tab-only)
