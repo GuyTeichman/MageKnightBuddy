@@ -27,38 +27,42 @@ import com.guyteichman.mageknightbuddy.domain.PossessedToken
 
 /**
  * Renders one **possessed enemy** (docs/rules/apocalypse-dragon.md): the [circular] enemy token
- * dropped onto the [possessed] token, the way the cardboard stacks (rulebook p.7). The possessed
- * token is a square starfield tile carrying the delta icons down its left; the circular enemy - the
- * same diameter as any other enemy face - nests against its right side and **protrudes past its right
- * edge**, so the composite is wider than it is tall ([COMPOSITE_ASPECT]). Because the enemy face is an
- * opaque circle drawn on top, it simply covers the tile where they overlap and the tile's delta icons
- * stay visible on the left - no cut-out needed. The *numbers* shown elsewhere are the summed values
+ * nested into the [possessed] token, the way the cardboard stacks (rulebook p.7). The possessed token
+ * is a **crescent** starfield tile - the delta icons run down its left, and a circular bite on its
+ * right is where the enemy drops in. The circular enemy is drawn on top, filling the bite and
+ * **protruding past the tile's right edge**, so the composite is wider than it is tall
+ * ([COMPOSITE_ASPECT]) and the two read as one interlocked token. The tile aspect, enemy diameter and
+ * offsets are all fractions of [size] measured from the token's own 3D mesh silhouette, so the circle
+ * seats in the bite instead of overlapping a square. The *numbers* shown elsewhere are the summed values
  * ([com.guyteichman.mageknightbuddy.domain.PossessedEnemy.combine]) - this is only the art.
  */
 @Composable
 internal fun PossessedEnemyFace(circular: EnemyToken, possessed: PossessedToken, size: Dp) {
-    // [size] is the tile side and the enemy diameter (matching a normal enemy face). The composite is
-    // wider by the enemy's overhang past the tile's right edge.
+    // [size] is the crescent tile's height; every other length below is a fraction of it. The composite
+    // is wider than [size] by the enemy's overhang past the bite.
     val compositeWidth = size * COMPOSITE_ASPECT
     Box(modifier = Modifier.size(width = compositeWidth, height = size)) {
-        // Possessed tile, flush to the left. Its cleaned art is a plain rectangle (an earlier
-        // rounded-corner clip distorted the delta numbers), so it's drawn as-is.
-        PossessedTokenFace(possessed = possessed, size = size, modifier = Modifier.align(Alignment.CenterStart))
-        // Circular enemy on top, its centre [ENEMY_CENTER_X] of the way across the tile. Its box is
-        // offset from the composite's left by (centre - radius); radius is half the diameter (= size).
-        Box(modifier = Modifier.align(Alignment.CenterStart).offset(x = size * (ENEMY_CENTER_X - 0.5f))) {
-            EnemyTokenFace(token = circular, size = size)
+        // Crescent possessed tile, flush to the top-left; its transparent bite is where the enemy seats.
+        PossessedTokenFace(possessed = possessed, size = size, modifier = Modifier.align(Alignment.TopStart))
+        // Circular enemy nested in the bite and overhanging the tile's right edge. The offsets place its
+        // box so the circle's centre lands on the bite centre; drawn on top, it covers the tile they share.
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = size * ENEMY_OFFSET_X_FRAC, y = size * ENEMY_OFFSET_Y_FRAC),
+        ) {
+            EnemyTokenFace(token = circular, size = size * ENEMY_DIAMETER_FRAC)
         }
     }
 }
 
 /**
- * The possessed token's own face at [size] - a plain square tile (its cleaned art is a starfield
- * rectangle with the delta icons, no rounding). [modifier] lets a caller position it (e.g.
- * [PossessedEnemyFace] aligns it left). If its art is bundled (an asset at `enemy-tokens/<id>.png`
- * or `.jpg`, per ADR-0007) it's drawn; otherwise a themed "possession" disc with the token's modifier
- * summary stands in - the same graceful-degradation the round [EnemyTokenFace] uses, so the picker
- * works before the possessed art is sourced.
+ * The possessed token's own face: a **crescent** starfield tile ([size] tall, [TILE_ASPECT] as wide),
+ * its delta icons down the left and a transparent circular bite on the right. [modifier] lets a caller
+ * position it (e.g. [PossessedEnemyFace] aligns it top-left). If its art is bundled (an asset at
+ * `enemy-tokens/<id>.png` or `.jpg`, per ADR-0007) it's drawn; otherwise a themed "possession" disc
+ * with the token's modifier summary stands in - the same graceful-degradation the round [EnemyTokenFace]
+ * uses, so the picker works before the possessed art is sourced.
  */
 @Composable
 internal fun PossessedTokenFace(possessed: PossessedToken, size: Dp, modifier: Modifier = Modifier) {
@@ -66,11 +70,12 @@ internal fun PossessedTokenFace(possessed: PossessedToken, size: Dp, modifier: M
     val bitmap = remember(possessed.id) { loadPossessedBitmap(context, possessed.id) }
 
     if (bitmap != null) {
-        // No clip: the cleaned art is already a plain rectangle the size of the tile.
+        // No clip: the PNG's own alpha is the crescent shape. Height is [size]; width follows the tile's
+        // aspect so the bite stays circular.
         Image(
             bitmap = bitmap,
             contentDescription = "Possessed token",
-            modifier = modifier.size(size),
+            modifier = modifier.size(width = size * TILE_ASPECT, height = size),
         )
     } else {
         Box(
@@ -105,8 +110,8 @@ internal fun PossessedToken.summary(): String = buildList {
 
 /** Loads `enemy-tokens/<id>.png` (then `.jpg`) from assets, or null if the possessed art isn't bundled yet. */
 private fun loadPossessedBitmap(context: Context, id: String): ImageBitmap? {
-    // Possessed tiles are square PNGs (transparent-free), so PNG is tried first; a JPG crop still
-    // works as a fallback source. assets.open throws when absent - that's the "no art" signal.
+    // Possessed tiles are transparent PNGs (a starfield crescent silhouette), so PNG is tried first; a
+    // JPG crop still works as a fallback source. assets.open throws when absent - that's the "no art" signal.
     for (ext in listOf("png", "jpg")) {
         try {
             context.assets.open("enemy-tokens/$id.$ext").use { stream ->
@@ -120,11 +125,16 @@ private fun loadPossessedBitmap(context: Context, id: String): ImageBitmap? {
 }
 
 /**
- * Enemy-circle centre X as a fraction of the possessed tile's width (> 1.0 would be off the tile;
- * 0.909 sits it near the right, so its left arc clears the tile's left-side delta icons and its right
- * arc overhangs past the tile's right edge). The enemy radius is half the tile side.
+ * Composite geometry, all as fractions of the tile height [size], measured once from the possessed
+ * token's own 3D mesh silhouette (the same mesh that shapes each `possessed_0*.png` crescent). Together
+ * they seat the circular enemy in the crescent's bite:
+ * - [TILE_ASPECT] - the crescent tile's width / height.
+ * - [ENEMY_DIAMETER_FRAC] - the enemy circle's diameter (it fills the bite, a touch under a full tile height).
+ * - [ENEMY_OFFSET_X_FRAC] / [ENEMY_OFFSET_Y_FRAC] - the enemy box's top-left corner within the composite.
+ * - [COMPOSITE_ASPECT] - the whole composite's width / height (the tile plus the enemy's right overhang).
  */
-private const val ENEMY_CENTER_X = 0.909f
-
-/** Composite width as a multiple of the tile side: the tile (1.0) plus the enemy's right overhang. */
-private const val COMPOSITE_ASPECT = ENEMY_CENTER_X + 0.5f
+private const val TILE_ASPECT = 0.882f
+private const val ENEMY_DIAMETER_FRAC = 0.967f
+private const val ENEMY_OFFSET_X_FRAC = 0.398f
+private const val ENEMY_OFFSET_Y_FRAC = 0.032f
+private const val COMPOSITE_ASPECT = 1.366f
