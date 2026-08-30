@@ -6,11 +6,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Brush
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Coffee
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
@@ -43,20 +47,27 @@ private const val GITHUB_URL = "https://github.com/GuyTeichman/MageKnightBuddy"
 /** The author's Buy Me A Coffee page, opened by the "Buy me a coffee" link (issue #104). */
 private const val BUY_ME_A_COFFEE_URL = "https://www.buymeacoffee.com/guyteichman"
 
+/** Official WizKids Mage Knight landing page, linked from the game-content credits (issue #193). */
+private const val WIZKIDS_MAGE_KNIGHT_URL = "https://wizkids.com/mage-knight/"
+
+/** The base game's BoardGameGeek entry, linked from the game-content credits (issue #193). */
+private const val BGG_MAGE_KNIGHT_URL = "https://boardgamegeek.com/boardgame/96848/mage-knight-board-game"
+
 /**
- * App-icon art sources, credited in the About section. Both are released under CC0 (public domain),
+ * App-icon art sources, credited in the Credits section. Both are released under CC0 (public domain),
  * so attribution is not legally required - these links are a courtesy to the original creators.
  */
 private const val ICON_DRAGON_URL = "https://freesvg.org/dragon-tribal-style-tattoo-vector-illustration"
 private const val ICON_SHIELD_URL = "https://svgsilh.com/image/294573.html"
 
 /**
- * The Settings screen (issue #121). Holds Backup & Restore plus an About section with source/support
- * links (issue #104) and art credits for the app icon; the other deferred Settings items (expansion
- * toggles, help-citation visibility)
- * stay out of scope for now (see docs/design/architecture.md). Reached via the shared [SettingsAction]
- * gear on each tab, pushed as a full-screen destination outside the bottom-nav graph; [onBack] pops
- * back to the tab.
+ * The Settings screen (issue #121). Holds Backup & Restore, an About section with source/support
+ * links (issue #104), and a Credits section (issue #193) that credits the Mage Knight game's
+ * creators and publisher, states the app's unofficial/non-affiliation status (see ADR-0010), and
+ * credits the CC0 app-icon art; the other deferred Settings items (expansion toggles, help-citation
+ * visibility) stay out of scope for now (see docs/design/architecture.md). Reached via the shared
+ * [SettingsAction] gear on each tab, pushed as a full-screen destination outside the bottom-nav
+ * graph; [onBack] pops back to the tab.
  *
  * Backup/restore use the Storage Access Framework (ADR-0009): the launchers below open the system
  * file picker so the user chooses where the JSON snapshot goes (Google Drive, local, etc.) with no
@@ -116,8 +127,12 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(16.dp)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                // The Credits section makes this screen taller than the viewport, so the content
+                // column scrolls. verticalScroll sits inside the Scaffold's inset padding but
+                // outside the 16.dp content padding, so that padding scrolls with the content.
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("Backup & Restore", style = MaterialTheme.typography.titleMedium)
@@ -167,6 +182,62 @@ fun SettingsScreen(
             }
 
             Text("Credits", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "MageKnightBuddy is a companion for the Mage Knight board game and reproduces its " +
+                    "art and rules text. Credit and thanks to the people whose work it builds on, " +
+                    "most important first:",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            // Game creators and publisher come first (most important), per issue #193. The design
+            // credit collapses to two lines because the base game and every modeled expansion share
+            // Vlaada Chvátil's design, except The Apocalypse Dragon (Phil Pettifer). Names verified
+            // against the official WizKids Ultimate Edition rulebook; the Apocalypse Dragon artist
+            // is per the physical AD rulebook (p.47).
+            Text(
+                "Game design: Vlaada Chvátil (Mage Knight, plus The Lost Legion and Shades of " +
+                    "Tezla expansions). The Apocalypse Dragon: Phil Pettifer, from Vlaada " +
+                    "Chvátil's original design.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                "Illustration: J. Lonnee, Milan Vavroň, and Octographics.net; Gong Studios for " +
+                    "The Apocalypse Dragon.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                "Published by WizKids/NECA, LLC.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            OutlinedButton(
+                onClick = { uriHandler.openUri(WIZKIDS_MAGE_KNIGHT_URL) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Filled.Public, contentDescription = null)
+                Text("  Mage Knight — official site (WizKids)")
+            }
+
+            OutlinedButton(
+                onClick = { uriHandler.openUri(BGG_MAGE_KNIGHT_URL) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Filled.Casino, contentDescription = null)
+                Text("  Mage Knight on BoardGameGeek")
+            }
+
+            // Non-affiliation disclaimer: the licensing outcome of issue #193 / ADR-0010. Rendered
+            // as fine print (bodySmall + muted onSurfaceVariant colour) so it reads as a legal
+            // notice rather than competing with the credits above it.
+            Text(
+                "This is an unofficial, fan-made companion app. It is not affiliated with, " +
+                    "endorsed, or sponsored by WizKids or NECA. Mage Knight, its expansions, and " +
+                    "all related names, art, and rules text are © their respective owners.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            // App-icon art credits last (least important): CC0, so attribution is a courtesy only.
             Text(
                 "The app icon combines a tribal dragon and a heater-shield silhouette, both released " +
                     "under CC0 (public domain). Credit isn't required, but thanks to their creators:",

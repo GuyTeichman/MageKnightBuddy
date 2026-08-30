@@ -5,7 +5,7 @@ Round token-face art for the Enemy Picker (issue #178), one JPEG per token named
 `enemy-tokens/<id>.jpg` from assets and clips it to a circle; a token with no file here falls back
 to a text disc (`EnemyTokenFace` in `app/.../ui/enemypicker/EnemyTokenArt.kt`). Assets, not
 `res/drawable`, so the set can grow token-by-token keyed by the catalogue's string id — see
-[ADR-0007](../../../../../../docs/adr/0007-token-catalogue-as-json-in-domain-resources.md).
+[ADR-0007](../../../../../docs/adr/0007-token-catalogue-as-json-in-domain-resources.md).
 
 ## Pile back art (`backs/`)
 
@@ -70,7 +70,7 @@ already gives a single unambiguous URL per pile.
 ## Licensing
 
 All art is official WizKids / Vlaada Chvátil art, here via a fan-made Tabletop Simulator mod
-(community reproduction, not the publisher's own files). **Re-flag and re-evaluate before any public
-release or redistribution** — note the app already attaches a debug APK to GitHub Releases, so this
-is not strictly "non-distributed"; a proper credits screen and licensing review are tracked as
-issue #193.
+(community reproduction, not the publisher's own files). The licensing posture — keep bundling,
+mitigated by in-app attribution and a non-affiliation disclaimer — is decided in
+[ADR-0010](../../../../../docs/adr/0010-bundled-official-art-licensing-stance.md) (issue #193);
+revisit only if the project goes commercial or to an official app store.
