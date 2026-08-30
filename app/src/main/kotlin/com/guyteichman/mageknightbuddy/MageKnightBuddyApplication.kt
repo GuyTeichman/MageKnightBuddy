@@ -3,6 +3,7 @@ package com.guyteichman.mageknightbuddy
 import android.app.Application
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.EnemyPickerSessionRepository
+import com.guyteichman.mageknightbuddy.data.FavoriteSitesRepository
 import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.ScoreCalculatorDraftRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
@@ -30,6 +31,7 @@ class MageKnightBuddyApplication : Application() {
     val volkareSessionRepository by lazy { VolkareSessionRepository(database.volkareSessionDao()) }
     val proxyPlayerSessionRepository by lazy { ProxyPlayerSessionRepository(database.proxyPlayerSessionDao()) }
     val enemyPickerSessionRepository by lazy { EnemyPickerSessionRepository(database.enemyPickerSessionDao()) }
+    val favoriteSitesRepository by lazy { FavoriteSitesRepository(database.favoriteSiteDao()) }
     val fieldHelp: Map<String, FieldHelp> by lazy { loadFieldHelp(this) }
 
     // Tutorial content (per-screen pop-ups, issue #161) and the store remembering which have been

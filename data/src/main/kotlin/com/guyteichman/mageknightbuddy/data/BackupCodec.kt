@@ -18,8 +18,13 @@ object BackupCodec {
      * The backup format version this build writes, and the newest it can read. Bump only on a
      * breaking change to [BackupDocument]'s shape; [decode] refuses any file whose formatVersion
      * exceeds this, so a backup from a newer app is never silently mis-parsed onto an older one.
+     *
+     * Bumped 1 -> 2: added [BackupDocument.favoriteSiteIds] (issue #236). It's an additive field with
+     * an empty default, so *this* build reads an old v1 file fine (missing key -> no favorites); the
+     * bump exists so an *older* build cleanly reports a v2 file as UnsupportedVersion instead of
+     * choking on the unknown key (its strict parser rejects unknown fields - see [decode]).
      */
-    const val FORMAT_VERSION = 1
+    const val FORMAT_VERSION = 2
 
     // Compact (not pretty-printed) so the on-disk format is stable and byte-exactly testable;
     // kotlinx.serialization emits object keys in declaration order deterministically. The bare
@@ -37,12 +42,16 @@ object BackupCodec {
     @Serializable
     private class VersionEnvelope(val formatVersion: Int)
 
-    /** Serializes [sessions] into a [FORMAT_VERSION] backup document stamped with [exportedAt]. */
-    fun encode(sessions: List<ScoringSession>, exportedAt: Instant): String {
+    /**
+     * Serializes [sessions] and the favorited-site ids [favoriteSiteIds] into a [FORMAT_VERSION]
+     * backup document stamped with [exportedAt] (issue #236 added the favorites payload).
+     */
+    fun encode(sessions: List<ScoringSession>, favoriteSiteIds: List<String>, exportedAt: Instant): String {
         val document = BackupDocument(
             formatVersion = FORMAT_VERSION,
             exportedAtEpochMillis = exportedAt.toEpochMilli(),
             records = sessions.map { it.toBackupRecord() },
+            favoriteSiteIds = favoriteSiteIds,
         )
         return json.encodeToString(document)
     }
@@ -86,7 +95,7 @@ object BackupCodec {
         // restore or leave it half-applied. Knight/Outcome.valueOf throw IllegalArgumentException;
         // Scenario.fromId (backed by entries.first {}) throws NoSuchElementException.
         return try {
-            BackupDecodeResult.Success(document.records.map { it.toDomain() })
+            BackupDecodeResult.Success(document.records.map { it.toDomain() }, document.favoriteSiteIds)
         } catch (e: IllegalArgumentException) {
             BackupDecodeResult.Malformed
         } catch (e: NoSuchElementException) {
@@ -101,8 +110,14 @@ object BackupCodec {
  * unless decoding actually produced [Success].
  */
 sealed interface BackupDecodeResult {
-    /** The file decoded cleanly into [sessions] (possibly empty). */
-    data class Success(val sessions: List<ScoringSession>) : BackupDecodeResult
+    /**
+     * The file decoded cleanly into [sessions] and [favoriteSiteIds] (either may be empty). A pre-v2
+     * backup carries no favorites, so [favoriteSiteIds] is empty for it (issue #236).
+     */
+    data class Success(
+        val sessions: List<ScoringSession>,
+        val favoriteSiteIds: List<String>,
+    ) : BackupDecodeResult
 
     /** The file wasn't a valid backup document (bad JSON, wrong shape, or an unknown enum name). */
     data object Malformed : BackupDecodeResult

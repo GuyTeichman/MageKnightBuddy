@@ -93,8 +93,10 @@ import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.PickOrder
 import com.guyteichman.mageknightbuddy.domain.Scenario
+import com.guyteichman.mageknightbuddy.domain.TurnEstimate
 import com.guyteichman.mageknightbuddy.domain.coopTacticScenarios
 import com.guyteichman.mageknightbuddy.domain.tacticPickOrder
+import com.guyteichman.mageknightbuddy.domain.turnsRemaining
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
 import com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon
@@ -707,6 +709,12 @@ private fun DummyPlayerAiScreen(
                 CircularProgressIndicator()
             }
         } else {
+            // Log rows most-recent-first (issue #35): the domain log is append-only/chronological,
+            // so this screen reverses it for display. Turn numbers (issue #270) are computed over
+            // the chronological log, then zipped onto it so each row keeps its own turn through the
+            // reverse. remember(session.log) keeps this off every recomposition (e.g. toggling the
+            // deck summary) - it only re-runs when the log itself changes.
+            val rows = remember(session.log) { session.log.zip(dummyTurnNumbers(session.log)).asReversed() }
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp),
@@ -718,16 +726,14 @@ private fun DummyPlayerAiScreen(
                 // still swaps mutually exclusively rather than showing both at once.
                 item {
                     DeckPanel(showSummary = showSummary, onToggleSummary = { showSummary = !showSummary }) {
-                        if (showSummary) StatGridBody(session = session) else TableauBody(session = session)
+                        if (showSummary) StatGridBody(session = session) else TableauBody(session = session, fieldHelp = fieldHelp)
                     }
                 }
                 item {
                     Text("Log", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                // Most-recent-first, per issue #35's layout spec - the domain log itself is
-                // append-only/chronological, so this screen is what reverses it for display.
-                items(session.log.asReversed()) { event ->
-                    LogRow(entry = event.describe())
+                items(rows) { (event, turnInRound) ->
+                    LogRow(entry = event.describe(turnInRound))
                 }
             }
         }
@@ -870,15 +876,27 @@ private fun DeckPanel(showSummary: Boolean, onToggleSummary: () -> Unit, content
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TableauBody(session: DummyPlayerSession) {
+private fun TableauBody(session: DummyPlayerSession, fieldHelp: Map<String, FieldHelp>) {
     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(session.deckOrder.size.toString(), style = MaterialTheme.typography.headlineMedium)
         Text(
-            "left in deck",
+            "cards left in deck",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+
+    // Estimated turns left in the Round (issue #283). remember keyed on the deck+crystals so the
+    // (small) optimization only reruns when those actually change, not on every recomposition (e.g.
+    // toggling the deck summary).
+    val estimate = remember(session.deckOrder, session.crystals) { session.turnsRemaining }
+    TurnsRemainingLine(
+        estimate = estimate,
+        deckEmpty = session.deckOrder.isEmpty(),
+        roundEnded = session.roundEnded,
+        aiLabel = "Dummy",
+        fieldHelp = fieldHelp,
+    )
 
     // heightIn(min) reserves 2 rows' worth of space always, so the panel shrinks/grows by at most
     // a few dp as the pile empties instead of visibly collapsing row-by-row (a 16-card starting
@@ -929,6 +947,49 @@ private fun TableauBody(session: DummyPlayerSession) {
                     repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
                 }
             }
+        }
+    }
+}
+
+/**
+ * The "~N-M turns left this round" caption shown under the deck count (issue #283), with a "?" help
+ * button explaining the estimate. [estimate] is
+ * [com.guyteichman.mageknightbuddy.domain.turnsRemaining] for the current session. Two states get
+ * special treatment:
+ * - [roundEnded]: End of Round has already been announced, so the count is meaningless - render
+ *   nothing at all.
+ * - [deckEmpty] (but the Round still live): the automated player's very next turn is purely the End
+ *   of Round declaration, so say that directly with [aiLabel] ("Dummy"/"Proxy") instead of a number.
+ *
+ * `internal`, not `private`: reused by both this screen's [TableauBody] and `ProxyPlayerScreen.kt`'s
+ * deck tableau, matching [RoundChip]/[MiniCard]'s shared-helper pattern across the two screens.
+ */
+@Composable
+internal fun TurnsRemainingLine(
+    estimate: TurnEstimate,
+    deckEmpty: Boolean,
+    roundEnded: Boolean,
+    aiLabel: String,
+    fieldHelp: Map<String, FieldHelp>,
+) {
+    // Nothing to show once the Round's been declared over - `return` from a @Composable simply emits
+    // no UI for this call.
+    if (roundEnded) return
+
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        val label = when {
+            deckEmpty -> "Round ends next $aiLabel turn"
+            // isExact means every possible draw order gives the same turn count (e.g. no crystals
+            // match anything), so show one number instead of a "N-M" range.
+            estimate.isExact -> "~${estimate.min} turns left this round"
+            // – is an en dash, the conventional range separator ("~4-6").
+            else -> "~${estimate.min}–${estimate.max} turns left this round"
+        }
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // The numeric estimate is the only part that needs a rules explanation; the plain "round ends
+        // next turn" message speaks for itself, so skip the help button there.
+        if (!deckEmpty) {
+            HelpButton(keys = listOf("Turns Remaining"), fieldHelp = fieldHelp)
         }
     }
 }
@@ -1188,12 +1249,16 @@ internal val crystalDotInlineContent: Map<String, InlineTextContent> = CardColor
  * (not file-private) so `DummyPlayerEventDescribeTest` can pin its exact wording directly, the way
  * [VolkareEvent.describe] is tested - this is hand-written prose keyed off several branches, so it's
  * worth asserting rather than only exercising through the emulator.
+ *
+ * [turnInRound] is this entry's value from [dummyTurnNumbers] (non-null only on a [TurnPlayed], the
+ * one turn-start), passed straight to [roundTurnMeta] so a turn row reads "Round N · Turn M" and
+ * everything else reads "Round N" (issue #270).
  */
-internal fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
+internal fun DummyPlayerEvent.describe(turnInRound: Int?): LogEntryText = when (this) {
     is DummyPlayerEvent.RoundStarted -> LogEntryText(
         icon = "◆",
         title = "Round started",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         description = listOf(DescriptionSpan.Words("The Dummy Player's deck is shuffled and ready.")),
     )
     is DummyPlayerEvent.TurnPlayed -> {
@@ -1224,18 +1289,18 @@ internal fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
                 add(DescriptionSpan.Words("."))
             }
         }
-        LogEntryText(icon = "▶", title = "Turn played", meta = "Round $round", description = description)
+        LogEntryText(icon = "▶", title = "Turn played", meta = roundTurnMeta(round, turnInRound), description = description)
     }
     is DummyPlayerEvent.EndOfRoundAnnounced -> LogEntryText(
         icon = "⚑",
         title = "End of Round announced",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         description = listOf(DescriptionSpan.Words("The deck ran out - other players get one more turn each, then the Round ends.")),
     )
     is DummyPlayerEvent.RoundEnded -> LogEntryText(
         icon = "⚑",
         title = "Round ended",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         // Describes only the round-prep offer swap, which happens every Round regardless of why
         // it ended (per docs/rules/dummy-player.md) - accurate whether or not the deck actually
         // ran out first, so it never claims "the deck ran out" itself.
@@ -1252,7 +1317,7 @@ internal fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
     is DummyPlayerEvent.TacticPicked -> LogEntryText(
         icon = "◇",
         title = "Tactic picked",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         // Both the player's and the Dummy Player's picks get their own log entry (see
         // DummyPlayerEvent.TacticPicked's doc comment), so the log's own ordering shows which one
         // picked first that Round - not just what each pick was.

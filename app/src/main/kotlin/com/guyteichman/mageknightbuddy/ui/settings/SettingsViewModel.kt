@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.guyteichman.mageknightbuddy.data.BackupCodec
 import com.guyteichman.mageknightbuddy.data.BackupDecodeResult
+import com.guyteichman.mageknightbuddy.data.FavoriteSitesRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.domain.ScoringSession
 import java.io.IOException
@@ -51,6 +52,7 @@ data class SettingsUiState(
 class SettingsViewModel(
     application: Application,
     private val repository: ScoringSessionRepository,
+    private val favoritesRepository: FavoriteSitesRepository,
 ) : AndroidViewModel(application) {
 
     // Backing MutableStateFlow kept private so only this ViewModel mutates it; the screen observes
@@ -59,10 +61,13 @@ class SettingsViewModel(
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
-    // Sessions decoded by prepareRestoreFrom, held until the user confirms (or cancels) the
-    // overwrite. Not persisted across process death - if that happens mid-prompt, the user just
-    // re-picks the file (ScoringSession isn't Parcelable anyway).
-    private var pendingRestore: List<ScoringSession>? = null
+    // Sessions + favorite-site ids decoded by prepareRestoreFrom, held until the user confirms (or
+    // cancels) the overwrite. Not persisted across process death - if that happens mid-prompt, the
+    // user just re-picks the file (ScoringSession isn't Parcelable anyway).
+    private var pendingRestore: PendingRestore? = null
+
+    /** The decoded backup awaiting the user's confirm/cancel (see [pendingRestore]). */
+    private data class PendingRestore(val sessions: List<ScoringSession>, val favoriteSiteIds: List<String>)
 
     /** Serializes the whole history and writes it to [uri] (the SAF "create document" result). */
     fun backUpTo(uri: Uri) {
@@ -71,7 +76,10 @@ class SettingsViewModel(
             // off the main thread on Dispatchers.Default; the file write below is IO-bound instead.
             val (count, json) = withContext(Dispatchers.Default) {
                 val sessions = repository.exportAll()
-                sessions.size to BackupCodec.encode(sessions, Instant.now())
+                // Favorites ride along in the same backup file (issue #236); the count message stays
+                // session-based (favorites are secondary, and empty for most users).
+                val favoriteSiteIds = favoritesRepository.exportAll()
+                sessions.size to BackupCodec.encode(sessions, favoriteSiteIds, Instant.now())
             }
             val wrote = withContext(Dispatchers.IO) { writeText(uri, json) }
             _uiState.update {
@@ -99,7 +107,7 @@ class SettingsViewModel(
             // Parsing is CPU work (a decode per record), so keep it off the main thread too.
             when (val result = withContext(Dispatchers.Default) { BackupCodec.decode(text) }) {
                 is BackupDecodeResult.Success -> {
-                    pendingRestore = result.sessions
+                    pendingRestore = PendingRestore(result.sessions, result.favoriteSiteIds)
                     val localCount = repository.exportAll().size
                     _uiState.update {
                         it.copy(restorePrompt = RestorePrompt(localCount = localCount, backupCount = result.sessions.size))
@@ -113,16 +121,20 @@ class SettingsViewModel(
         }
     }
 
-    /** Applies the pending restore raised by [prepareRestoreFrom], replacing all local records. */
+    /**
+     * Applies the pending restore raised by [prepareRestoreFrom], replacing all local records *and*
+     * the favorites set (both were decoded from the same backup - issue #236).
+     */
     fun confirmRestore() {
-        val sessions = pendingRestore ?: return
+        val pending = pendingRestore ?: return
         viewModelScope.launch {
-            repository.replaceAll(sessions)
+            repository.replaceAll(pending.sessions)
+            favoritesRepository.replaceAll(pending.favoriteSiteIds)
             pendingRestore = null
             _uiState.update {
                 it.copy(
                     restorePrompt = null,
-                    message = SettingsMessage("Restored ${sessions.size} ${games(sessions.size)}"),
+                    message = SettingsMessage("Restored ${pending.sessions.size} ${games(pending.sessions.size)}"),
                 )
             }
         }
@@ -178,11 +190,15 @@ class SettingsViewModel(
          * from [ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY], which Compose's
          * `viewModel()` puts in the creation extras for us - that's what an [AndroidViewModel] needs.
          */
-        fun factory(repository: ScoringSessionRepository): ViewModelProvider.Factory = viewModelFactory {
+        fun factory(
+            repository: ScoringSessionRepository,
+            favoritesRepository: FavoriteSitesRepository,
+        ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 SettingsViewModel(
                     application = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]!!,
                     repository = repository,
+                    favoritesRepository = favoritesRepository,
                 )
             }
         }

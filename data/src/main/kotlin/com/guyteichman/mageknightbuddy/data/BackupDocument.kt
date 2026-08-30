@@ -15,12 +15,19 @@ import kotlinx.serialization.Serializable
  * [formatVersion] lets a future build detect and reject a backup written by a newer format it
  * doesn't understand (rather than silently mis-parsing it - see [BackupCodec.decode]);
  * [exportedAtEpochMillis] records when the snapshot was taken (informational, for the restore UI).
+ *
+ * [favoriteSiteIds] carries the Sites tab's favorites (issue #236), added in format version 2. It
+ * has an empty default so a pre-v2 backup (which has no such key) still decodes cleanly, filling in
+ * "no favorites"; it's declared last so the pre-existing field order (and the byte-exact wire format
+ * the tests pin) stays stable. Because the codec's Json omits default-valued fields, an empty
+ * favorites list is absent from the file rather than written as `[]`.
  */
 @Serializable
 data class BackupDocument(
     val formatVersion: Int,
     val exportedAtEpochMillis: Long,
     val records: List<BackupRecordDto>,
+    val favoriteSiteIds: List<String> = emptyList(),
 )
 
 /**

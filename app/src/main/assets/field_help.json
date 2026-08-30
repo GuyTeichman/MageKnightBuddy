@@ -79,6 +79,10 @@
     "text": "When a Dummy Player is in play, round-prep changes: the lowest Advanced Action offer card goes into the Dummy Player's deck (which is then reshuffled) instead of being discarded, and the lowest Spell offer card still goes to the bottom of the Spell deck as usual but also grants the Dummy Player one crystal of its color, with no 3-crystal cap.",
     "source": "Cooperative and Solo Scenarios, Dummy Player, rulebook p.15"
   },
+  "Turns Remaining": {
+    "text": "A rough estimate of how many turns are left in this Round. Each turn the automated player flips 3 cards, then 1 extra card per crystal it holds matching the color of the 3rd card; once its deck runs out, its next turn declares End of Round. Since the deck order is shuffled and hidden, the exact number varies — the range runs from the fewest possible turns (many crystal-matched chains, so it burns through the deck fast) to the most (few or no chains), and always counts the final End-of-Round turn.",
+    "source": "Cooperative and Solo Scenarios, Dummy Player, rulebook p.15 (Proxy Player: Apocalypse Dragon rulebook pp.16-19)"
+  },
   "Heads Defeated": {
     "text": "+5 Fame for each Apocalypse Dragon head you defeated (excluding the Control head, which auto-defeats once the other 4 fall).",
     "source": "Against the Dragon scoring, Solo, Apocalypse Dragon rulebook p.34"

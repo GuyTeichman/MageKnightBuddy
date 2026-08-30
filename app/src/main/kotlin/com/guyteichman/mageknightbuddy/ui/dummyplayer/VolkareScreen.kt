@@ -40,6 +40,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -232,6 +233,11 @@ fun VolkareAiScreen(
                 CircularProgressIndicator()
             }
         } else {
+            // Log rows most-recent-first, matching DummyPlayerAiScreen. Turn numbers (issue #270)
+            // are computed over the chronological log, then zipped on so each row keeps its own turn
+            // through the reverse. remember(session.log) keeps this off every recomposition - it only
+            // re-runs when the log itself changes.
+            val rows = remember(session.log) { session.log.zip(volkareTurnNumbers(session.log)).asReversed() }
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp),
@@ -263,9 +269,8 @@ fun VolkareAiScreen(
                 item {
                     Text("Log", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                // Most-recent-first, matching DummyPlayerAiScreen's log ordering.
-                items(session.log.asReversed()) { event ->
-                    VolkareLogRow(event = event, scenario = session.scenario)
+                items(rows) { (event, turnInRound) ->
+                    VolkareLogRow(event = event, scenario = session.scenario, turnInRound = turnInRound)
                 }
             }
         }
@@ -398,10 +403,10 @@ private fun VolkareMiniCard(card: VolkareCard) {
     }
 }
 
-/** One row of the event log - a Volkare-mode copy of `DummyPlayerScreen.kt`'s `LogRow`. */
+/** One row of the event log - a Volkare-mode copy of `DummyPlayerScreen.kt`'s `LogRow`. [turnInRound] is this entry's turn number (issue #270), null except on a turn-start. */
 @Composable
-private fun VolkareLogRow(event: VolkareEvent, scenario: Scenario) {
-    val (icon, title, meta, description) = event.describe(scenario)
+private fun VolkareLogRow(event: VolkareEvent, scenario: Scenario, turnInRound: Int?) {
+    val (icon, title, meta, description) = event.describe(scenario, turnInRound)
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(
             modifier = Modifier
@@ -472,19 +477,23 @@ private val volkareManaDotInlineContent: Map<String, InlineTextContent> = ManaCo
  * this only narrates what a card *means procedurally* - see ADR-0004 - it never claims to know
  * Volkare's actual board position, so every "if adjacent"/"if this brings him into the city" clause
  * below is a reminder for the player to check by hand, not a computed condition.
+ *
+ * [turnInRound] is this entry's value from [volkareTurnNumbers] (non-null on a turn-start -
+ * [VolkareEvent.CardRevealed] or [VolkareEvent.Frenzy]), passed to [roundTurnMeta] so a turn row
+ * reads "Round N · Turn M" and everything else reads "Round N" (issue #270).
  */
-internal fun VolkareEvent.describe(scenario: Scenario): VolkareLogEntryText = when (this) {
+internal fun VolkareEvent.describe(scenario: Scenario, turnInRound: Int?): VolkareLogEntryText = when (this) {
     is VolkareEvent.RoundStarted -> VolkareLogEntryText(
         icon = "◆",
         title = "Round started",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         description = listOf(VolkareDescriptionSpan.Words("Volkare's deck is set - drawn once, never reshuffled.")),
     )
-    is VolkareEvent.CardRevealed -> describeCardRevealed(this, scenario)
+    is VolkareEvent.CardRevealed -> describeCardRevealed(this, scenario, turnInRound)
     is VolkareEvent.Frenzy -> VolkareLogEntryText(
         icon = "⚡",
         title = "Frenzy",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         description = listOf(
             VolkareDescriptionSpan.Words(
                 "Volkare's deck is empty. He moves/attacks twice as if a blue Spell were revealed, with no Source die reroll.",
@@ -494,7 +503,7 @@ internal fun VolkareEvent.describe(scenario: Scenario): VolkareLogEntryText = wh
     is VolkareEvent.RoundEnded -> VolkareLogEntryText(
         icon = "⚑",
         title = "Round ended",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         // Not "tracking convenience only" any more - VolkareSession.endRound() also applies this
         // Round's Tactic removal and clears both picks for the next draft (see that method's
         // updated KDoc), so this description shouldn't claim nothing changes.
@@ -505,7 +514,7 @@ internal fun VolkareEvent.describe(scenario: Scenario): VolkareLogEntryText = wh
     is VolkareEvent.QuestLost -> VolkareLogEntryText(
         icon = "☠",
         title = "Volkare reached the portal",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         description = listOf(
             VolkareDescriptionSpan.Words(
                 "That was the last card that could still move him toward the portal - his final move takes him into it. You lost this scenario.",
@@ -515,7 +524,7 @@ internal fun VolkareEvent.describe(scenario: Scenario): VolkareLogEntryText = wh
     is VolkareEvent.TacticPicked -> VolkareLogEntryText(
         icon = "◇",
         title = "Tactic picked",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         // Mirrors DummyPlayerEvent.TacticPicked's describe() branch: both picks get their own
         // entry, so the log's ordering shows which one picked first that Round.
         description = listOf(
@@ -526,13 +535,13 @@ internal fun VolkareEvent.describe(scenario: Scenario): VolkareLogEntryText = wh
     )
 }
 
-private fun describeCardRevealed(event: VolkareEvent.CardRevealed, scenario: Scenario): VolkareLogEntryText = when (val card = event.card) {
-    VolkareCard.Wound -> describeWound(event, scenario)
-    is VolkareCard.BasicAction -> describeMove(event.round, card.color, isSpell = false, scenario = scenario, cityRevealed = event.cityRevealed)
-    is VolkareCard.CompetitiveSpell -> describeMove(event.round, card.color, isSpell = true, scenario = scenario, cityRevealed = event.cityRevealed)
+private fun describeCardRevealed(event: VolkareEvent.CardRevealed, scenario: Scenario, turnInRound: Int?): VolkareLogEntryText = when (val card = event.card) {
+    VolkareCard.Wound -> describeWound(event, scenario, turnInRound)
+    is VolkareCard.BasicAction -> describeMove(event.round, card.color, isSpell = false, scenario = scenario, cityRevealed = event.cityRevealed, turnInRound = turnInRound)
+    is VolkareCard.CompetitiveSpell -> describeMove(event.round, card.color, isSpell = true, scenario = scenario, cityRevealed = event.cityRevealed, turnInRound = turnInRound)
 }
 
-private fun describeWound(event: VolkareEvent.CardRevealed, scenario: Scenario): VolkareLogEntryText {
+private fun describeWound(event: VolkareEvent.CardRevealed, scenario: Scenario, turnInRound: Int?): VolkareLogEntryText {
     val manaRoll = event.manaRoll ?: error("A Wound reveal always carries a mana roll - see VolkareSession.playTurn")
     // Return adds a gray army token when the roll finds a Unit; Quest just scares that Unit off -
     // see CONTEXT.md's "Wound"-adjacent rules and docs/rules/volkares-quest.md's "Volkare's turn".
@@ -540,7 +549,7 @@ private fun describeWound(event: VolkareEvent.CardRevealed, scenario: Scenario):
     return VolkareLogEntryText(
         icon = "✚",
         title = "Wound revealed",
-        meta = "Round ${event.round}",
+        meta = roundTurnMeta(event.round, turnInRound),
         description = listOf(
             VolkareDescriptionSpan.Words("Volkare rests and $verb the "),
             VolkareDescriptionSpan.ManaDot(manaRoll),
@@ -549,7 +558,7 @@ private fun describeWound(event: VolkareEvent.CardRevealed, scenario: Scenario):
     )
 }
 
-private fun describeMove(round: Int, color: CardColor, isSpell: Boolean, scenario: Scenario, cityRevealed: Boolean): VolkareLogEntryText {
+private fun describeMove(round: Int, color: CardColor, isSpell: Boolean, scenario: Scenario, cityRevealed: Boolean, turnInRound: Int?): VolkareLogEntryText {
     val title = if (isSpell) "Spell revealed" else "Action revealed"
     val icon = if (isSpell) "✦" else "▶"
     val description = buildList {
@@ -558,7 +567,7 @@ private fun describeMove(round: Int, color: CardColor, isSpell: Boolean, scenari
         add(VolkareDescriptionSpan.Words(" ${color.label} - "))
         addAll(movementClause(color, isSpell, scenario, cityRevealed))
     }
-    return VolkareLogEntryText(icon = icon, title = title, meta = "Round $round", description = description)
+    return VolkareLogEntryText(icon = icon, title = title, meta = roundTurnMeta(round, turnInRound), description = description)
 }
 
 private fun movementClause(color: CardColor, isSpell: Boolean, scenario: Scenario, cityRevealed: Boolean): List<VolkareDescriptionSpan> {

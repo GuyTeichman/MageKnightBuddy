@@ -28,7 +28,8 @@ class DummyPlayerEventDescribeTest {
             LogEntryText(
                 icon = "▶",
                 title = "Turn played",
-                meta = "Round 2",
+                // A TurnPlayed row is a turn-start, so its meta names the turn (issue #270).
+                meta = "Round 2 · Turn 3",
                 description = listOf(
                     DescriptionSpan.Words("Revealed: "),
                     DescriptionSpan.ColorDot(CardColor.RED),
@@ -46,7 +47,7 @@ class DummyPlayerEventDescribeTest {
                     DescriptionSpan.Words("."),
                 ),
             ),
-            event.describe(),
+            event.describe(turnInRound = 3),
         )
     }
 
@@ -62,7 +63,7 @@ class DummyPlayerEventDescribeTest {
             LogEntryText(
                 icon = "▶",
                 title = "Turn played",
-                meta = "Round 1",
+                meta = "Round 1 · Turn 1",
                 description = listOf(
                     DescriptionSpan.Words("Revealed: "),
                     DescriptionSpan.ColorDot(CardColor.RED),
@@ -74,7 +75,7 @@ class DummyPlayerEventDescribeTest {
                     DescriptionSpan.Words("No crystal match, turn ended."),
                 ),
             ),
-            event.describe(),
+            event.describe(turnInRound = 1),
         )
     }
 
@@ -95,7 +96,7 @@ class DummyPlayerEventDescribeTest {
             LogEntryText(
                 icon = "▶",
                 title = "Turn played",
-                meta = "Round 5",
+                meta = "Round 5 · Turn 4",
                 description = listOf(
                     DescriptionSpan.Words("Revealed: "),
                     DescriptionSpan.ColorDot(CardColor.RED),
@@ -118,7 +119,7 @@ class DummyPlayerEventDescribeTest {
                     DescriptionSpan.Words("."),
                 ),
             ),
-            event.describe(),
+            event.describe(turnInRound = 4),
         )
     }
 }

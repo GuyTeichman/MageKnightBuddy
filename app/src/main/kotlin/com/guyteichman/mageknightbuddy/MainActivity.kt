@@ -27,6 +27,7 @@ class MainActivity : ComponentActivity() {
                     volkareRepository = app.volkareSessionRepository,
                     proxyPlayerRepository = app.proxyPlayerSessionRepository,
                     enemyPickerRepository = app.enemyPickerSessionRepository,
+                    favoriteSitesRepository = app.favoriteSitesRepository,
                     fieldHelp = app.fieldHelp,
                     tutorials = app.tutorials,
                     tutorialProgress = app.tutorialProgressRepository,

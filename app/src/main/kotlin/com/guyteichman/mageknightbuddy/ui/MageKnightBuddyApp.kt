@@ -25,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import com.guyteichman.mageknightbuddy.R
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.EnemyPickerSessionRepository
+import com.guyteichman.mageknightbuddy.data.FavoriteSitesRepository
 import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.ScoreCalculatorDraftRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
@@ -74,6 +75,7 @@ fun MageKnightBuddyApp(
     volkareRepository: VolkareSessionRepository,
     proxyPlayerRepository: ProxyPlayerSessionRepository,
     enemyPickerRepository: EnemyPickerSessionRepository,
+    favoriteSitesRepository: FavoriteSitesRepository,
     fieldHelp: Map<String, FieldHelp>,
     tutorials: Map<String, Tutorial>,
     tutorialProgress: TutorialProgressRepository,
@@ -165,13 +167,17 @@ fun MageKnightBuddyApp(
                 )
             }
             composable(Tab.Sites.route) {
-                SitesTab(onOpenSettings = { openSettings() })
+                SitesTab(
+                    favoritesRepository = favoriteSitesRepository,
+                    onOpenSettings = { openSettings() },
+                )
             }
             // Settings lives outside the bottom-nav `tabs` list (see SETTINGS_ROUTE): a normal
             // pushed destination, so its back arrow pops back to whichever tab opened it.
             composable(SETTINGS_ROUTE) {
                 SettingsScreen(
                     repository = repository,
+                    favoritesRepository = favoriteSitesRepository,
                     onBack = { navController.popBackStack() },
                 )
             }
