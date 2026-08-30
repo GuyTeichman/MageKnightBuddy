@@ -28,7 +28,8 @@ class ProxyPlayerEventDescribeTest {
             LogEntryText(
                 icon = "▶",
                 title = "Objective drawn",
-                meta = "Round 1",
+                // A drawn objective is a turn-start, so its meta names the turn (issue #270).
+                meta = "Round 1 · Turn 1",
                 description = listOf(
                     DescriptionSpan.Words("Objective: "),
                     DescriptionSpan.ColorDot(CardColor.BLUE),
@@ -40,7 +41,7 @@ class ProxyPlayerEventDescribeTest {
                     DescriptionSpan.Words("."),
                 ),
             ),
-            event.describe(),
+            event.describe(turnInRound = 1),
         )
     }
 
@@ -56,14 +57,14 @@ class ProxyPlayerEventDescribeTest {
             LogEntryText(
                 icon = "▶",
                 title = "Objective drawn",
-                meta = "Round 3",
+                meta = "Round 3 · Turn 1",
                 description = listOf(
                     DescriptionSpan.Words("Objective: "),
                     DescriptionSpan.ColorDot(CardColor.WHITE),
                     DescriptionSpan.Words(" White (Unique)."),
                 ),
             ),
-            event.describe(),
+            event.describe(turnInRound = 1),
         )
     }
 
@@ -80,7 +81,7 @@ class ProxyPlayerEventDescribeTest {
             LogEntryText(
                 icon = "▶",
                 title = "Turn continued",
-                meta = "Round 2",
+                meta = "Round 2 · Turn 2",
                 description = listOf(
                     DescriptionSpan.Words("Objective: "),
                     DescriptionSpan.ColorDot(CardColor.RED),
@@ -92,7 +93,7 @@ class ProxyPlayerEventDescribeTest {
                     DescriptionSpan.Words("."),
                 ),
             ),
-            event.describe(),
+            event.describe(turnInRound = 2),
         )
     }
 
@@ -109,7 +110,7 @@ class ProxyPlayerEventDescribeTest {
             LogEntryText(
                 icon = "▶",
                 title = "Turn continued",
-                meta = "Round 4",
+                meta = "Round 4 · Turn 1",
                 description = listOf(
                     DescriptionSpan.Words("Objective: "),
                     DescriptionSpan.ColorDot(CardColor.GREEN),
@@ -118,7 +119,7 @@ class ProxyPlayerEventDescribeTest {
                     DescriptionSpan.Words(" Green/Blue (Advanced Action), now 1 Shield(s)."),
                 ),
             ),
-            event.describe(),
+            event.describe(turnInRound = 1),
         )
     }
 }

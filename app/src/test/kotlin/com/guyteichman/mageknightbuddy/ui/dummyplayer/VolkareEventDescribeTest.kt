@@ -19,7 +19,8 @@ class VolkareEventDescribeTest {
 
     @Test
     fun `RoundStarted describes the deck as drawn once, never reshuffled`() {
-        val text = VolkareEvent.RoundStarted(round = 3).describe(Scenario.VolkaresReturn)
+        // A non-turn event is passed turnInRound = null, so its meta stays plain "Round N" (issue #270).
+        val text = VolkareEvent.RoundStarted(round = 3).describe(Scenario.VolkaresReturn, turnInRound = null)
 
         assertEquals("◆", text.icon)
         assertEquals("Round 3", text.meta)
@@ -33,9 +34,11 @@ class VolkareEventDescribeTest {
     fun `Wound in Volkares Return says he recruits the rolled mana color's unit`() {
         val event = VolkareEvent.CardRevealed(round = 1, card = VolkareCard.Wound, cityRevealed = false, manaRoll = ManaColor.GOLD)
 
-        val text = event.describe(Scenario.VolkaresReturn)
+        val text = event.describe(Scenario.VolkaresReturn, turnInRound = 1)
 
         assertEquals("✚", text.icon)
+        // A revealed card is a turn-start, so its meta names the turn (issue #270).
+        assertEquals("Round 1 · Turn 1", text.meta)
         assertEquals(
             listOf(
                 VolkareDescriptionSpan.Words("Volkare rests and recruits the "),
@@ -50,7 +53,7 @@ class VolkareEventDescribeTest {
     fun `Wound in Volkares Quest says he scares off the rolled mana color's unit, not recruits`() {
         val event = VolkareEvent.CardRevealed(round = 1, card = VolkareCard.Wound, cityRevealed = false, manaRoll = ManaColor.BLACK)
 
-        val text = event.describe(Scenario.VolkaresQuest)
+        val text = event.describe(Scenario.VolkaresQuest, turnInRound = 1)
 
         assertEquals(
             listOf(
@@ -66,7 +69,7 @@ class VolkareEventDescribeTest {
     fun `non-red Basic Action in Volkares Return, city not revealed, moves once and rerolls`() {
         val event = VolkareEvent.CardRevealed(round = 1, card = VolkareCard.BasicAction(CardColor.GREEN), cityRevealed = false)
 
-        val text = event.describe(Scenario.VolkaresReturn)
+        val text = event.describe(Scenario.VolkaresReturn, turnInRound = 1)
 
         assertEquals("Action revealed", text.title)
         assertEquals("▶", text.icon)
@@ -85,7 +88,7 @@ class VolkareEventDescribeTest {
     fun `non-red Competitive Spell in Volkares Return, city not revealed, moves twice`() {
         val event = VolkareEvent.CardRevealed(round = 1, card = VolkareCard.CompetitiveSpell(CardColor.BLUE), cityRevealed = false)
 
-        val text = event.describe(Scenario.VolkaresReturn)
+        val text = event.describe(Scenario.VolkaresReturn, turnInRound = 1)
 
         assertEquals("Spell revealed", text.title)
         assertEquals("✦", text.icon)
@@ -104,7 +107,7 @@ class VolkareEventDescribeTest {
     fun `red Basic Action in Volkares Return, city not revealed, attacks the nearest Mage Knight only`() {
         val event = VolkareEvent.CardRevealed(round = 1, card = VolkareCard.BasicAction(CardColor.RED), cityRevealed = false)
 
-        val text = event.describe(Scenario.VolkaresReturn)
+        val text = event.describe(Scenario.VolkaresReturn, turnInRound = 1)
 
         assertEquals(
             listOf(
@@ -121,7 +124,7 @@ class VolkareEventDescribeTest {
     fun `red Competitive Spell in Volkares Return, city not revealed, gets the two-spaces-away nuance`() {
         val event = VolkareEvent.CardRevealed(round = 1, card = VolkareCard.CompetitiveSpell(CardColor.RED), cityRevealed = false)
 
-        val text = event.describe(Scenario.VolkaresReturn)
+        val text = event.describe(Scenario.VolkaresReturn, turnInRound = 1)
 
         assertEquals(
             listOf(
@@ -140,7 +143,7 @@ class VolkareEventDescribeTest {
     fun `red Basic Action in Volkares Quest attacks too, but never gets the two-spaces-away nuance`() {
         val event = VolkareEvent.CardRevealed(round = 1, card = VolkareCard.BasicAction(CardColor.RED), cityRevealed = false)
 
-        val text = event.describe(Scenario.VolkaresQuest)
+        val text = event.describe(Scenario.VolkaresQuest, turnInRound = 1)
 
         assertEquals(
             listOf(
@@ -157,7 +160,7 @@ class VolkareEventDescribeTest {
     fun `red Competitive Spell in Volkares Quest also lacks the Return-only two-spaces-away nuance`() {
         val event = VolkareEvent.CardRevealed(round = 1, card = VolkareCard.CompetitiveSpell(CardColor.RED), cityRevealed = false)
 
-        val text = event.describe(Scenario.VolkaresQuest)
+        val text = event.describe(Scenario.VolkaresQuest, turnInRound = 1)
 
         assertEquals(
             listOf(
@@ -174,7 +177,7 @@ class VolkareEventDescribeTest {
     fun `non-red Basic Action in Volkares Quest moves toward the portal, with the adjacency exception noted`() {
         val event = VolkareEvent.CardRevealed(round = 1, card = VolkareCard.BasicAction(CardColor.WHITE), cityRevealed = false)
 
-        val text = event.describe(Scenario.VolkaresQuest)
+        val text = event.describe(Scenario.VolkaresQuest, turnInRound = 1)
 
         assertEquals(
             listOf(
@@ -194,7 +197,7 @@ class VolkareEventDescribeTest {
     fun `non-red Competitive Spell in Volkares Quest moves twice toward the portal`() {
         val event = VolkareEvent.CardRevealed(round = 1, card = VolkareCard.CompetitiveSpell(CardColor.GREEN), cityRevealed = false)
 
-        val text = event.describe(Scenario.VolkaresQuest)
+        val text = event.describe(Scenario.VolkaresQuest, turnInRound = 1)
 
         assertEquals(
             listOf(
@@ -213,7 +216,7 @@ class VolkareEventDescribeTest {
     fun `once City Revealed, a non-red Basic Action in Volkares Return advances toward the city instead of exploring`() {
         val event = VolkareEvent.CardRevealed(round = 1, card = VolkareCard.BasicAction(CardColor.BLUE), cityRevealed = true)
 
-        val text = event.describe(Scenario.VolkaresReturn)
+        val text = event.describe(Scenario.VolkaresReturn, turnInRound = 1)
 
         assertEquals(
             listOf(
@@ -233,7 +236,7 @@ class VolkareEventDescribeTest {
     fun `once City Revealed, red also advances toward the city in Volkares Return - it no longer triggers an attack`() {
         val event = VolkareEvent.CardRevealed(round = 1, card = VolkareCard.BasicAction(CardColor.RED), cityRevealed = true)
 
-        val text = event.describe(Scenario.VolkaresReturn)
+        val text = event.describe(Scenario.VolkaresReturn, turnInRound = 1)
 
         assertEquals(
             listOf(
@@ -253,7 +256,7 @@ class VolkareEventDescribeTest {
     fun `City Revealed on a Competitive Spell in Volkares Return advances him twice toward the city`() {
         val event = VolkareEvent.CardRevealed(round = 1, card = VolkareCard.CompetitiveSpell(CardColor.WHITE), cityRevealed = true)
 
-        val text = event.describe(Scenario.VolkaresReturn)
+        val text = event.describe(Scenario.VolkaresReturn, turnInRound = 1)
 
         assertEquals(
             listOf(
@@ -276,7 +279,7 @@ class VolkareEventDescribeTest {
         // Quest cards - this pins that down even if the flag were ever true by mistake.
         val event = VolkareEvent.CardRevealed(round = 1, card = VolkareCard.BasicAction(CardColor.GREEN), cityRevealed = true)
 
-        val text = event.describe(Scenario.VolkaresQuest)
+        val text = event.describe(Scenario.VolkaresQuest, turnInRound = 1)
 
         assertEquals(
             listOf(
@@ -294,9 +297,11 @@ class VolkareEventDescribeTest {
 
     @Test
     fun `Frenzy describes a double move-attack as blue, with no Source die reroll`() {
-        val text = VolkareEvent.Frenzy(round = 4).describe(Scenario.VolkaresReturn)
+        // Frenzy is a turn-start (VolkareSession.turnInRound counts it), so its meta names the turn.
+        val text = VolkareEvent.Frenzy(round = 4).describe(Scenario.VolkaresReturn, turnInRound = 2)
 
         assertEquals("⚡", text.icon)
+        assertEquals("Round 4 · Turn 2", text.meta)
         assertEquals(
             listOf(
                 VolkareDescriptionSpan.Words(
@@ -309,9 +314,10 @@ class VolkareEventDescribeTest {
 
     @Test
     fun `RoundEnded describes the Tactic draft as resolved, not as a no-op`() {
-        val text = VolkareEvent.RoundEnded(round = 2).describe(Scenario.VolkaresReturn)
+        val text = VolkareEvent.RoundEnded(round = 2).describe(Scenario.VolkaresReturn, turnInRound = null)
 
         assertEquals("⚑", text.icon)
+        assertEquals("Round 2", text.meta)
         assertEquals(
             listOf(VolkareDescriptionSpan.Words("Volkare's deck doesn't reshuffle, but this Round's Tactic picks are now resolved for the next draft.")),
             text.description,
@@ -320,8 +326,8 @@ class VolkareEventDescribeTest {
 
     @Test
     fun `TacticPicked describes the player's pick as You and Volkare's own pick as Volkare`() {
-        val playerPick = VolkareEvent.TacticPicked(round = 3, isDay = true, card = 4, pickedByPlayer = true).describe(Scenario.VolkaresReturn)
-        val volkarePick = VolkareEvent.TacticPicked(round = 3, isDay = false, card = 2, pickedByPlayer = false).describe(Scenario.VolkaresReturn)
+        val playerPick = VolkareEvent.TacticPicked(round = 3, isDay = true, card = 4, pickedByPlayer = true).describe(Scenario.VolkaresReturn, turnInRound = null)
+        val volkarePick = VolkareEvent.TacticPicked(round = 3, isDay = false, card = 2, pickedByPlayer = false).describe(Scenario.VolkaresReturn, turnInRound = null)
 
         assertEquals("◇", playerPick.icon)
         assertEquals(listOf(VolkareDescriptionSpan.Words("You picked Day Tactic 4.")), playerPick.description)
@@ -330,9 +336,12 @@ class VolkareEventDescribeTest {
 
     @Test
     fun `QuestLost describes the last movement card as his final move into the portal`() {
-        val text = VolkareEvent.QuestLost(round = 5).describe(Scenario.VolkaresQuest)
+        // QuestLost shares its turn with the paired reveal, so it's never a turn-start of its own -
+        // it gets turnInRound = null and stays plain "Round N" (issue #270).
+        val text = VolkareEvent.QuestLost(round = 5).describe(Scenario.VolkaresQuest, turnInRound = null)
 
         assertEquals("☠", text.icon)
+        assertEquals("Round 5", text.meta)
         assertEquals("Volkare reached the portal", text.title)
         assertEquals(
             listOf(

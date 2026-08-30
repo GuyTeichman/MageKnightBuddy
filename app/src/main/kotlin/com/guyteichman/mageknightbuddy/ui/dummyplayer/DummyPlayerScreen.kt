@@ -658,6 +658,12 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 CircularProgressIndicator()
             }
         } else {
+            // Log rows most-recent-first (issue #35): the domain log is append-only/chronological,
+            // so this screen reverses it for display. Turn numbers (issue #270) are computed over
+            // the chronological log, then zipped onto it so each row keeps its own turn through the
+            // reverse. remember(session.log) keeps this off every recomposition (e.g. toggling the
+            // deck summary) - it only re-runs when the log itself changes.
+            val rows = remember(session.log) { session.log.zip(dummyTurnNumbers(session.log)).asReversed() }
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp),
@@ -675,10 +681,8 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 item {
                     Text("Log", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                // Most-recent-first, per issue #35's layout spec - the domain log itself is
-                // append-only/chronological, so this screen is what reverses it for display.
-                items(session.log.asReversed()) { event ->
-                    LogRow(entry = event.describe())
+                items(rows) { (event, turnInRound) ->
+                    LogRow(entry = event.describe(turnInRound))
                 }
             }
         }
@@ -1137,12 +1141,16 @@ internal val crystalDotInlineContent: Map<String, InlineTextContent> = CardColor
  * (not file-private) so `DummyPlayerEventDescribeTest` can pin its exact wording directly, the way
  * [VolkareEvent.describe] is tested - this is hand-written prose keyed off several branches, so it's
  * worth asserting rather than only exercising through the emulator.
+ *
+ * [turnInRound] is this entry's value from [dummyTurnNumbers] (non-null only on a [TurnPlayed], the
+ * one turn-start), passed straight to [roundTurnMeta] so a turn row reads "Round N · Turn M" and
+ * everything else reads "Round N" (issue #270).
  */
-internal fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
+internal fun DummyPlayerEvent.describe(turnInRound: Int?): LogEntryText = when (this) {
     is DummyPlayerEvent.RoundStarted -> LogEntryText(
         icon = "◆",
         title = "Round started",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         description = listOf(DescriptionSpan.Words("The Dummy Player's deck is shuffled and ready.")),
     )
     is DummyPlayerEvent.TurnPlayed -> {
@@ -1173,18 +1181,18 @@ internal fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
                 add(DescriptionSpan.Words("."))
             }
         }
-        LogEntryText(icon = "▶", title = "Turn played", meta = "Round $round", description = description)
+        LogEntryText(icon = "▶", title = "Turn played", meta = roundTurnMeta(round, turnInRound), description = description)
     }
     is DummyPlayerEvent.EndOfRoundAnnounced -> LogEntryText(
         icon = "⚑",
         title = "End of Round announced",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         description = listOf(DescriptionSpan.Words("The deck ran out - other players get one more turn each, then the Round ends.")),
     )
     is DummyPlayerEvent.RoundEnded -> LogEntryText(
         icon = "⚑",
         title = "Round ended",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         // Describes only the round-prep offer swap, which happens every Round regardless of why
         // it ended (per docs/rules/dummy-player.md) - accurate whether or not the deck actually
         // ran out first, so it never claims "the deck ran out" itself.
@@ -1201,7 +1209,7 @@ internal fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
     is DummyPlayerEvent.TacticPicked -> LogEntryText(
         icon = "◇",
         title = "Tactic picked",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         // Both the player's and the Dummy Player's picks get their own log entry (see
         // DummyPlayerEvent.TacticPicked's doc comment), so the log's own ordering shows which one
         // picked first that Round - not just what each pick was.
