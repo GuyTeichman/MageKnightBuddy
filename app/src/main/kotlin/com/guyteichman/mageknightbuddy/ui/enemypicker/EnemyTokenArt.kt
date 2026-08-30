@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -72,24 +74,34 @@ private fun loadTokenBitmap(context: Context, id: String): ImageBitmap? = try {
 /**
  * Renders a [TokenPileId]'s face-down back art at [size] (issue #198). Round enemy piles are clipped
  * to a circle same as [EnemyTokenFace] - their source crop is a circle centered on a square, so
- * clipping just trims the square's corners. Two exceptions: the **RUIN pile**'s back is a transparent-
- * PNG hexagon (like [RuinTokenFace]) and gets **no** clip - the alpha is the shape; and the four
- * **faction reward piles** (issue #252) keep their square tile art - clipped to the lightly-rounded
- * [RewardTokenShape] with a thin black [RewardTokenBorder] outline (matching the reward faces / ruin
- * art), never a circle. Falls back to a colored shape with the pile's name if that pile's back art
- * isn't bundled yet, the same graceful-degradation pattern as [EnemyTokenFace]'s [TokenTextFallback].
+ * clipping just trims the square's corners. Three exceptions: the **RUIN pile**'s back is a transparent-
+ * PNG hexagon (like [RuinTokenFace]) and gets **no** clip - the alpha is the shape; the **POSSESSED
+ * pile** (Apocalypse Dragon, issue #277) is likewise a transparent-PNG shaped tile (its non-rectangular
+ * starfield silhouette is the alpha) and also gets no clip, but as a **wide D-tile** it's drawn at the
+ * pile's full height and proportionally wider (so it reads the same height as the round discs, not
+ * squashed into a square); and the four **faction reward piles**
+ * (issue #252) keep their square tile art - clipped to the lightly-rounded [RewardTokenShape] with a
+ * thin black [RewardTokenBorder] outline (matching the reward faces / ruin art), never a circle. Falls
+ * back to a colored shape with the pile's name if that pile's back art isn't bundled yet, the same
+ * graceful-degradation pattern as [EnemyTokenFace]'s [TokenTextFallback].
  */
 @Composable
 internal fun PileBackFace(pileId: TokenPileId, size: Dp = 96.dp) {
     val context = LocalContext.current
     val bitmap = remember(pileId) { loadPileBackBitmap(context, pileId) }
-    // RUIN carries its own hexagon alpha; reward piles are square tiles; every other pile is a round disc.
+    // RUIN and POSSESSED carry their own shaped alpha and get no clip. RUIN's hexagon fits a square box;
+    // POSSESSED's back is a wide D-tile drawn at the pile's full height and proportionally wider, so it
+    // reads the same height as the round discs (not squashed into a square). Reward piles are square
+    // tiles; every other pile is a round disc.
     val isHex = pileId == TokenPileId.RUIN
+    val isPossessed = pileId == TokenPileId.POSSESSED
     val isReward = pileId.isFactionReward
 
     if (bitmap != null) {
         val artModifier = when {
             isHex -> Modifier.size(size)
+            // Match the round backs' height, but keep the D-tile's own aspect so it stays wider, not squashed.
+            isPossessed -> Modifier.height(size).width(size * (bitmap.width.toFloat() / bitmap.height.toFloat()))
             isReward -> Modifier.size(size).clip(RewardTokenShape).border(RewardTokenBorder, Color.Black, RewardTokenShape)
             else -> Modifier.size(size).clip(CircleShape)
         }
@@ -117,10 +129,11 @@ internal fun PileBackFace(pileId: TokenPileId, size: Dp = 96.dp) {
 
 /**
  * Loads `enemy-tokens/backs/<pileid>.<ext>` from assets, or null if that pile's back art isn't
- * bundled yet. The RUIN back is a PNG (baked hexagon alpha); the round enemy backs are JPG.
+ * bundled yet. The RUIN and POSSESSED backs are PNGs (baked shape alpha - hexagon / starfield
+ * silhouette); the round enemy backs are JPG.
  */
 private fun loadPileBackBitmap(context: Context, pileId: TokenPileId): ImageBitmap? = try {
-    val ext = if (pileId == TokenPileId.RUIN) "png" else "jpg"
+    val ext = if (pileId == TokenPileId.RUIN || pileId == TokenPileId.POSSESSED) "png" else "jpg"
     context.assets.open("enemy-tokens/backs/${pileId.name.lowercase()}.$ext").use { stream ->
         BitmapFactory.decodeStream(stream)?.asImageBitmap()
     }
