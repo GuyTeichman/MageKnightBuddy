@@ -356,8 +356,11 @@ fun ProxyPlayerAiScreen(
                     )
                 }
                 // Most-recent-first, matching DummyPlayerScreen.kt's DummyPlayerAiScreen (issue #35).
-                items(session.log.asReversed()) { event ->
-                    LogRow(entry = event.describe())
+                // Turn numbers (issue #270) are computed over the chronological log, then zipped on
+                // so each row keeps its own turn through the reverse.
+                val rows = session.log.zip(proxyTurnNumbers(session.log)).asReversed()
+                items(rows) { (event, turnInRound) ->
+                    LogRow(entry = event.describe(turnInRound))
                 }
             }
         }
@@ -603,19 +606,23 @@ private fun ProxyPlayerStatGridBody(session: ProxyPlayerSession) {
  * Describes one [ProxyPlayerEvent] for [LogRow] - the Proxy Player counterpart to
  * [DummyPlayerEvent.describe]. `internal` (not file-private) so `ProxyPlayerEventDescribeTest` can
  * pin its exact wording directly, matching how the Dummy Player and Volkare `describe`s are tested.
+ *
+ * [turnInRound] is this entry's value from [proxyTurnNumbers] (non-null on either draw branch -
+ * [ProxyPlayerEvent.NewObjectiveDrawn]/[ProxyPlayerEvent.TurnContinued]), passed to [roundTurnMeta]
+ * so a turn row reads "Round N · Turn M" and everything else reads "Round N" (issue #270).
  */
-internal fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
+internal fun ProxyPlayerEvent.describe(turnInRound: Int?): LogEntryText = when (this) {
     is ProxyPlayerEvent.RoundStarted -> LogEntryText(
         icon = "◆",
         title = "Round started",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         description = listOf(DescriptionSpan.Words("The Proxy Player's deck is shuffled and ready.")),
     )
 
     is ProxyPlayerEvent.NewObjectiveDrawn -> LogEntryText(
         icon = "▶",
         title = "Objective drawn",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         description = buildList {
             add(DescriptionSpan.Words("Objective: "))
             addCardDots(objectiveCard.colors())
@@ -636,7 +643,7 @@ internal fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
     is ProxyPlayerEvent.TurnContinued -> LogEntryText(
         icon = "▶",
         title = "Turn continued",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         description = buildList {
             add(DescriptionSpan.Words("Objective: "))
             addCardDots(objectiveCard.colors())
@@ -657,14 +664,14 @@ internal fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
     is ProxyPlayerEvent.EndOfRoundAnnounced -> LogEntryText(
         icon = "⚑",
         title = "End of Round announced",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         description = listOf(DescriptionSpan.Words("The deck ran out - other players get one more turn each, then the Round ends.")),
     )
 
     is ProxyPlayerEvent.ObjectiveResolved -> LogEntryText(
         icon = "⚑",
         title = "Objective resolved",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         description = buildList {
             addCardDots(objectiveCard.colors())
             add(DescriptionSpan.Words(" ${objectiveCard.displayText()} - Completed."))
@@ -674,7 +681,7 @@ internal fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
     is ProxyPlayerEvent.RoundEnded -> LogEntryText(
         icon = "⚑",
         title = "Round ended",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         // Describes only the round-prep offer swap, which happens every Round regardless of why
         // it ended - mirrors DummyPlayerEvent.RoundEnded's equivalent description, plus one extra
         // sentence when a lingering objective was discarded (a case standard Dummy Player has no
@@ -699,7 +706,7 @@ internal fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
     is ProxyPlayerEvent.TacticPicked -> LogEntryText(
         icon = "◇",
         title = "Tactic picked",
-        meta = "Round $round",
+        meta = roundTurnMeta(round, turnInRound),
         // Mirrors DummyPlayerEvent.TacticPicked's describe() branch: both picks get their own
         // entry, so the log's ordering shows which one picked first that Round.
         description = listOf(
