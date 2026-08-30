@@ -216,26 +216,36 @@ private fun SitesListScreen(
                     Text(message)
                 }
             } else {
+                // Whether a "★ Favorites" section is being shown. Drives the flat-list remainder header
+                // below: the favorites section is only meaningful if the rest is *also* labelled, so
+                // there's a visible boundary between the two (issue #236 follow-up).
+                val hasFavoritesSection = groups.any { it.isFavorites }
                 // LazyColumn only composes the rows on screen, so the whole catalogue isn't laid out at once.
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    // Each group contributes an optional sticky header (none when ungrouped, i.e. the
-                    // single group's key is null) followed by its rows. Site ids are unique across the
-                    // whole catalogue, so they stay valid LazyColumn keys even spanning several groups.
+                    // Each group contributes a sticky header (see the cases below) followed by its rows.
+                    // Site ids are unique across the whole catalogue, so they stay valid LazyColumn keys
+                    // even spanning several groups.
                     groups.forEach { group ->
                         val key = group.key
                         when {
                             // The pinned favorites section (issue #236): a fixed "★ Favorites" header.
-                            // A plain item, NOT a stickyHeader: in the flat (Group: None) list the
-                            // remainder has no header of its own, so a sticky Favorites header would
-                            // stay pinned above the non-favorites as you scroll (nothing replaces it).
-                            // As a regular item it scrolls away with its favorites, which also reads
-                            // fine in grouped mode (the first real category/expansion header takes over
-                            // the sticky slot once you scroll past the favorites).
-                            group.isFavorites -> item(key = "header_favorites") {
+                            // Sticky, like every other header - it always has a following header to hand
+                            // the pinned slot off to as you scroll past it (a category/expansion header
+                            // when grouped, or the "Other Sites" header below when flat), so it never
+                            // stays stuck over non-favorite rows.
+                            group.isFavorites -> stickyHeader(key = "header_favorites") {
                                 GroupHeader(label = "★ Favorites", count = group.sites.size)
                             }
                             key != null -> stickyHeader(key = "header_${key.name}") {
                                 GroupHeader(label = key.siteGroupHeader(), count = group.sites.size)
+                            }
+                            // The flat (Group: None) remainder. It only gets a header - "Other Sites" -
+                            // when a favorites section sits above it, so the two are clearly separated;
+                            // a plain no-favorites flat list stays header-less as before (this branch is
+                            // reached only for the null-keyed, non-favorites group, which exists only in
+                            // Group: None).
+                            hasFavoritesSection -> stickyHeader(key = "header_other") {
+                                GroupHeader(label = "Other Sites", count = group.sites.size)
                             }
                         }
                         items(group.sites, key = { it.id }) { site ->
