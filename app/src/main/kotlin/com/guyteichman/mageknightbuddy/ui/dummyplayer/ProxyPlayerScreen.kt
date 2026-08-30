@@ -218,6 +218,12 @@ fun ProxyPlayerAiScreen(
             // (and this code) one non-null local to work with instead.
             val objectiveCard = session.objectiveCard
 
+            // Log rows most-recent-first, matching DummyPlayerAiScreen (issue #35). Turn numbers
+            // (issue #270) are computed over the chronological log, then zipped on so each row keeps
+            // its own turn through the reverse. remember(session.log) keeps this off every
+            // recomposition - it only re-runs when the log itself changes.
+            val rows = remember(session.log) { session.log.zip(proxyTurnNumbers(session.log)).asReversed() }
+
             // LazyColumn, not a plain Column: the deck tableau, objective details, and event log
             // together can easily outgrow one screen (mirrors DummyPlayerScreen.kt's
             // DummyPlayerAiScreen, which has the same shape of content).
@@ -355,10 +361,6 @@ fun ProxyPlayerAiScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                // Most-recent-first, matching DummyPlayerScreen.kt's DummyPlayerAiScreen (issue #35).
-                // Turn numbers (issue #270) are computed over the chronological log, then zipped on
-                // so each row keeps its own turn through the reverse.
-                val rows = session.log.zip(proxyTurnNumbers(session.log)).asReversed()
                 items(rows) { (event, turnInRound) ->
                     LogRow(entry = event.describe(turnInRound))
                 }

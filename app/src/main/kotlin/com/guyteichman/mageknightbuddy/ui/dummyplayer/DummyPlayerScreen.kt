@@ -658,6 +658,12 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 CircularProgressIndicator()
             }
         } else {
+            // Log rows most-recent-first (issue #35): the domain log is append-only/chronological,
+            // so this screen reverses it for display. Turn numbers (issue #270) are computed over
+            // the chronological log, then zipped onto it so each row keeps its own turn through the
+            // reverse. remember(session.log) keeps this off every recomposition (e.g. toggling the
+            // deck summary) - it only re-runs when the log itself changes.
+            val rows = remember(session.log) { session.log.zip(dummyTurnNumbers(session.log)).asReversed() }
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp),
@@ -675,11 +681,6 @@ private fun DummyPlayerAiScreen(repository: DummyPlayerSessionRepository, fieldH
                 item {
                     Text("Log", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                // Most-recent-first, per issue #35's layout spec - the domain log itself is
-                // append-only/chronological, so this screen is what reverses it for display. Turn
-                // numbers (issue #270) are computed over the chronological log, then zipped onto it
-                // so each row keeps its own turn through the reverse.
-                val rows = session.log.zip(dummyTurnNumbers(session.log)).asReversed()
                 items(rows) { (event, turnInRound) ->
                     LogRow(entry = event.describe(turnInRound))
                 }

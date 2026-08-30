@@ -40,6 +40,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -216,6 +217,11 @@ fun VolkareAiScreen(repository: VolkareSessionRepository, onBack: () -> Unit) {
                 CircularProgressIndicator()
             }
         } else {
+            // Log rows most-recent-first, matching DummyPlayerAiScreen. Turn numbers (issue #270)
+            // are computed over the chronological log, then zipped on so each row keeps its own turn
+            // through the reverse. remember(session.log) keeps this off every recomposition - it only
+            // re-runs when the log itself changes.
+            val rows = remember(session.log) { session.log.zip(volkareTurnNumbers(session.log)).asReversed() }
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp),
@@ -247,10 +253,6 @@ fun VolkareAiScreen(repository: VolkareSessionRepository, onBack: () -> Unit) {
                 item {
                     Text("Log", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                // Most-recent-first, matching DummyPlayerAiScreen's log ordering. Turn numbers
-                // (issue #270) are computed over the chronological log, then zipped on so each row
-                // keeps its own turn through the reverse.
-                val rows = session.log.zip(volkareTurnNumbers(session.log)).asReversed()
                 items(rows) { (event, turnInRound) ->
                     VolkareLogRow(event = event, scenario = session.scenario, turnInRound = turnInRound)
                 }

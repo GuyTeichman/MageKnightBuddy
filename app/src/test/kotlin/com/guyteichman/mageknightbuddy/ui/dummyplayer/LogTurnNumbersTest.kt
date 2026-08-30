@@ -11,7 +11,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Pins the per-round turn numbering the AI-tab logs use (issue #270): each mode's [turnNumbersFor]
+ * Pins the per-round turn numbering the AI-tab logs use (issue #270): each mode's turn-numbering
+ * function ([dummyTurnNumbers]/[proxyTurnNumbers]/[volkareTurnNumbers])
  * tags every "turn-start" entry (the one where the AI draws from its deck) with its 1-based turn
  * index *within its own round*, and leaves every other entry null. The expected lists here are
  * hand-derived from the constructed logs, not read back off the implementation, so they can actually
