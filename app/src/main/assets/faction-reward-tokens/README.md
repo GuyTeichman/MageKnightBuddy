@@ -9,7 +9,7 @@ the full width (e.g. Healing Herbs shows a hand / pencil / map across the whole 
 clip would cut the edge icons off. A token with no file here falls back to a text tile
 (`FactionRewardTokenFace` in `app/.../ui/enemypicker/FactionRewardTokenArt.kt`). Assets, not
 `res/drawable`, so the set is keyed by the catalogue's string id — see
-[ADR-0007](../../../../../../docs/adr/0007-token-catalogue-as-json-in-domain-resources.md).
+[ADR-0007](../../../../../docs/adr/0007-token-catalogue-as-json-in-domain-resources.md).
 
 ## Pile back art
 
@@ -44,5 +44,7 @@ of Tezla tokens additionally sit in the same bag as the already-checked SoT enem
 ## Licensing
 
 Same status as the enemy token art (`../enemy-tokens/README.md`): official WizKids / Vlaada Chvátil
-art via a fan-made TTS mod. **Re-flag and re-evaluate before any public release or redistribution** —
-credits screen + licensing review tracked as follow-ups to issue #178 (#193).
+art via a fan-made TTS mod. Licensing posture decided in
+[ADR-0010](../../../../../docs/adr/0010-bundled-official-art-licensing-stance.md) (issue #193):
+keep bundling, mitigated by in-app attribution and a non-affiliation disclaimer; revisit only if the
+project goes commercial or to an official app store.

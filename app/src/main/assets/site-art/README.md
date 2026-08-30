@@ -6,7 +6,7 @@ in the list-row thumbnail and, at a modest framed size, in the detail header (`S
 `app/.../ui/sites/`). A site whose `art` is `null` falls back to a category-hinting placeholder icon;
 every site currently has art, so the placeholder is only a safety net now. Assets, not `res/drawable`,
 so the set is keyed by the catalogue's `art` filename and grows by adding a file, not code — see
-[ADR-0007](../../../../../../docs/adr/0007-token-catalogue-as-json-in-domain-resources.md).
+[ADR-0007](../../../../../docs/adr/0007-token-catalogue-as-json-in-domain-resources.md).
 
 Two tests keep this folder honest: the domain `SiteCatalogueTest` checks the `art` filenames are
 unique/non-blank, and `SiteArtAssetsTest` (Robolectric, so it can read the merged assets) checks
@@ -59,7 +59,7 @@ vignettes frame more consistently with the rest of the set than a mod-tile crop 
 
 All art is official WizKids / Vlaada Chvátil art. Unlike the earlier fan-mod crops, this comes from
 WizKids' **own** published PDF (a community-distributed player aid, not a third-party reproduction) —
-arguably cleaner provenance, but the same caveat applies: **re-flag and re-evaluate before any public
-release or redistribution.** The app already attaches a debug APK to GitHub Releases, so this is not
-strictly "non-distributed"; a proper credits screen and licensing review are tracked as follow-ups to
-issue #178.
+arguably cleaner provenance, but the same posture applies: keep bundling, mitigated by in-app
+attribution and a non-affiliation disclaimer, as decided in
+[ADR-0010](../../../../../docs/adr/0010-bundled-official-art-licensing-stance.md) (issue #193);
+revisit only if the project goes commercial or to an official app store.
