@@ -38,8 +38,8 @@ data class DummyPlayerSession private constructor(
     // by consulting [isSolo]/[scenario] via TacticRules.kt's tacticRemovalRule/tacticRemovalTarget.
     val tacticState: TacticState = TacticState(),
     // Whether this is a solo game (issue #179) - read only by the Tactic-removal rule lookup in
-    // [endRound]; defaults preserve every pre-existing caller's behavior (solo, "Conquest") until
-    // the setup UI (a later PR) starts threading a real player choice through here.
+    // [endRound]. The setup UI now threads a real solo/co-op choice through here (issue #220); the
+    // default just preserves every pre-existing caller's behavior (solo, "Conquest").
     val isSolo: Boolean = true,
     val scenario: Scenario = Scenario.SoloConquest,
 ) {

@@ -4,6 +4,7 @@
         android:name=".MageKnightBuddyApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:theme="@style/Theme.MageKnightBuddy">
         <!-- windowSoftInputMode="adjustResize" makes the window shrink when the soft keyboard

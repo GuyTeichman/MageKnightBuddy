@@ -95,14 +95,6 @@ private fun ProxyPlayerCard.colors(): List<CardColor> = when (this) {
     is ProxyPlayerCard.AdvancedAction -> identity.colors()
 }
 
-/**
- * Just the color(s) [this] card renders as (e.g. "Green", or "Blue/White" for a dual-color card) -
- * no Basic/Unique/Advanced Action suffix, unlike [displayText]. Basic-vs-Advanced only matters for
- * the *objective* card (it's what the movement-point bonus depends on) - a merely revealed or
- * discarded card in the log doesn't need that distinction stated.
- */
-private fun ProxyPlayerCard.colorLabel(): String = colors().joinToString("/") { it.label }
-
 /** Sort key for laying out a deck of [ProxyPlayerCard]s in a stable, color-grouped order (see [CardColor]'s declaration order). */
 private fun ProxyPlayerCard.sortKey(): Int = colors().minOf { it.ordinal }
 
@@ -622,8 +614,12 @@ private fun ProxyPlayerStatGridBody(session: ProxyPlayerSession) {
     }
 }
 
-/** Describes one [ProxyPlayerEvent] for [LogRow] - the Proxy Player counterpart to `DummyPlayerScreen.kt`'s file-private `DummyPlayerEvent.describe()`. */
-private fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
+/**
+ * Describes one [ProxyPlayerEvent] for [LogRow] - the Proxy Player counterpart to
+ * [DummyPlayerEvent.describe]. `internal` (not file-private) so `ProxyPlayerEventDescribeTest` can
+ * pin its exact wording directly, matching how the Dummy Player and Volkare `describe`s are tested.
+ */
+internal fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
     is ProxyPlayerEvent.RoundStarted -> LogEntryText(
         icon = "◆",
         title = "Round started",
@@ -636,17 +632,16 @@ private fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
         title = "Objective drawn",
         meta = "Round $round",
         description = buildList {
-            add(DescriptionSpan.Words("New objective: "))
+            add(DescriptionSpan.Words("Objective: "))
             addCardDots(objectiveCard.colors())
             add(DescriptionSpan.Words(" ${objectiveCard.displayText()}."))
             if (discarded.isNotEmpty()) {
-                add(DescriptionSpan.Words(" Also discarded: "))
+                // The other cards flipped in the same batch, as bare color dots (no per-card labels)
+                // to match the Dummy Player's top "Revealed:" list - issue #271's brevity pass.
+                add(DescriptionSpan.Words(" Revealed: "))
                 discarded.forEachIndexed { index, card ->
-                    if (index > 0) add(DescriptionSpan.Words(", "))
+                    if (index > 0) add(DescriptionSpan.Words(" "))
                     addCardDots(card.colors())
-                    // colorLabel(), not displayText() - Basic/Advanced only matters for the
-                    // objective card, not a merely-discarded one.
-                    add(DescriptionSpan.Words(" ${card.colorLabel()}"))
                 }
                 add(DescriptionSpan.Words("."))
             }
@@ -658,17 +653,16 @@ private fun ProxyPlayerEvent.describe(): LogEntryText = when (this) {
         title = "Turn continued",
         meta = "Round $round",
         description = buildList {
-            add(DescriptionSpan.Words("Objective "))
+            add(DescriptionSpan.Words("Objective: "))
             addCardDots(objectiveCard.colors())
-            add(DescriptionSpan.Words(" ${objectiveCard.displayText()} now has $shieldsNow Shield(s)."))
+            add(DescriptionSpan.Words(" ${objectiveCard.displayText()}, now $shieldsNow Shield(s)."))
             if (revealed.isNotEmpty()) {
+                // Bare color dots (no per-card labels), matching the Dummy Player's top "Revealed:"
+                // list - issue #271's brevity pass.
                 add(DescriptionSpan.Words(" Revealed: "))
                 revealed.forEachIndexed { index, card ->
-                    if (index > 0) add(DescriptionSpan.Words(", "))
+                    if (index > 0) add(DescriptionSpan.Words(" "))
                     addCardDots(card.colors())
-                    // colorLabel(), not displayText() - Basic/Advanced only matters for the
-                    // objective card, not a merely-revealed one.
-                    add(DescriptionSpan.Words(" ${card.colorLabel()}"))
                 }
                 add(DescriptionSpan.Words("."))
             }

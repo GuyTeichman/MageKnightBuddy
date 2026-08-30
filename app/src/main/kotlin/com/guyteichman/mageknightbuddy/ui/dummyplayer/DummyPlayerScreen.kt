@@ -1183,7 +1183,13 @@ internal val crystalDotInlineContent: Map<String, InlineTextContent> = CardColor
     }
 }
 
-private fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
+/**
+ * Turns one [DummyPlayerEvent] into the icon/title/meta/description a [LogRow] renders. `internal`
+ * (not file-private) so `DummyPlayerEventDescribeTest` can pin its exact wording directly, the way
+ * [VolkareEvent.describe] is tested - this is hand-written prose keyed off several branches, so it's
+ * worth asserting rather than only exercising through the emulator.
+ */
+internal fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
     is DummyPlayerEvent.RoundStarted -> LogEntryText(
         icon = "◆",
         title = "Round started",
@@ -1191,24 +1197,25 @@ private fun DummyPlayerEvent.describe(): LogEntryText = when (this) {
         description = listOf(DescriptionSpan.Words("The Dummy Player's deck is shuffled and ready.")),
     )
     is DummyPlayerEvent.TurnPlayed -> {
-        val allRevealed = initialReveal + additionalReveal
         // The 3rd initial-reveal card decides the chain (see DummyPlayerSession.playTurn) - may be
         // a CardIdentity.DualColor card, in which case both its colors' crystals contributed.
         val lastCard = initialReveal.last()
         val description = buildList {
-            add(DescriptionSpan.Words("Revealed "))
-            allRevealed.forEachIndexed { index, card ->
+            // Only the mandatory initial 3 go in the top list - any chained (additional) cards are
+            // named once below in the "+N revealed" clause, so they aren't listed twice (issue #271).
+            add(DescriptionSpan.Words("Revealed: "))
+            initialReveal.forEachIndexed { index, card ->
                 if (index > 0) add(DescriptionSpan.Words(" "))
                 addCardDots(card.colors())
             }
-            add(DescriptionSpan.Words(" — "))
+            add(DescriptionSpan.Words(". "))
             if (additionalReveal.isEmpty()) {
-                add(DescriptionSpan.Words("no crystal match, turn ended."))
+                add(DescriptionSpan.Words("No crystal match, turn ended."))
             } else {
                 // The dot(s) here stand for the matching crystal(s) held in Inventory, not a card,
                 // so they're CrystalDots even though lastCard is also a revealed card.
                 lastCard.colors().forEach { color -> add(DescriptionSpan.CrystalDot(color)) }
-                add(DescriptionSpan.Words(" ${lastCard.displayLabel} crystal matched, +${additionalReveal.size} revealed: "))
+                add(DescriptionSpan.Words(" ${lastCard.displayLabel} crystal matched → +${additionalReveal.size} revealed: "))
                 additionalReveal.forEachIndexed { index, card ->
                     if (index > 0) add(DescriptionSpan.Words(", "))
                     addCardDots(card.colors())
