@@ -4,9 +4,10 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- App-icon background layer: a full-bleed radial gradient in the app's indigo
-         (#1B1035) family, lit slightly above centre so the gold emblem reads as
-         catching light from above. Full-bleed so the launcher mask always has
+    <!-- App-icon background layer: a near-white ground so the dark shield and gold
+         emblem read with high contrast (and sit alongside the other light launcher
+         icons). A faint warm-grey vignette toward the edges gives it a little depth
+         without lowering contrast. Full-bleed so the launcher mask always has
          something to crop. -->
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
@@ -14,9 +15,9 @@
                 android:type="radial"
                 android:centerX="54"
                 android:centerY="46"
-                android:gradientRadius="76">
-                <item android:offset="0" android:color="#FF241548" />
-                <item android:offset="1" android:color="#FF0F0820" />
+                android:gradientRadius="80">
+                <item android:offset="0" android:color="#FFFFFFFF" />
+                <item android:offset="1" android:color="#FFEFECE4" />
             </gradient>
         </aapt:attr>
     </path>
