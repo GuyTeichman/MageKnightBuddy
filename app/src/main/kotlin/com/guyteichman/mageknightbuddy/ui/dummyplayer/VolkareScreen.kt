@@ -52,6 +52,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.guyteichman.mageknightbuddy.data.TutorialProgressRepository
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.ManaColor
@@ -70,6 +71,11 @@ import com.guyteichman.mageknightbuddy.ui.components.NumberField
 import com.guyteichman.mageknightbuddy.ui.components.difficultyPillColor
 import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.components.swatch
+import com.guyteichman.mageknightbuddy.ui.tutorial.Tutorial
+import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialAction
+import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialDialog
+import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialKeys
+import com.guyteichman.mageknightbuddy.ui.tutorial.rememberScreenTutorialState
 import kotlinx.coroutines.launch
 
 /**
@@ -128,10 +134,19 @@ fun VolkareSetupFields(
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun VolkareAiScreen(repository: VolkareSessionRepository, onBack: () -> Unit) {
+fun VolkareAiScreen(
+    repository: VolkareSessionRepository,
+    tutorials: Map<String, Tutorial>,
+    tutorialProgress: TutorialProgressRepository,
+    onBack: () -> Unit,
+) {
     val viewModel: VolkareAiViewModel = viewModel(factory = VolkareAiViewModel.factory(repository))
     val scope = rememberCoroutineScope()
     val session = viewModel.session
+
+    // Volkare AI screen's tutorial (issue #161): auto-shows first visit, re-openable via the top bar.
+    val tutorial = rememberScreenTutorialState(TutorialKeys.VOLKARE, tutorials, tutorialProgress)
+    if (tutorial.isVisible) tutorial.tutorial?.let { TutorialDialog(it, onDismiss = tutorial::dismiss) }
 
     // Mirrors DummyPlayerScreen.kt's DummyPlayerAiScreen/ProxyPlayerScreen.kt's ProxyPlayerAiScreen
     // - see their own comments. Volkare's the one mode where tacticPickOrder(isVolkare = true, ...)
@@ -171,6 +186,7 @@ fun VolkareAiScreen(repository: VolkareSessionRepository, onBack: () -> Unit) {
                         RoundChip(round = session.round, turn = session.turnInRound, isDay = session.isDay)
                         Spacer(modifier = Modifier.width(8.dp))
                     }
+                    TutorialAction(onClick = tutorial::show)
                 },
             )
         },
@@ -260,7 +276,9 @@ fun VolkareAiScreen(repository: VolkareSessionRepository, onBack: () -> Unit) {
         }
     }
 
-    if (session != null && needsTacticPick) {
+    // Held back while the tutorial is open (issue #161) so a first-time player can read it before
+    // being made to pick a Tactic - otherwise the picker stacks on top and blocks the tutorial.
+    if (session != null && needsTacticPick && !tutorial.isVisible) {
         TacticPickerDialog(
             isDay = session.isDay,
             tacticState = session.tacticState,

@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
+import com.guyteichman.mageknightbuddy.data.TutorialProgressRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.PickOrder
@@ -68,6 +69,11 @@ import com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon
 import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.help.HelpButton
+import com.guyteichman.mageknightbuddy.ui.tutorial.Tutorial
+import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialAction
+import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialDialog
+import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialKeys
+import com.guyteichman.mageknightbuddy.ui.tutorial.rememberScreenTutorialState
 import kotlinx.coroutines.launch
 
 /**
@@ -125,6 +131,8 @@ private fun ProxyPlayerCard.objectiveLabel(): String = when (this) {
 fun ProxyPlayerAiScreen(
     repository: ProxyPlayerSessionRepository,
     fieldHelp: Map<String, FieldHelp>,
+    tutorials: Map<String, Tutorial>,
+    tutorialProgress: TutorialProgressRepository,
     onBack: () -> Unit
 ) {
     val viewModel: ProxyPlayerAiViewModel = viewModel(factory = ProxyPlayerAiViewModel.factory(repository))
@@ -132,6 +140,10 @@ fun ProxyPlayerAiScreen(
     val session = viewModel.session
     var showEndRoundDialog by remember { mutableStateOf(false) }
     var showSummary by remember { mutableStateOf(false) }
+
+    // Proxy Player AI screen's tutorial (issue #161): auto-shows first visit, re-openable via the top bar.
+    val tutorial = rememberScreenTutorialState(TutorialKeys.PROXY, tutorials, tutorialProgress)
+    if (tutorial.isVisible) tutorial.tutorial?.let { TutorialDialog(it, onDismiss = tutorial::dismiss) }
 
     // Mirrors DummyPlayerScreen.kt's DummyPlayerAiScreen - see its own comments for why this is
     // derived rather than a toggled boolean, and how the auto-pick effect below decides when the
@@ -166,6 +178,7 @@ fun ProxyPlayerAiScreen(
                         RoundChip(round = session.round, turn = session.turnInRound, isDay = session.isDay)
                         Spacer(modifier = Modifier.width(8.dp))
                     }
+                    TutorialAction(onClick = tutorial::show)
                 },
             )
         },
@@ -385,7 +398,9 @@ fun ProxyPlayerAiScreen(
         )
     }
 
-    if (session != null && needsTacticPick) {
+    // Held back while the tutorial is open (issue #161) so a first-time player can read it before
+    // being made to pick a Tactic - otherwise the picker stacks on top and blocks the tutorial.
+    if (session != null && needsTacticPick && !tutorial.isVisible) {
         TacticPickerDialog(
             isDay = session.isDay,
             tacticState = session.tacticState,

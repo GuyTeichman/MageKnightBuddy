@@ -1,0 +1,143 @@
+{
+  "setup": {
+    "title": "Dummy Player Setup",
+    "steps": [
+      {
+        "title": "What this tab is for",
+        "body": "This tab runs an automated opponent that paces your solo or cooperative game. It never plays the board for you: the Standard opponent simply paces the round, while Volkare and the Proxy Player also tell you how to move their figure and when they fight — which you carry out at the table."
+      },
+      {
+        "title": "First: Volkare or a Knight",
+        "body": "Choose Volkare — the Lost Legion antagonist, who has no Knight — or a Knight you aren't playing, which stands in as the opponent."
+      },
+      {
+        "title": "Then: Standard or Proxy Player",
+        "body": "If you picked a Knight, choose how richly to run it. Standard just flips cards to keep the game moving. Proxy Player (from Apocalypse Dragon) is a fuller opponent that chases objectives around the map."
+      },
+      {
+        "title": "Set the options and Start",
+        "body": "Toggle Cooperative play and whether the game starts at night, then tap Start."
+      },
+      {
+        "title": "Resuming a game",
+        "body": "The app autosaves after every action, so you can close it mid-game. Next time, the Restore Game button on this screen picks up exactly where you left off — deck, round, and log intact."
+      }
+    ]
+  },
+  "dummy": {
+    "title": "Dummy Player",
+    "steps": [
+      {
+        "title": "A pacing opponent",
+        "body": "The Dummy Player is a stand-in that races you through the rounds. It never fights or moves on the map — watching its deck shrink is how you gauge how much time you have left."
+      },
+      {
+        "title": "Tactics each round",
+        "body": "Each round opens with a Tactic draft for turn order. Pick your card in the popup — the app applies the correct pick order and Tactic removal for your specific scenario, so you never have to look those rules up."
+      },
+      {
+        "title": "Play Turn",
+        "body": "Tap Play Turn and the app plays the whole turn for you, flipping the Dummy Player's cards by your scenario's rules. You never track that yourself — just watch its deck shrink, because that shrinking deck is your clock."
+      },
+      {
+        "title": "Ending and preparing a round",
+        "body": "When its deck runs empty it announces End of the Round — everyone takes one last turn, then tap End Round. The app reshuffles its deck and swaps the offers for you; the dialog just asks which colour was removed from the Advanced Action offer and which from the Spell offer, so it can keep the deck right."
+      },
+      {
+        "title": "Undo anything",
+        "body": "Tapped the wrong thing? The undo arrow at the bottom-left reverts your last action, so mistakes are cheap."
+      },
+      {
+        "title": "Why the deck count matters",
+        "body": "Some scenarios (such as Solo Conquest) score you on how many cards are left in the Dummy Player's deck at the end — so keep an eye on the count in the header."
+      }
+    ]
+  },
+  "proxy": {
+    "title": "Proxy Player",
+    "steps": [
+      {
+        "title": "A richer opponent",
+        "body": "The Proxy Player, from Apocalypse Dragon, is a fuller opponent than the Standard Dummy Player: instead of just flipping cards, it actively chases objectives around the map. As with Volkare, the app narrates what it does; you resolve the real movement and combat at the table."
+      },
+      {
+        "title": "Tactics each round",
+        "body": "Each round opens with a Tactic draft for turn order. Pick your card in the popup — the app applies the pick order and Tactic removal your scenario uses, so you don't have to track them."
+      },
+      {
+        "title": "Objective cards",
+        "body": "Each turn it works toward an Objective Card drawn from its deck. The app tells you in plain words where that card's colour is headed — and there's a \"?\" next to it if you want the full breakdown."
+      },
+      {
+        "title": "Play Turn",
+        "body": "Tap Play Turn: if it already has an objective it adds a Shield token and flips 3 cards; otherwise it draws a new objective and flips 2 more. Crystals matching the last card's colour flip extra cards, just like the Dummy Player."
+      },
+      {
+        "title": "Movement points",
+        "body": "The app totals the objective's movement points for you — from the card type, its Shield tokens, and a Source-die bonus (including the gold die on days). Move its figure that many spaces toward its target."
+      },
+      {
+        "title": "Finishing an objective",
+        "body": "Keep tapping Play Turn while it travels; it piles on Shield tokens and edges toward its target. Once you resolve the objective at the table, tap Complete Objective to clear it."
+      },
+      {
+        "title": "Ending and preparing a round — and undo",
+        "body": "When its deck runs empty it announces End of the Round — everyone takes one last turn, then tap End Round. Just like the Dummy Player, the dialog asks which colour was removed from the Advanced Action offer and which from the Spell offer, so it can rebuild the deck; any unfinished objective is cleared for you. Tapped the wrong thing? The undo arrow at the bottom-left reverts your last action."
+      }
+    ]
+  },
+  "volkare": {
+    "title": "Volkare",
+    "steps": [
+      {
+        "title": "The Lost Legion antagonist",
+        "body": "Volkare replaces the Dummy Player in Volkare's Return and Volkare's Quest, racing you across the map. The app narrates each card he reveals; you move his figure and resolve any fight at the table."
+      },
+      {
+        "title": "Tactics each round",
+        "body": "Each round opens with a Tactic draft for turn order. Whatever your scenario, and whether you're playing solo or cooperatively, the app applies the right pick order and Tactic removal for you — so you never look those rules up."
+      },
+      {
+        "title": "One card per turn",
+        "body": "Volkare's deck is dealt once and never reshuffled. Each turn reveals a single card — tap Play Turn and the app tells you what it means: which way he moves, whether the Source die (one of the shared mana dice) is rerolled, or whether he attacks. Volkare never calls End of the Round himself, so when your own round ends, tap End Round to advance to the next one."
+      },
+      {
+        "title": "City Revealed (Return only)",
+        "body": "In Volkare's Return, flip the City Revealed switch once the city tile appears on the board. Before it's set, moves are narrated as fixed compass directions; after, as moving toward the city."
+      },
+      {
+        "title": "Deck's end — and undo",
+        "body": "In Volkare's Return an empty deck triggers Frenzy: every turn afterward is a double move, forever. In Volkare's Quest, his last move card means he reached the portal and you've lost the race. Tapped wrong? The undo arrow reverts your last action."
+      }
+    ]
+  },
+  "enemies": {
+    "title": "Enemies",
+    "steps": [
+      {
+        "title": "Replaces the token piles",
+        "body": "This tab stands in for the physical face-down enemy, ruin, and faction token piles. It's the real source of what each pile holds and what's been drawn, so it saves your progress for the whole game."
+      },
+      {
+        "title": "Drawing a token",
+        "body": "Tap a pile's face to draw one straight away. To draw several at once — even across different piles — set their steppers and then tap the Draw button in the bottom bar (it shows the running total). Each drawn token appears zoomed, and its \"?\" window explains any abilities. The app tracks no map and no combat — it just handles the draw; you fight the token at the table."
+      },
+      {
+        "title": "The Draw Log is your board memory",
+        "body": "Every draw is recorded in the Draw Log, newest first. Because the app models no board, this log is your only record of which enemies are still standing on which spaces — treat it as your memory of the table. Tap a single draw to jot a note on it (like 'keep, NE tile'), so the log remembers exactly where each enemy stands."
+      },
+      {
+        "title": "Marking defeats",
+        "body": "Tap the checkmark on a log entry to mark it Defeated once you beat it. Undefeated tokens stay \"on the board\" at the top; defeated ones drop into the pile's discard and are reshuffled back only once that pile runs out."
+      },
+      {
+        "title": "Choosing your tokens",
+        "body": "The Setup section, near the bottom, is where you pick which expansions' tokens are in play and toggle Draw with replacement. Because changing them rebuilds the piles and clears the log, they only take effect when you tap Apply & Reset."
+      },
+      {
+        "title": "Surveying a pile",
+        "body": "Tap a pile's count line to see which tokens remain — grouped by type, with counts, but never in draw order — handy for weighing your odds before you commit to a fight."
+      }
+    ]
+  }
+}
