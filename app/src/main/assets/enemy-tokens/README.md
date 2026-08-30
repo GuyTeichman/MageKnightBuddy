@@ -83,6 +83,18 @@ mean the physical tokens don't actually share one uniform back per color. Same c
 pipeline as the faces (512×512 JPEG, quality 85); no separate cross-check needed since the mod JSON
 already gives a single unambiguous URL per pile.
 
+## Post-processing
+
+The hexagonal Ruin art (`ruin_*.png` faces + `backs/ruin.png`) originally carried a ~16px baked-in
+black border - ~3.5% of the hexagon span, far heavier than the round enemy faces (no black ring) or
+the reward tiles' 1dp outline. Issue #284 thinned that ring to ~5px so the Enemy Picker grid reads
+consistently. Since the hexagon's shape *and* border both come from the PNG alpha (the `isHex` path
+in `EnemyTokenArt.kt` draws it with no Compose clip/border), the fix is in the bitmap, not code:
+`tools/thin_ruin_borders.py` erodes the opaque hexagon inward with an anti-aliased edge, trimming the
+outer part of the black ring. It's idempotent (measures each token's current border and skips any
+already thin enough), so re-running it - e.g. after adding new ruin art with the same heavy border -
+is safe and brings the new art in line too.
+
 ## Licensing
 
 All art is official WizKids / Vlaada Chvátil art, here via a fan-made Tabletop Simulator mod
