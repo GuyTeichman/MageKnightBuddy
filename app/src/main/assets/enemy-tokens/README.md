@@ -85,15 +85,12 @@ already gives a single unambiguous URL per pile.
 
 ## Post-processing
 
-The hexagonal Ruin art (`ruin_*.png` faces + `backs/ruin.png`) originally carried a ~16px baked-in
-black border - ~3.5% of the hexagon span, far heavier than the round enemy faces (no black ring) or
-the reward tiles' 1dp outline. Issue #284 thinned that ring to ~5px so the Enemy Picker grid reads
-consistently. Since the hexagon's shape *and* border both come from the PNG alpha (the `isHex` path
-in `EnemyTokenArt.kt` draws it with no Compose clip/border), the fix is in the bitmap, not code:
-`tools/thin_ruin_borders.py` erodes the opaque hexagon inward with an anti-aliased edge, trimming the
-outer part of the black ring. It's idempotent (measures each token's current border and skips any
-already thin enough), so re-running it - e.g. after adding new ruin art with the same heavy border -
-is safe and brings the new art in line too.
+The hexagonal Ruin art (`ruin_*.png` faces + `backs/ruin.png`) originally carried a heavy ~16px
+baked-in black border - far thicker than the round enemy faces (no black ring) or the reward tiles'
+1dp outline - because the hexagon's shape *and* its outline both come from the PNG alpha (the `isHex`
+path in `EnemyTokenArt.kt` draws it with no Compose clip/border), so the border can only be changed
+in the bitmap, not in code. Issue #284 trimmed it to ~5px with `tools/thin_ruin_borders.py`; see that
+script's docstring for how it works and how to re-run it (it's idempotent).
 
 ## Licensing
 
