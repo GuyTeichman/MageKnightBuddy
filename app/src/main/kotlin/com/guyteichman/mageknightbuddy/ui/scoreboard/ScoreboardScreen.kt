@@ -240,19 +240,18 @@ private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
         ) {
             KnightFace(knight = session.knight, size = 40.dp)
         }
-        // Score, top-end, prominent.
-        Text(
-            text = session.score.toString(),
-            color = CARD_INK,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.align(Alignment.TopEnd).padding(top = 14.dp, end = 16.dp),
+        // Won/Lost pill, top-end - the graphic markers (avatar + pill) sit along the top edge,
+        // the text (names + score) along the bottom, so each row reads as one kind of thing
+        // (author review of #286).
+        OutcomePill(
+            outcome = session.outcome,
+            modifier = Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 12.dp),
         )
-        // Scenario + knight name, bottom-start. end padding leaves room for the pill.
+        // Scenario + knight name, bottom-start. end padding leaves room for the score.
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 14.dp, bottom = 12.dp, end = 96.dp),
+                .padding(start = 14.dp, bottom = 12.dp, end = 72.dp),
         ) {
             Text(
                 session.scenario.displayName,
@@ -270,9 +269,13 @@ private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        OutcomePill(
-            outcome = session.outcome,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 12.dp),
+        // Score, bottom-end, prominent - paired with the names along the bottom text row.
+        Text(
+            text = session.score.toString(),
+            color = CARD_INK,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 12.dp, end = 16.dp),
         )
     }
 }
@@ -374,11 +377,11 @@ private fun ScoreboardDetailHeader(session: ScoringSession) {
         ) {
             KnightFace(knight = session.knight, size = 52.dp)
         }
-        Text(
-            text = session.score.toString(),
-            color = CARD_INK,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
+        // Won/Lost pill top-end (paired with the avatar along the top graphic row), the score
+        // bottom-end (paired with the scenario name along the bottom text row) - the same
+        // top-graphics / bottom-text split as the list card (author review of #286).
+        OutcomePill(
+            outcome = session.outcome,
             modifier = Modifier.align(Alignment.TopEnd).padding(top = 16.dp, end = 20.dp),
         )
         Text(
@@ -390,11 +393,14 @@ private fun ScoreboardDetailHeader(session: ScoringSession) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 16.dp, bottom = 16.dp, end = 100.dp),
+                .padding(start = 16.dp, bottom = 16.dp, end = 88.dp),
         )
-        OutcomePill(
-            outcome = session.outcome,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp),
+        Text(
+            text = session.score.toString(),
+            color = CARD_INK,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 16.dp, end = 20.dp),
         )
     }
 }
