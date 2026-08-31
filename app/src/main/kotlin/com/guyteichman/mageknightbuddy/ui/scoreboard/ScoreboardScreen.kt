@@ -1,16 +1,21 @@
 package com.guyteichman.mageknightbuddy.ui.scoreboard
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -20,7 +25,9 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -28,7 +35,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,7 +53,12 @@ import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.domain.Outcome
 import com.guyteichman.mageknightbuddy.domain.ScoringSession
 import com.guyteichman.mageknightbuddy.domain.breakdown
+import com.guyteichman.mageknightbuddy.ui.components.KnightFace
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
+import com.guyteichman.mageknightbuddy.ui.scenarioart.ART_FRAME_WIDTH
+import com.guyteichman.mageknightbuddy.ui.scenarioart.ScenarioArt
+import com.guyteichman.mageknightbuddy.ui.scenarioart.artFrameColor
+import com.guyteichman.mageknightbuddy.ui.scenarioart.scenarioArtFrame
 import com.guyteichman.mageknightbuddy.ui.scorecalculator.ScoreCalculatorScreen
 import com.guyteichman.mageknightbuddy.ui.settings.SettingsAction
 
@@ -62,7 +77,7 @@ private const val SCOREBOARD_SCORE_ROUTE = "scoreboard_score"
 /**
  * Root composable for the Scoreboard tab: shows the list of saved [ScoringSession]s and hosts,
  * inside its own nested [NavHost], both the full-screen per-category score breakdown (reached by
- * tapping a row) and the Score Calculator wizard (reached via the "Score new scenario" FAB). The
+ * tapping a card) and the Score Calculator wizard (reached via the "Score new scenario" FAB). The
  * nested [NavHost] is separate from the app's top-level tab navigation, so pushing the breakdown
  * or the wizard only affects this tab's own back stack. That keeps the tab's navigation state
  * independent of, and unaffected by, switching to other tabs and back, rather than everything
@@ -117,7 +132,7 @@ fun ScoreboardTab(
                 repository = repository,
                 draftRepository = draftRepository,
                 fieldHelp = fieldHelp,
-                // On a successful save, pop back to the list, where the new row appears at the
+                // On a successful save, pop back to the list, where the new card appears at the
                 // top. System back also returns here on its own, since the wizard sits on this
                 // nested NavHost's back stack above the list.
                 onDone = { nestedNavController.popBackStack() },
@@ -127,7 +142,7 @@ fun ScoreboardTab(
 }
 
 // The list screen: a FAB to start a new scoring session, plus either an empty-state message
-// or the table of saved sessions (header row + one row per session).
+// or the list of per-session art cards.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScoreboardListScreen(
@@ -158,83 +173,141 @@ private fun ScoreboardListScreen(
                 Text("No scored games yet")
             }
         } else {
-            // LazyColumn only composes/renders the rows currently on screen, unlike Column,
-            // which would lay out every row up front - matters once the session list grows.
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                item { ScoreboardHeaderRow() }
+            // LazyColumn only composes/renders the cards currently on screen, unlike Column,
+            // which would lay out every card up front - matters once the session list grows.
+            // contentPadding + spacedBy give each card breathing room; there's no header row now
+            // that each card carries its own scenario/knight/score/outcome (issue #286).
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 // itemsIndexed hands back each item together with its position in the list,
-                // which is needed here to pass the right index on to onRowClick.
-                itemsIndexed(sessions) { index, session ->
-                    ScoreboardRow(session = session, onClick = { onRowClick(index) })
+                // which is needed here to pass the right index on to onRowClick. key by each
+                // session's timestamp (its stable identity - ScoringSession has no id field) so
+                // prepending a new session doesn't re-key every card by position and force
+                // KnightFace/ScenarioArt to re-decode into shifted slots.
+                itemsIndexed(sessions, key = { _, session -> session.playedAt.toEpochMilli() }) { index, session ->
+                    ScoreboardCard(session = session, onClick = { onRowClick(index) })
                 }
             }
         }
     }
 }
 
-// Bold column-title row (Scenario / Knight / Score / Outcome) drawn above the session list.
-@Composable
-private fun ScoreboardHeaderRow() {
-    Column {
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            // weight() on every Text here splits the Row's width across the four columns
-            // (RowScope.weight); Scenario gets more than the others since its names run longer
-            // (e.g. "Against the Apocalypse", "Solo Conquest Challenge") than a Knight name, the
-            // score digits, or Won/Lost.
-            Text("Scenario", modifier = Modifier.weight(2f), fontWeight = FontWeight.Bold)
-            Text("Knight", modifier = Modifier.weight(0.9f), fontWeight = FontWeight.Bold)
-            Text("Score", modifier = Modifier.weight(0.6f), fontWeight = FontWeight.Bold)
-            Text("Outcome", modifier = Modifier.weight(0.8f), fontWeight = FontWeight.Bold)
-        }
-        HorizontalDivider()
-    }
-}
-
 // Fixed hex colors, not MaterialTheme.colorScheme ones: Material3 has no built-in "success"/
-// "failure" semantic color slot, so win/loss can't be expressed in theme terms. These reuse
-// the same green/red hex values as CardColor.swatch in DummyPlayerScreen.kt for visual
-// consistency, at a low alpha so the row's text keeps full contrast in both light and dark theme.
-private val WON_ROW_TINT = Color(0xFF3E7C4A).copy(alpha = 0.12f)
-private val LOST_ROW_TINT = Color(0xFFB5423A).copy(alpha = 0.12f)
+// "failure" semantic color slot, so win/loss can't be expressed in theme terms. These are the
+// same green/red hex values the old row tint (and CardColor.swatch in DummyPlayerScreen.kt) used,
+// here at full strength for the Won/Lost pill and as a low-alpha scrim over the art.
+private val WON_COLOR = Color(0xFF3E7C4A)
+private val LOST_COLOR = Color(0xFFB5423A)
 
-// One row per saved session; tapping anywhere in the row triggers onClick (wired up by the
-// caller to navigate to that session's breakdown screen). The row's background is tinted by
-// outcome (green-ish for a win, red-ish for a loss); the divider below is left untinted so the
-// color reads as a row highlight rather than bleeding into the row separators.
+/** The outcome wash laid over a card's art - green for a win, red for a loss, kept faint so the art
+ *  still reads through it (the solid [OutcomePill] carries the unambiguous win/loss signal). */
+private fun outcomeTint(outcome: Outcome): Color =
+    (if (outcome == Outcome.WON) WON_COLOR else LOST_COLOR).copy(alpha = 0.28f)
+
+/** Cream ink for text/icons over the art, legible on any scenario's darkened background. */
+private val CARD_INK = Color(0xFFF6ECDC)
+
+private val CARD_SHAPE = RoundedCornerShape(14.dp)
+
+/**
+ * One saved session as a full-width art card (issue #286): the scenario's background art with an
+ * outcome wash, the knight's face as a circular avatar, the score, and a solid Won/Lost pill.
+ * Tapping anywhere opens that session's breakdown (the caller wires [onClick] to navigation).
+ */
 @Composable
-private fun ScoreboardRow(session: ScoringSession, onClick: () -> Unit) {
-    val outcomeTint = if (session.outcome == Outcome.WON) WON_ROW_TINT else LOST_ROW_TINT
-    Column {
-        Row(
+private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
+    ScenarioArt(
+        scenario = session.scenario,
+        // ScenarioArt layers this tint above the art + its own scrim but below the content below.
+        outcomeTint = outcomeTint(session.outcome),
+        shape = CARD_SHAPE,
+        // Thin dark outline so the card reads as a framed tile, matching the picker (issue #287).
+        border = scenarioArtFrame(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(116.dp)
+            // clip before clickable so the tap ripple is bounded to the rounded card shape (the
+            // clip inside ScenarioArt only bounds the art, not this externally-supplied ripple).
+            .clip(CARD_SHAPE)
+            .clickable(onClickLabel = "View breakdown", role = Role.Button, onClick = onClick),
+    ) {
+        // Knight avatar, top-start: a thin ring hugging the face so it reads as an avatar over busy
+        // art. Uses the shared theme-aware artFrameColor() - same colour and 1.dp weight as the card
+        // frame and pill - so every frame in the set matches and stays visible in both themes.
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(outcomeTint)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .align(Alignment.TopStart)
+                .padding(12.dp)
+                .border(ART_FRAME_WIDTH, artFrameColor(), CircleShape),
         ) {
-            // maxLines/overflow guard the two name columns against wrapping to a second line on
-            // the longest names (e.g. "Solo Conquest Challenge" paired with "Braevalar") - without
-            // it, one wrapped cell would make the row taller than its siblings and look lopsided.
+            KnightFace(knight = session.knight, size = 40.dp)
+        }
+        // Won/Lost pill, top-end - the graphic markers (avatar + pill) sit along the top edge,
+        // the text (names + score) along the bottom, so each row reads as one kind of thing
+        // (author review of #286).
+        OutcomePill(
+            outcome = session.outcome,
+            modifier = Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 12.dp),
+        )
+        // Scenario + knight name, bottom-start. end padding leaves room for the (now larger) score.
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 14.dp, bottom = 12.dp, end = 84.dp),
+        ) {
             Text(
                 session.scenario.displayName,
-                modifier = Modifier.weight(2f),
+                color = CARD_INK,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 session.knight.displayName,
-                modifier = Modifier.weight(0.9f),
+                color = CARD_INK.copy(alpha = 0.85f),
+                style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(session.score.toString(), modifier = Modifier.weight(0.6f))
-            Text(if (session.outcome == Outcome.WON) "Won" else "Lost", modifier = Modifier.weight(0.8f))
         }
-        HorizontalDivider()
+        // Score, bottom-end, sized up to displaySmall so its height reads level with the two-line
+        // name block on the left rather than sitting small and low (author review of #286).
+        Text(
+            text = session.score.toString(),
+            color = CARD_INK,
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 10.dp, end = 16.dp),
+        )
     }
 }
 
-// Full-screen per-category score breakdown for one session, pushed by tapping a row in the
+/** A solid Won/Lost chip in the outcome color - the unambiguous win/loss marker over the art wash. */
+@Composable
+private fun OutcomePill(outcome: Outcome, modifier: Modifier = Modifier) {
+    val won = outcome == Outcome.WON
+    Surface(
+        color = if (won) WON_COLOR else LOST_COLOR,
+        shape = RoundedCornerShape(50),
+        // Same thin dark outline as the art frame, so the pill reads as part of the framed set.
+        border = scenarioArtFrame(),
+        modifier = modifier,
+    ) {
+        Text(
+            text = if (won) "Won" else "Lost",
+            color = Color.White,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+        )
+    }
+}
+
+// Full-screen per-category score breakdown for one session, pushed by tapping a card in the
 // list screen; the back arrow in the top bar pops this off the nested NavHost's back stack.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -265,6 +338,10 @@ private fun ScoreboardDetailsScreen(session: ScoringSession, onBack: () -> Unit)
                 // the scroll position would reset on every recomposition.
                 .verticalScroll(rememberScrollState()),
         ) {
+            // Art header banner (issue #286): the same scenario art + avatar + score/outcome as the
+            // list card, so the breakdown opens with the game it belongs to. The table below it is
+            // left untouched. It scrolls with the content rather than pinning under the top bar.
+            ScoreboardDetailHeader(session = session)
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Text("Category", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
                 Text("Score", fontWeight = FontWeight.Bold)
@@ -282,5 +359,56 @@ private fun ScoreboardDetailsScreen(session: ScoringSession, onBack: () -> Unit)
                 Text(session.score.toString(), fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+/**
+ * The breakdown screen's header banner: a taller version of [ScoreboardCard]'s art treatment
+ * (scenario art + outcome wash + knight avatar + scenario name + score + Won/Lost pill), full-bleed
+ * across the top of the screen (a rectangular clip, not the card's rounded one). The knight's name
+ * isn't repeated here - it's already the top-bar title, plus the avatar.
+ */
+@Composable
+private fun ScoreboardDetailHeader(session: ScoringSession) {
+    ScenarioArt(
+        scenario = session.scenario,
+        outcomeTint = outcomeTint(session.outcome),
+        shape = RectangleShape,
+        modifier = Modifier.fillMaxWidth().height(184.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp)
+                // Same shared theme-aware ring as the list card's avatar.
+                .border(ART_FRAME_WIDTH, artFrameColor(), CircleShape),
+        ) {
+            KnightFace(knight = session.knight, size = 52.dp)
+        }
+        // Won/Lost pill top-end (paired with the avatar along the top graphic row), the score
+        // bottom-end (paired with the scenario name along the bottom text row) - the same
+        // top-graphics / bottom-text split as the list card (author review of #286).
+        OutcomePill(
+            outcome = session.outcome,
+            modifier = Modifier.align(Alignment.TopEnd).padding(top = 16.dp, end = 20.dp),
+        )
+        Text(
+            text = session.scenario.displayName,
+            color = CARD_INK,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 16.dp, bottom = 16.dp, end = 88.dp),
+        )
+        Text(
+            text = session.score.toString(),
+            color = CARD_INK,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 16.dp, end = 20.dp),
+        )
     }
 }
