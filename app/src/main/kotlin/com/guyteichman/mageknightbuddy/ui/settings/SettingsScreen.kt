@@ -283,8 +283,7 @@ fun SettingsScreen(
             // art (a courtesy credit - no attribution legally required), so they're thanked here.
             Text("Scenario backgrounds", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Each scenario is illustrated with a public-domain painting (and one CC0 museum " +
-                    "scan). Attribution isn't legally required, but with thanks to the artists:",
+                "Each scenario is accompanied by a public-domain painting. Thanks to the artists:",
                 style = MaterialTheme.typography.bodyMedium,
             )
 
