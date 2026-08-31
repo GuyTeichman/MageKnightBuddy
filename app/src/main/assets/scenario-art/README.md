@@ -58,7 +58,7 @@ files were grabbed from.
 | The Fractured Lands | Aurora Borealis (1865) | Frederic Edwin Church | Public domain |
 | Life and Death | Cotopaxi (1862) | Frederic Edwin Church | Public domain |
 | The Lost Relic | The Course of Empire — Desolation (1836) | Thomas Cole | Public domain |
-| Against the Apocalypse | A Capriccio with the Pyramid of Cestius (c. 1800) | Hubert Robert | Public domain (via Artvee) |
+| Against the Apocalypse | Capriccio with the Pyramid of Maupertuis (1798) | Hubert Robert | Public domain (via Sotheby's) |
 | Solo Conquest Challenge | Dolbadern Castle (1800) | J. M. W. Turner | Public domain |
 | Volkare's Quest | Illustration for *The Boy's King Arthur* (1917) | N. C. Wyeth | Public domain (via Artvee) |
 | Volkare's Return | Mage Knight: Lost Legion expansion art | WizKids | **© WizKids** (ADR-0010) |

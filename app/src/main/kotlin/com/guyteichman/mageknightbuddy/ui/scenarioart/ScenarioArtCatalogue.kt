@@ -169,9 +169,9 @@ object ScenarioArtCatalogue {
         ScenarioArtEntry(
             scenarioId = Scenario.AgainstTheApocalypse.id,
             filename = "against_the_apocalypse.jpg",
-            workTitle = "A Capriccio with the Pyramid of Cestius (c. 1800)",
+            workTitle = "Capriccio with the Pyramid of Maupertuis (1798)",
             author = "Hubert Robert",
-            sourceUrl = "https://artvee.com/dl/a-capriccio-with-the-pyramid-of-cestius-and-travellers-in-an-italianate-landscape/",
+            sourceUrl = "https://www.sothebys.com/en/buy/auction/2025/elegance-wonder-masterpieces-from-the-collection-of-jordan-and-thomas-a-saunders-iii/capriccio-with-the-pyramid-of-maupertuis",
             license = ArtLicense.PUBLIC_DOMAIN,
         ),
         ScenarioArtEntry(
