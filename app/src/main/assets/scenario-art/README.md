@@ -35,8 +35,9 @@ avoided by default (cropping/scrim makes an adaptation that must carry ShareAlik
 
 **Two knowing exceptions** reuse official © WizKids *Mage Knight* art — *Against the Dragon*
 (Apocalypse Dragon) and *Volkare's Return* (Lost Legion) — where no clean image reads as
-unambiguously as the real antagonist. Both are lightly colour-graded (muted, warmed, softened, with
-a little grain) so they sit alongside the painted set. These are marked `license = OFFICIAL` and fall under ADR-0010's
+unambiguously as the real antagonist. Both are put through an oil-painting (brushstroke) pass and
+lightly colour-graded (muted, warmed, softened, with a little grain) so they sit alongside the
+painted set. These are marked `license = OFFICIAL` and fall under ADR-0010's
 risk-accepted stance (attribution + non-affiliation disclaimer in Settings → Credits), not the clean
 scope above. Verify each image's licence at its `sourceUrl` before adding it.
 
