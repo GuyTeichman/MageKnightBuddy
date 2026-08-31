@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -179,8 +180,11 @@ private fun ScoreboardListScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // itemsIndexed hands back each item together with its position in the list,
-                // which is needed here to pass the right index on to onRowClick.
-                itemsIndexed(sessions) { index, session ->
+                // which is needed here to pass the right index on to onRowClick. key by each
+                // session's timestamp (its stable identity - ScoringSession has no id field) so
+                // prepending a new session doesn't re-key every card by position and force
+                // KnightFace/ScenarioArt to re-decode into shifted slots.
+                itemsIndexed(sessions, key = { _, session -> session.playedAt.toEpochMilli() }) { index, session ->
                     ScoreboardCard(session = session, onClick = { onRowClick(index) })
                 }
             }
@@ -220,7 +224,10 @@ private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(116.dp)
-            .clickable(onClick = onClick),
+            // clip before clickable so the tap ripple is bounded to the rounded card shape (the
+            // clip inside ScenarioArt only bounds the art, not this externally-supplied ripple).
+            .clip(CARD_SHAPE)
+            .clickable(onClickLabel = "View breakdown", role = Role.Button, onClick = onClick),
     ) {
         // Knight avatar, top-start, ringed in cream so it reads as an avatar over busy art. The
         // ring is a bordered box with 2.dp inner padding, so the circle sits inside the ring.
@@ -346,8 +353,9 @@ private fun ScoreboardDetailsScreen(session: ScoringSession, onBack: () -> Unit)
 
 /**
  * The breakdown screen's header banner: a taller version of [ScoreboardCard]'s art treatment
- * (scenario art + outcome wash + knight avatar + scenario/knight names + score + Won/Lost pill),
- * full-bleed across the top of the screen (a rectangular clip, not the card's rounded one).
+ * (scenario art + outcome wash + knight avatar + scenario name + score + Won/Lost pill), full-bleed
+ * across the top of the screen (a rectangular clip, not the card's rounded one). The knight's name
+ * isn't repeated here - it's already the top-bar title, plus the avatar.
  */
 @Composable
 private fun ScoreboardDetailHeader(session: ScoringSession) {
@@ -373,20 +381,17 @@ private fun ScoreboardDetailHeader(session: ScoringSession) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.TopEnd).padding(top = 16.dp, end = 20.dp),
         )
-        Column(
+        Text(
+            text = session.scenario.displayName,
+            color = CARD_INK,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(start = 16.dp, bottom = 16.dp, end = 100.dp),
-        ) {
-            Text(
-                session.scenario.displayName,
-                color = CARD_INK,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        )
         OutcomePill(
             outcome = session.outcome,
             modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp),
