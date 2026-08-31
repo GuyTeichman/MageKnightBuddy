@@ -18,14 +18,14 @@ second of card height):
 
 | Knight    | cx    | cy    | half  |
 |-----------|-------|-------|-------|
-| tovak     | 0.67  | 0.179 | 0.19  |
-| goldyx    | 0.70  | 0.229 | 0.21  |
+| tovak     | 0.66  | 0.185 | 0.225 |
+| goldyx    | 0.68  | 0.225 | 0.245 |
 | norowas   | 0.70  | 0.250 | 0.215 |
 | wolfhawk  | 0.68  | 0.193 | 0.19  |
 | arythea   | 0.66  | 0.186 | 0.18  |
-| krang     | 0.68  | 0.336 | 0.22  |
-| braevalar | 0.69  | 0.271 | 0.235 |
-| coral     | 0.70  | 0.229 | 0.17  |
+| krang     | 0.67  | 0.330 | 0.25  |
+| braevalar | 0.68  | 0.265 | 0.26  |
+| coral     | 0.70  | 0.205 | 0.21  |
 
 To regenerate, re-run the Pillow crop script with these boxes against the `knight-cards/` sources and
 eyeball each output (the boxes were tuned by eye, so a source change needs a re-check).
