@@ -55,8 +55,10 @@ import com.guyteichman.mageknightbuddy.domain.ScoringSession
 import com.guyteichman.mageknightbuddy.domain.breakdown
 import com.guyteichman.mageknightbuddy.ui.components.KnightFace
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
+import com.guyteichman.mageknightbuddy.ui.scenarioart.ART_FRAME_WIDTH
 import com.guyteichman.mageknightbuddy.ui.scenarioart.ScenarioArt
-import com.guyteichman.mageknightbuddy.ui.scenarioart.ScenarioArtFrame
+import com.guyteichman.mageknightbuddy.ui.scenarioart.artFrameColor
+import com.guyteichman.mageknightbuddy.ui.scenarioart.scenarioArtFrame
 import com.guyteichman.mageknightbuddy.ui.scorecalculator.ScoreCalculatorScreen
 import com.guyteichman.mageknightbuddy.ui.settings.SettingsAction
 
@@ -223,7 +225,7 @@ private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
         outcomeTint = outcomeTint(session.outcome),
         shape = CARD_SHAPE,
         // Thin dark outline so the card reads as a framed tile, matching the picker (issue #287).
-        border = ScenarioArtFrame,
+        border = scenarioArtFrame(),
         modifier = Modifier
             .fillMaxWidth()
             .height(116.dp)
@@ -232,14 +234,14 @@ private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
             .clip(CARD_SHAPE)
             .clickable(onClickLabel = "View breakdown", role = Role.Button, onClick = onClick),
     ) {
-        // Knight avatar, top-start. A thin cream ring hugging the face reads as an avatar over busy
-        // art; kept light (not the dark art frame) so it still separates on dark scenarios, but
-        // slimmed to 1.dp to sit at the same weight as the new frames (author review of #286).
+        // Knight avatar, top-start: a thin ring hugging the face so it reads as an avatar over busy
+        // art. Uses the shared theme-aware artFrameColor() - same colour and 1.dp weight as the card
+        // frame and pill - so every frame in the set matches and stays visible in both themes.
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(12.dp)
-                .border(1.dp, CARD_INK, CircleShape),
+                .border(ART_FRAME_WIDTH, artFrameColor(), CircleShape),
         ) {
             KnightFace(knight = session.knight, size = 40.dp)
         }
@@ -292,7 +294,7 @@ private fun OutcomePill(outcome: Outcome, modifier: Modifier = Modifier) {
         color = if (won) WON_COLOR else LOST_COLOR,
         shape = RoundedCornerShape(50),
         // Same thin dark outline as the art frame, so the pill reads as part of the framed set.
-        border = ScenarioArtFrame,
+        border = scenarioArtFrame(),
         modifier = modifier,
     ) {
         Text(
@@ -378,8 +380,8 @@ private fun ScoreboardDetailHeader(session: ScoringSession) {
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(16.dp)
-                // Slim 1.dp cream ring, matching the list card's avatar.
-                .border(1.dp, CARD_INK, CircleShape),
+                // Same shared theme-aware ring as the list card's avatar.
+                .border(ART_FRAME_WIDTH, artFrameColor(), CircleShape),
         ) {
             KnightFace(knight = session.knight, size = 52.dp)
         }
