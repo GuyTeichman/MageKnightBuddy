@@ -46,17 +46,23 @@ private val PLACEHOLDER_TEXT = Color(0xFFF3E7D3)
 
 private val DEFAULT_SHAPE = RoundedCornerShape(12.dp)
 
-/**
- * A thin dark outline framing the art (issue #286/#287 review feedback): echoes the enemy-token /
- * reward-token art outline (`RewardTokenBorder`) so a scenario card reads as a framed tile rather
- * than bleeding into the page background. [ScenarioArtFrame] is the ready-made [BorderStroke];
- * [ART_FRAME_COLOR]/[ART_FRAME_WIDTH] are exposed on their own so sibling chrome that isn't a
- * [ScenarioArt] - the scoreboard's Won/Lost pill and knight-avatar ring - can match the same
- * weight and colour. `internal` so `ScoreboardScreen` (a different package) can reuse them.
- */
+/** Width of the thin frame drawn around scenario art and its sibling chrome. */
 internal val ART_FRAME_WIDTH = 1.dp
-internal val ART_FRAME_COLOR = Color.Black.copy(alpha = 0.5f)
-internal val ScenarioArtFrame = BorderStroke(ART_FRAME_WIDTH, ART_FRAME_COLOR)
+
+/**
+ * The frame colour (issue #286/#287 review), resolved from the theme so it flips with dark/light:
+ * MaterialTheme's `onSurface` is near-black on a light surface and near-white on a dark one, so a
+ * low-alpha tint of it draws a dark outline in light mode and a light one in dark mode - staying
+ * visible in both (a single fixed dark outline vanished against the dark-theme background). Exposed
+ * so the scoreboard's Won/Lost pill and knight-avatar ring share the exact same colour, echoing the
+ * enemy/reward-token art outline. `internal` so `ScoreboardScreen` (a different package) can reuse it.
+ */
+@Composable
+internal fun artFrameColor(): Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+
+/** The standard [ScenarioArt] frame as a ready-made [BorderStroke] (see [artFrameColor]). */
+@Composable
+internal fun scenarioArtFrame(): BorderStroke = BorderStroke(ART_FRAME_WIDTH, artFrameColor())
 
 /**
  * Draws a [Scenario]'s background art with render-time cohesion, so a set of images from different
@@ -77,7 +83,7 @@ internal val ScenarioArtFrame = BorderStroke(ART_FRAME_WIDTH, ART_FRAME_COLOR)
  *
  * @param outcomeTint an optional full-bleed colour wash over the art (e.g. win/loss tint); null for none.
  * @param shape the clip shape for the whole card (defaults to a rounded rectangle).
- * @param border an optional thin outline drawn at the [shape]'s edge (pass [ScenarioArtFrame] for the
+ * @param border an optional thin outline drawn at the [shape]'s edge (pass [scenarioArtFrame] for the
  *   standard framed-tile look); null for a frameless, full-bleed image (e.g. a full-width banner).
  */
 @Composable

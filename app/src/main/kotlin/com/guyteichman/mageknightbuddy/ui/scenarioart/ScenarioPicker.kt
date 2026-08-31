@@ -99,7 +99,7 @@ internal fun ScenarioPickerField(
         ScenarioArt(
             scenario = selected,
             shape = PICKER_SHAPE,
-            border = ScenarioArtFrame,
+            border = scenarioArtFrame(),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(72.dp)
@@ -162,7 +162,7 @@ private fun ScenarioSheetRow(scenario: Scenario, isSelected: Boolean, onClick: (
     ScenarioArt(
         scenario = scenario,
         shape = PICKER_SHAPE,
-        border = ScenarioArtFrame,
+        border = scenarioArtFrame(),
         modifier = Modifier
             .fillMaxWidth()
             .height(84.dp)
