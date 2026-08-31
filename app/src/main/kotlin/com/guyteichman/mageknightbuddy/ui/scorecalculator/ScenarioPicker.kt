@@ -19,19 +19,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.ui.scenarioart.ScenarioArt
+import kotlinx.coroutines.launch
 
 /** The rounded shape shared by the collapsed field and the sheet rows, so they read as one family. */
 private val PICKER_SHAPE = RoundedCornerShape(12.dp)
@@ -62,6 +66,15 @@ internal fun ScenarioPickerField(
     // rememberSaveable keeps it across rotation; a Boolean is Parcelable-safe (see workflow.md's
     // saved-state note), so this survives process death without needing a proxy.
     var showSheet by rememberSaveable { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+    // A scope tied to this composition, used to play the sheet's hide animation before removing it
+    // from composition (see dismissSheet) rather than letting `showSheet = false` snap it shut.
+    val scope = rememberCoroutineScope()
+
+    // Animate the sheet closed, then drop it from composition once it's fully hidden.
+    fun dismissSheet() {
+        scope.launch { sheetState.hide() }.invokeOnCompletion { if (!sheetState.isVisible) showSheet = false }
+    }
 
     // Label-above-control layout, matching LabelPillPicker so this field lines up with the wizard's
     // other Setup fields (spacedBy(4.dp) between the label and the banner).
@@ -73,14 +86,17 @@ internal fun ScenarioPickerField(
         )
         // The collapsed field: the current scenario's art as a short banner with its name and a
         // dropdown chevron overlaid. clip() before clickable() bounds the tap ripple to the rounded
-        // shape. The trailing BoxScope lambda is ScenarioArt's overlay slot (drawn above the scrim).
+        // shape; the same shape is handed to ScenarioArt so the art clip can't drift from it. The
+        // trailing BoxScope lambda is ScenarioArt's overlay slot (drawn above the scrim); the
+        // button role + onClickLabel tell TalkBack this opens the picker.
         ScenarioArt(
             scenario = selected,
+            shape = PICKER_SHAPE,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(72.dp)
                 .clip(PICKER_SHAPE)
-                .clickable { showSheet = true },
+                .clickable(onClickLabel = "Choose a scenario", role = Role.Button) { showSheet = true },
         ) {
             Text(
                 text = selected.displayName,
@@ -100,7 +116,7 @@ internal fun ScenarioPickerField(
     }
 
     if (showSheet) {
-        ModalBottomSheet(onDismissRequest = { showSheet = false }) {
+        ModalBottomSheet(onDismissRequest = { showSheet = false }, sheetState = sheetState) {
             Text(
                 "Choose a scenario",
                 style = MaterialTheme.typography.titleLarge,
@@ -119,7 +135,7 @@ internal fun ScenarioPickerField(
                         isSelected = scenario == selected,
                         onClick = {
                             onSelected(scenario)
-                            showSheet = false
+                            dismissSheet()
                         },
                     )
                 }
@@ -136,11 +152,12 @@ internal fun ScenarioPickerField(
 private fun ScenarioSheetRow(scenario: Scenario, isSelected: Boolean, onClick: () -> Unit) {
     ScenarioArt(
         scenario = scenario,
+        shape = PICKER_SHAPE,
         modifier = Modifier
             .fillMaxWidth()
             .height(84.dp)
             .clip(PICKER_SHAPE)
-            .clickable { onClick() }
+            .clickable(onClickLabel = "Select scenario", role = Role.Button, onClick = onClick)
             // A primary border ringing the card marks the current pick; unselected rows get none.
             // `.then(...)` conditionally chains the border only when selected (Modifier is the no-op).
             .then(
