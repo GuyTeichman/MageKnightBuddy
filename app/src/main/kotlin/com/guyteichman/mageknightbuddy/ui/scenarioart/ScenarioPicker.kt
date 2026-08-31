@@ -1,4 +1,4 @@
-package com.guyteichman.mageknightbuddy.ui.scorecalculator
+package com.guyteichman.mageknightbuddy.ui.scenarioart
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,7 +34,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.guyteichman.mageknightbuddy.domain.Scenario
-import com.guyteichman.mageknightbuddy.ui.scenarioart.ScenarioArt
 import kotlinx.coroutines.launch
 
 /** The rounded shape shared by the collapsed field and the sheet rows, so they read as one family. */
@@ -47,11 +46,18 @@ private val PICKER_SHAPE = RoundedCornerShape(12.dp)
 private val OVERLAY_INK = Color(0xFFF3E7D3)
 
 /**
- * The Setup page's Scenario picker (issue #287): an art-forward replacement for the plain
- * [com.guyteichman.mageknightbuddy.ui.components.LabeledDropdown]. The collapsed field shows the
- * current scenario's background art with its name; tapping it opens a modal bottom sheet listing
- * every scenario as an art banner. Only the Scenario picker goes art-forward - the Knight picker
- * stays a LabeledDropdown - because this is where the sourced scenario art (issue #288) lives.
+ * An art-forward Scenario picker (issue #287): a replacement for a plain
+ * [com.guyteichman.mageknightbuddy.ui.components.LabeledDropdown] wherever a [Scenario] is chosen.
+ * The collapsed field shows the selected scenario's background art with its name; tapping it opens a
+ * modal bottom sheet listing [options] as art banners. Lives in `scenarioart` (not a single feature
+ * package) because it's used from several screens: the Score Calculator Setup page and the Dummy
+ * Player setup's scenario pickers (the coop Tactic-Scenario and Volkare Return/Quest fields).
+ *
+ * @param selected the scenario currently chosen (its art fills the collapsed banner).
+ * @param onSelected called with the picked scenario when a sheet row is tapped.
+ * @param options the scenarios offered in the sheet, in the order given (callers pass their own
+ *   subset/order - e.g. only the coop scenarios, or just Volkare's two). Defaults to all scenarios
+ *   sorted by name, matching the dropdown this replaced (issue #110).
  *
  * Degrades gracefully: [ScenarioArt] draws its bronze placeholder for any scenario without art yet,
  * so this works whether real art is bundled or not.
@@ -61,6 +67,7 @@ private val OVERLAY_INK = Color(0xFFF3E7D3)
 internal fun ScenarioPickerField(
     selected: Scenario,
     onSelected: (Scenario) -> Unit,
+    options: List<Scenario> = Scenario.entries.sortedBy { it.displayName },
 ) {
     // Whether the sheet is open - transient UI state, so it lives here rather than in the ViewModel.
     // rememberSaveable keeps it across rotation; a Boolean is Parcelable-safe (see workflow.md's
@@ -123,13 +130,14 @@ internal fun ScenarioPickerField(
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
             )
             // The sheet owns its own scroll (a LazyColumn), so there's no nested-scroll fight with
-            // the wizard behind it. Sorted by name to match the dropdown it replaces (issue #110);
-            // key = id so recomposition is stable as the list re-renders.
+            // whatever's behind it. Rows follow the caller's [options] order (the default is sorted
+            // by name to match the dropdown this replaced, issue #110); key = id so recomposition is
+            // stable as the list re-renders.
             LazyColumn(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(Scenario.entries.sortedBy { it.displayName }, key = { it.id }) { scenario ->
+                items(options, key = { it.id }) { scenario ->
                     ScenarioSheetRow(
                         scenario = scenario,
                         isSelected = scenario == selected,

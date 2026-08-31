@@ -71,6 +71,7 @@ import com.guyteichman.mageknightbuddy.ui.components.NumberField
 import com.guyteichman.mageknightbuddy.ui.components.difficultyPillColor
 import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.components.swatch
+import com.guyteichman.mageknightbuddy.ui.scenarioart.ScenarioPickerField
 import com.guyteichman.mageknightbuddy.ui.tutorial.Tutorial
 import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialAction
 import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialDialog
@@ -96,16 +97,15 @@ fun VolkareSetupFields(
     onWoundCountChanged: (Int) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        LabelPillPicker(
-            label = "Scenario",
-            options = listOf(Scenario.VolkaresReturn, Scenario.VolkaresQuest),
+        // Art-forward Scenario picker (issue #287) - the same widget the Score Calculator Setup page
+        // uses, fed just Volkare's two scenarios. The old flat-pill treatment deliberately used no
+        // colour so as not to imply Return vs. Quest is an ordinal difficulty axis; an art banner
+        // carries no such ordering either, so that intent is preserved while surfacing each
+        // scenario's background.
+        ScenarioPickerField(
             selected = scenario,
-            displayName = { it.displayName },
-            // Flat, uncolored pills (per LabelPillPicker's own doc comment) - Return vs. Quest
-            // isn't an ordinal difficulty axis like Combat/Race Level, so a gradient would
-            // misleadingly imply one is "harder" than the other.
-            color = { Color(0xFFE0E0E0) },
-            onSelect = onScenarioSelected,
+            onSelected = onScenarioSelected,
+            options = listOf(Scenario.VolkaresReturn, Scenario.VolkaresQuest),
         )
         LabelPillPicker(
             label = "Race Level",

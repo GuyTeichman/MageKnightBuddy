@@ -101,10 +101,10 @@ import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
 import com.guyteichman.mageknightbuddy.ui.components.KnightShieldIcon
 import com.guyteichman.mageknightbuddy.ui.components.LabeledCheckbox
-import com.guyteichman.mageknightbuddy.ui.components.LabeledDropdown
 import com.guyteichman.mageknightbuddy.ui.components.LabeledSwitch
 import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.components.swatch
+import com.guyteichman.mageknightbuddy.ui.scenarioart.ScenarioPickerField
 import com.guyteichman.mageknightbuddy.ui.settings.SettingsAction
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.help.HelpButton
@@ -348,15 +348,16 @@ private fun DummyPlayerSetupScreen(
         // Scenario field (see VolkareSetupFields above), so this only applies to Standard/Proxy
         // Player. Synced across both the same way the Knight picker above is, for the same reason.
         if (mode != DummyPlayerMode.VOLKARE && !viewModel.isSolo) {
-            LabeledDropdown(
-                label = "Scenario",
-                options = COOP_TACTIC_SCENARIO_OPTIONS,
+            // Art-forward Scenario picker (issue #287) - the same widget the Score Calculator Setup
+            // page uses, fed the coop-only option subset. onSelected still writes both ViewModels in
+            // sync, exactly as the old LabeledDropdown did.
+            ScenarioPickerField(
                 selected = viewModel.scenario,
-                displayName = { it.displayName },
                 onSelected = { selected ->
                     viewModel.scenario = selected
                     proxyPlayerViewModel.scenario = selected
                 },
+                options = COOP_TACTIC_SCENARIO_OPTIONS,
             )
         }
 
