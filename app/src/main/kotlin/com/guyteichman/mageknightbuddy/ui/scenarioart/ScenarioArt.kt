@@ -2,8 +2,10 @@ package com.guyteichman.mageknightbuddy.ui.scenarioart
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.padding
@@ -44,6 +46,24 @@ private val PLACEHOLDER_TEXT = Color(0xFFF3E7D3)
 
 private val DEFAULT_SHAPE = RoundedCornerShape(12.dp)
 
+/** Width of the thin frame drawn around scenario art and its sibling chrome. */
+internal val ART_FRAME_WIDTH = 1.dp
+
+/**
+ * The frame colour (issue #286/#287 review), resolved from the theme so it flips with dark/light:
+ * MaterialTheme's `onSurface` is near-black on a light surface and near-white on a dark one, so a
+ * low-alpha tint of it draws a dark outline in light mode and a light one in dark mode - staying
+ * visible in both (a single fixed dark outline vanished against the dark-theme background). Exposed
+ * so the scoreboard's Won/Lost pill and knight-avatar ring share the exact same colour, echoing the
+ * enemy/reward-token art outline. `internal` so `ScoreboardScreen` (a different package) can reuse it.
+ */
+@Composable
+internal fun artFrameColor(): Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+
+/** The standard [ScenarioArt] frame as a ready-made [BorderStroke] (see [artFrameColor]). */
+@Composable
+internal fun scenarioArtFrame(): BorderStroke = BorderStroke(ART_FRAME_WIDTH, artFrameColor())
+
 /**
  * Draws a [Scenario]'s background art with render-time cohesion, so a set of images from different
  * sources reads as one coherent surface: [ContentScale.Crop] fills the caller's box (no
@@ -63,6 +83,8 @@ private val DEFAULT_SHAPE = RoundedCornerShape(12.dp)
  *
  * @param outcomeTint an optional full-bleed colour wash over the art (e.g. win/loss tint); null for none.
  * @param shape the clip shape for the whole card (defaults to a rounded rectangle).
+ * @param border an optional thin outline drawn at the [shape]'s edge (pass [scenarioArtFrame] for the
+ *   standard framed-tile look); null for a frameless, full-bleed image (e.g. a full-width banner).
  */
 @Composable
 fun ScenarioArt(
@@ -70,10 +92,17 @@ fun ScenarioArt(
     modifier: Modifier = Modifier,
     outcomeTint: Color? = null,
     shape: Shape = DEFAULT_SHAPE,
+    border: BorderStroke? = null,
     content: @Composable BoxScope.() -> Unit = {},
 ) {
     val bitmap = rememberScenarioBitmap(scenario)
-    Box(modifier = modifier.clip(shape)) {
+    Box(
+        modifier = modifier
+            .clip(shape)
+            // Frame drawn at the clipped edge (over the art) when the caller opts in - `.then` chains
+            // the border only if one was given, since Modifier is the no-op identity otherwise.
+            .then(if (border != null) Modifier.border(border, shape) else Modifier),
+    ) {
         if (bitmap != null) {
             Image(
                 bitmap = bitmap,
