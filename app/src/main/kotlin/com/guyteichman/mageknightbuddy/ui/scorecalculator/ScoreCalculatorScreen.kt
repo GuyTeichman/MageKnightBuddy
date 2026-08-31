@@ -461,15 +461,11 @@ private fun WizardContent(
             // check you'd get dispatching over a sealed interface.
             when (currentPage) {
                 WizardPage.SETUP -> {
-                    LabeledDropdown(
-                        label = "Scenario",
-                        // Sorted alphabetically by displayName for the picker only (issue #110) -
-                        // Scenario.entries itself stays in rulebook/release order, since other code
-                        // (e.g. wizardPagesFor's exhaustive `when`) has no reason to care about
-                        // dropdown ordering.
-                        options = Scenario.entries.sortedBy { it.displayName },
+                    // Art-forward Scenario picker (issue #287): shows the scenario's background art
+                    // and opens a bottom-sheet gallery of all scenarios. The alphabetical sort that
+                    // the old LabeledDropdown did (issue #110) now lives inside ScenarioPickerField.
+                    ScenarioPickerField(
                         selected = viewModel.scenario,
-                        displayName = { it.displayName },
                         onSelected = { viewModel.scenarioId = it.id },
                     )
                     LabeledDropdown(
