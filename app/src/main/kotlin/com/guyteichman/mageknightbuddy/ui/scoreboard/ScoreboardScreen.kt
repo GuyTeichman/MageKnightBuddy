@@ -56,6 +56,7 @@ import com.guyteichman.mageknightbuddy.domain.breakdown
 import com.guyteichman.mageknightbuddy.ui.components.KnightFace
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.scenarioart.ScenarioArt
+import com.guyteichman.mageknightbuddy.ui.scenarioart.ScenarioArtFrame
 import com.guyteichman.mageknightbuddy.ui.scorecalculator.ScoreCalculatorScreen
 import com.guyteichman.mageknightbuddy.ui.settings.SettingsAction
 
@@ -221,6 +222,8 @@ private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
         // ScenarioArt layers this tint above the art + its own scrim but below the content below.
         outcomeTint = outcomeTint(session.outcome),
         shape = CARD_SHAPE,
+        // Thin dark outline so the card reads as a framed tile, matching the picker (issue #287).
+        border = ScenarioArtFrame,
         modifier = Modifier
             .fillMaxWidth()
             .height(116.dp)
@@ -229,14 +232,14 @@ private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
             .clip(CARD_SHAPE)
             .clickable(onClickLabel = "View breakdown", role = Role.Button, onClick = onClick),
     ) {
-        // Knight avatar, top-start, ringed in cream so it reads as an avatar over busy art. The
-        // ring is a bordered box with 2.dp inner padding, so the circle sits inside the ring.
+        // Knight avatar, top-start. A thin cream ring hugging the face reads as an avatar over busy
+        // art; kept light (not the dark art frame) so it still separates on dark scenarios, but
+        // slimmed to 1.dp to sit at the same weight as the new frames (author review of #286).
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(12.dp)
-                .border(2.dp, CARD_INK, CircleShape)
-                .padding(2.dp),
+                .border(1.dp, CARD_INK, CircleShape),
         ) {
             KnightFace(knight = session.knight, size = 40.dp)
         }
@@ -247,11 +250,11 @@ private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
             outcome = session.outcome,
             modifier = Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 12.dp),
         )
-        // Scenario + knight name, bottom-start. end padding leaves room for the score.
+        // Scenario + knight name, bottom-start. end padding leaves room for the (now larger) score.
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 14.dp, bottom = 12.dp, end = 72.dp),
+                .padding(start = 14.dp, bottom = 12.dp, end = 84.dp),
         ) {
             Text(
                 session.scenario.displayName,
@@ -269,13 +272,14 @@ private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        // Score, bottom-end, prominent - paired with the names along the bottom text row.
+        // Score, bottom-end, sized up to displaySmall so its height reads level with the two-line
+        // name block on the left rather than sitting small and low (author review of #286).
         Text(
             text = session.score.toString(),
             color = CARD_INK,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 12.dp, end = 16.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 10.dp, end = 16.dp),
         )
     }
 }
@@ -287,6 +291,8 @@ private fun OutcomePill(outcome: Outcome, modifier: Modifier = Modifier) {
     Surface(
         color = if (won) WON_COLOR else LOST_COLOR,
         shape = RoundedCornerShape(50),
+        // Same thin dark outline as the art frame, so the pill reads as part of the framed set.
+        border = ScenarioArtFrame,
         modifier = modifier,
     ) {
         Text(
@@ -372,8 +378,8 @@ private fun ScoreboardDetailHeader(session: ScoringSession) {
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(16.dp)
-                .border(2.dp, CARD_INK, CircleShape)
-                .padding(2.dp),
+                // Slim 1.dp cream ring, matching the list card's avatar.
+                .border(1.dp, CARD_INK, CircleShape),
         ) {
             KnightFace(knight = session.knight, size = 52.dp)
         }
