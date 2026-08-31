@@ -70,6 +70,7 @@ import com.guyteichman.mageknightbuddy.ui.components.difficultyPillColor
 import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.help.HelpButton
+import com.guyteichman.mageknightbuddy.ui.scenarioart.ScenarioPickerField
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
