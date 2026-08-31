@@ -34,7 +34,8 @@ class ScenarioArtCatalogueTest {
     @Test
     fun `every entry has non-blank attribution fields`() {
         val bad = ScenarioArtCatalogue.entries.filter {
-            it.scenarioId.isBlank() || it.filename.isBlank() || it.author.isBlank() || it.sourceUrl.isBlank()
+            it.scenarioId.isBlank() || it.filename.isBlank() || it.workTitle.isBlank() ||
+                it.author.isBlank() || it.sourceUrl.isBlank()
         }
         assertTrue("catalogue entries with a blank field: $bad", bad.isEmpty())
     }

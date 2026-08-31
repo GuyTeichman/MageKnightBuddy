@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Coffee
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Save
@@ -44,6 +45,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.FavoriteSitesRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
+import com.guyteichman.mageknightbuddy.domain.Scenario
+import com.guyteichman.mageknightbuddy.ui.scenarioart.ArtLicense
+import com.guyteichman.mageknightbuddy.ui.scenarioart.ScenarioArtCatalogue
 import java.time.LocalDate
 
 /** Public GitHub repository, opened by the "View source on GitHub" link in the About section. */
@@ -66,11 +70,20 @@ private const val ICON_DRAGON_URL = "https://freesvg.org/dragon-tribal-style-tat
 private const val ICON_SHIELD_URL = "https://svgsilh.com/image/294573.html"
 
 /**
+ * The repo's scenario-art README, holding the full per-image source + licence list (issue #288).
+ * Linked rather than making every scenario-background credit line individually tappable; pinned to
+ * `main` so it resolves once the PR merges. Forks inherit the same file, so the provenance travels.
+ */
+private const val SCENARIO_ART_SOURCES_URL =
+    "https://github.com/GuyTeichman/MageKnightBuddy/blob/main/app/src/main/assets/scenario-art/README.md"
+
+/**
  * The Settings screen (issue #121). Holds Backup & Restore, an About section with source/support
  * links (issue #104), and a Credits section (issue #193) that credits the Mage Knight game's
- * creators and publisher, states the app's unofficial/non-affiliation status (see ADR-0010), and
- * credits the CC0 app-icon art; the other deferred Settings items (expansion toggles, help-citation
- * visibility) stay out of scope for now (see docs/design/architecture.md). Reached via the shared
+ * creators and publisher, states the app's unofficial/non-affiliation status (see ADR-0010),
+ * credits the CC0 app-icon art, and lists the public-domain scenario-background paintings (issue
+ * #288); the other deferred Settings items (expansion toggles, help-citation visibility) stay out of
+ * scope for now (see docs/design/architecture.md). Reached via the shared
  * [SettingsAction] gear on each tab, pushed as a full-screen destination outside the bottom-nav
  * graph; [onBack] pops back to the tab.
  *
@@ -263,6 +276,44 @@ fun SettingsScreen(
             ) {
                 Icon(Icons.Filled.Brush, contentDescription = null)
                 Text("  Shield silhouette — svgsilh")
+            }
+
+            // Scenario background art credits (issue #288). Each scenario is illustrated with a
+            // period painting behind its picker/scoreboard card; almost all are public-domain fine
+            // art (a courtesy credit - no attribution legally required), so they're thanked here.
+            Text("Scenario backgrounds", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Each scenario is illustrated with a public-domain painting (and one CC0 museum " +
+                    "scan). Attribution isn't legally required, but with thanks to the artists:",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            // Build the list from the catalogue itself so it can never drift from the bundled art:
+            // walk scenarios in game order, keep the illustrated non-OFFICIAL ones, one line each.
+            // The two OFFICIAL (© WizKids) scenarios are covered by the game-content credits and the
+            // disclaimer above, so they're filtered out here and noted separately below.
+            Scenario.entries.forEach { scenario ->
+                val art = ScenarioArtCatalogue.artFor(scenario)
+                if (art != null && art.license != ArtLicense.OFFICIAL) {
+                    CreditLine(role = "${scenario.displayName}:", detail = "${art.workTitle}, ${art.author}")
+                }
+            }
+
+            // The two scenarios that reuse official Mage Knight art, called out so the section is
+            // honest about them; their artists are already named in the Illustration credit above.
+            Text(
+                "Against the Dragon and Volkare's Return use official Mage Knight art (© WizKids), " +
+                    "credited above.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            OutlinedButton(
+                onClick = { uriHandler.openUri(SCENARIO_ART_SOURCES_URL) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Filled.Image, contentDescription = null)
+                Text("  Scenario art sources & licences")
             }
         }
     }
