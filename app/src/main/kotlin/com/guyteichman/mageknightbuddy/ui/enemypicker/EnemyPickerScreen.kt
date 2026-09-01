@@ -8,7 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -560,9 +564,22 @@ private fun EnemyPickerContent(
             // One card per pile that exists in this token set, in a stable enum order, two per row.
             val pileIds = TokenPileId.entries.filter { it in session.piles }
             items(pileIds.chunked(2), key = { row -> row.first().name }) { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // height(IntrinsicSize.Max) sizes the row to its tallest card, so the two cards below
+                // (each fillMaxHeight) become equal height even when one pile's count line wraps to two
+                // lines ("N to draw · X discarded · Y on board") and its neighbour's doesn't - without
+                // this the shorter card was left top-aligned and its stepper floated up out of line
+                // with the taller card's (issue #305). Caveat: IntrinsicSize.Max measures each card's
+                // intrinsic height, so every composable inside PileCard must support intrinsic
+                // measurement - all current ones (Image, Text, IconButton, Spacer) do; a future card
+                // child that can't (e.g. a raw drawBehind-sized box) would need a different equal-height
+                // approach here.
+                Row(
+                    Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                     // Each card gets equal weight, so a full row (2 cards) splits evenly in half and
-                    // a trailing lone card (D14 - today, Ruin) fills the whole row's width instead.
+                    // a trailing lone card (D14 - today, Ruin) fills the whole row's width instead;
+                    // fillMaxHeight then stretches each to the shared row height set above.
                     row.forEach { pileId ->
                         val pile = session.piles.getValue(pileId)
                         // The POSSESSED pile is never drawn on its own (it's consumed by a possessed
@@ -570,7 +587,7 @@ private fun EnemyPickerContent(
                         // tap-to-draw-1.
                         val displayOnly = pileId == TokenPileId.POSSESSED
                         PileCard(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
                             pileId = pileId,
                             pile = pile,
                             // Tokens drawn from this pile that are still on the board (issue #251) -
@@ -741,42 +758,58 @@ private fun PileCard(
 
     ElevatedCard(modifier = modifier) {
         Column(
-            // fillMaxWidth so horizontalAlignment actually centers each child across the card's
-            // full width - without it the Column shrink-wraps to its widest child and everything
-            // ends up flush-left instead of centered. Bottom padding trimmed below the stepper
-            // (the last child) - it doesn't need as much breathing room as the top/sides.
-            Modifier.fillMaxWidth().padding(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 6.dp),
+            // fillMaxWidth so horizontalAlignment centers each child across the card's full width.
+            // fillMaxHeight so this Column fills the card, which the row stretched to the tallest
+            // card's height - that's what lets the weighted Spacer below push the control to the
+            // bottom edge (issue #305). No verticalArrangement on this outer Column: the top block
+            // (inner Column) owns the 6.dp inter-item spacing, and the control keeps a fixed 6.dp gap
+            // above it, so the card is spaced exactly as before the fix (just taller when a row-mate
+            // is). Bottom padding trimmed - the control needs less breathing room below it than above.
+            Modifier.fillMaxWidth().fillMaxHeight().padding(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            // clickable + enabled gates the tap-to-draw-1 shortcut on canDrawOne (busy / pile
-            // empty), same conditions the stepper's own max already enforces below.
-            Box(modifier = Modifier.clickable(enabled = canDrawOne, onClick = onDrawOne)) {
-                PileBackFace(pileId = pileId, size = 72.dp)
+            // Top block: pile face, name, and count line, keeping the original 6.dp spacing between them.
+            Column(
+                Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                // clickable + enabled gates the tap-to-draw-1 shortcut on canDrawOne (busy / pile
+                // empty), same conditions the stepper's own max already enforces below.
+                Box(modifier = Modifier.clickable(enabled = canDrawOne, onClick = onDrawOne)) {
+                    PileBackFace(pileId = pileId, size = 72.dp)
+                }
+                Text(pileId.displayName(), style = MaterialTheme.typography.titleMedium)
+                // The count line doubles as the "view draw pile" trigger (issue #231): primary-colored
+                // and underlined so it reads as tappable, opening the pile-composition dialog. With
+                // replacement nothing depletes, so the counts are meaningless - hide them and say so.
+                // Otherwise it shows what's left to draw and, when any, how many are still on the board.
+                Text(
+                    text = if (withReplacement) {
+                        "View pile · never depletes"
+                    } else {
+                        buildString {
+                            // Three distinct states, each only shown when non-zero; "Nothing to draw"
+                            // stands in for a zero draw pile *and* zero discard (all tokens on the board).
+                            if (toDraw == 0 && discarded == 0) append("Nothing to draw")
+                            else append("$toDraw to draw")
+                            if (discarded > 0) append(" · $discarded discarded")
+                            if (onBoard > 0) append(" · $onBoard on board")
+                        }
+                    },
+                    style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.Underline),
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.clickable(onClick = onViewContents),
+                )
             }
-            Text(pileId.displayName(), style = MaterialTheme.typography.titleMedium)
-            // The count line doubles as the "view draw pile" trigger (issue #231): primary-colored
-            // and underlined so it reads as tappable, opening the pile-composition dialog. With
-            // replacement nothing depletes, so the counts are meaningless - hide them and say so.
-            // Otherwise it shows what's left to draw and, when any, how many are still on the board.
-            Text(
-                text = if (withReplacement) {
-                    "View pile · never depletes"
-                } else {
-                    buildString {
-                        // Three distinct states, each only shown when non-zero; "Nothing to draw"
-                        // stands in for a zero draw pile *and* zero discard (all tokens on the board).
-                        if (toDraw == 0 && discarded == 0) append("Nothing to draw")
-                        else append("$toDraw to draw")
-                        if (discarded > 0) append(" · $discarded discarded")
-                        if (onBoard > 0) append(" · $onBoard on board")
-                    }
-                },
-                style = MaterialTheme.typography.bodyMedium.copy(textDecoration = TextDecoration.Underline),
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.clickable(onClick = onViewContents),
-            )
+            // weight(1f) eats the card's spare height so the control sits at the bottom edge, aligned
+            // across a row no matter how many lines the count above wrapped to (issue #305). The fixed
+            // 6.dp below it keeps the same count->control gap the top block uses. Every card ends in
+            // exactly one control - a stepper, or a "Tap to reveal" / "Drawn with enemies" hint - so
+            // this bottom-aligns them uniformly.
+            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(6.dp))
             if (displayOnly) {
                 // POSSESSED: not drawn on its own, so a hint stands in for the missing control.
                 Text(
