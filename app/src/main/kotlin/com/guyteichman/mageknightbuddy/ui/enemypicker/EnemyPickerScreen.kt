@@ -18,7 +18,9 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -153,6 +155,10 @@ fun EnemyPickerTab(
     // Set when an un-defeat was blocked (issue #251): the token has been reshuffled out of the discard
     // and re-drawn, so it's in neither pile and can't be returned to the board without duplicating it.
     var undefeatBlocked by remember { mutableStateOf(false) }
+    // Whether the setup bottom sheet (issue #199) is open. Hoisted here (rather than inside
+    // EnemyPickerContent) so a *confirmed* Apply & Reset / Reset piles can close it as part of the
+    // confirmed action, while cancelling the confirm leaves it open with the user's staged edits.
+    var showSetupSheet by remember { mutableStateOf(false) }
 
     if (session == null) {
         // Still restoring / creating the first session.
@@ -271,10 +277,20 @@ fun EnemyPickerTab(
         onOpenContents = { pileId -> contentsPileId = pileId },
         onOpenHeldRewards = { heldRewardsOpen = true },
         currentChildOf = currentChildOf,
-        onRequestReset = { pendingReset = { scope.launch { viewModel.reset() } } },
-        onRequestApplyConfig = { tokenSet, replacement ->
-            pendingReset = { scope.launch { viewModel.applyConfig(tokenSet, replacement) } }
+        // Both fire only once the user confirms (pendingReset -> the "Reset piles?" AlertDialog).
+        // Closing the sheet is part of that confirmed action, so a cancelled confirm leaves the sheet
+        // and its staged edits in place rather than silently discarding them.
+        onRequestReset = {
+            pendingReset = { scope.launch { viewModel.reset() }; showSetupSheet = false }
         },
+        onRequestApplyConfig = { tokenSet, replacement ->
+            pendingReset = {
+                scope.launch { viewModel.applyConfig(tokenSet, replacement) }
+                showSetupSheet = false
+            }
+        },
+        showSetupSheet = showSetupSheet,
+        onSetShowSetupSheet = { showSetupSheet = it },
     )
 
     // --- Dialogs, driven by the state above ---
@@ -494,6 +510,10 @@ private fun EnemyPickerContent(
     currentChildOf: (Int) -> DrawLogEntry?,
     onRequestReset: () -> Unit,
     onRequestApplyConfig: (Set<Expansion>, Boolean) -> Unit,
+    // Setup-sheet visibility is hoisted to the caller (issue #199) so a *confirmed* Apply & Reset /
+    // Reset piles can close the sheet, while a cancelled confirm leaves it open with staged edits.
+    showSetupSheet: Boolean,
+    onSetShowSetupSheet: (Boolean) -> Unit,
 ) {
     // Staged draw quantities, keyed by pile (D13): 0/absent means "not part of the next draw."
     // Lives here rather than inside each PileCard so the bottom DrawBar can see every pile's total
@@ -509,9 +529,6 @@ private fun EnemyPickerContent(
     // Fold availability in here (rather than writing state mid-compose) so a stale `true` left over
     // after AD is removed from the set never actually possesses a draw.
     val effectivePossess = possess && possessedAvailable
-    // Whether the setup bottom sheet (issue #199) is open. Screen-local UI state like `quantities`
-    // above - the summary strip at the top of the list opens it; the sheet holds the old ConfigSection.
-    var showSetupSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = { EnemyPickerTopBar(onOpenSettings = onOpenSettings, onShowTutorial = onShowTutorial) },
@@ -531,11 +548,13 @@ private fun EnemyPickerContent(
             modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Setup entry point (issue #199): the token-set summary strip, pinned above the piles.
-            // Tapping it opens the setup bottom sheet - the piles, Draw Log and Draw bar are all that
-            // remain in the scrolling column, so the growing log never buries setup off the bottom.
+            // Setup entry point (issue #199): the token-set summary strip, the first item above the
+            // pile cards. Tapping it opens the setup bottom sheet - the piles, Draw Log and Draw bar
+            // are all that remain in the scrolling column, so the growing log never buries setup off
+            // the bottom. It's an ordinary list item, so it scrolls with the content (not a sticky
+            // header); since it's above everything, scrolling back to the top always brings it back.
             item(key = "setup-strip") {
-                TokenSetStrip(tokenSet = session.tokenSet, onClick = { showSetupSheet = true })
+                TokenSetStrip(tokenSet = session.tokenSet, onClick = { onSetShowSetupSheet(true) })
             }
 
             // One card per pile that exists in this token set, in a stable enum order, two per row.
@@ -618,23 +637,27 @@ private fun EnemyPickerContent(
         // token-set strip above. Only composed while open, so its staged edits reseed from the live
         // session each time it opens.
         if (showSetupSheet) {
-            val sheetState = rememberModalBottomSheetState()
+            // skipPartiallyExpanded: open fully (it's a form to fill, not a peek). verticalScroll on
+            // the content below: the checkboxes + switch + button row can be taller than a short or
+            // landscape screen, and a plain Column wouldn't scroll - so Apply & Reset stays reachable.
+            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
             ModalBottomSheet(
-                onDismissRequest = { showSetupSheet = false },
+                onDismissRequest = { onSetShowSetupSheet(false) },
                 sheetState = sheetState,
             ) {
                 ConfigSection(
                     currentTokenSet = session.tokenSet,
                     currentReplacement = session.drawWithReplacement,
                     isBusy = isBusy,
-                    // Apply & Reset / Reset piles hand off to the parent's destructive-confirm dialog;
-                    // close the sheet as they fire so that confirm isn't stacked underneath it.
-                    onRequestReset = { showSetupSheet = false; onRequestReset() },
-                    onRequestApplyConfig = { set, replacement ->
-                        showSetupSheet = false
-                        onRequestApplyConfig(set, replacement)
-                    },
-                    modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp),
+                    // Just fire the request: the caller shows the destructive-confirm dialog and closes
+                    // this sheet only once the reset is *confirmed*, so cancelling the confirm leaves
+                    // the sheet open with the user's staged edits intact (not silently discarded).
+                    onRequestReset = onRequestReset,
+                    onRequestApplyConfig = onRequestApplyConfig,
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 24.dp),
                 )
             }
         }
@@ -1061,9 +1084,10 @@ private fun DrawLogBatchRow(group: DrawLogGroup, log: List<DrawLogEntry>, onOpen
 }
 
 /**
- * The setup entry point (issue #199): a persistent one-line strip pinned at the top of the Enemy
- * Picker, above the pile cards, that opens the setup [bottom sheet][ConfigSection] when tapped. It
- * replaces the old bottom-of-screen config section, which the ever-growing Draw Log used to bury.
+ * The setup entry point (issue #199): a one-line strip at the top of the Enemy Picker's content,
+ * above the pile cards (an ordinary list item, so it scrolls with the content rather than sticking),
+ * that opens the setup [bottom sheet][ConfigSection] when tapped. It replaces the old bottom-of-screen
+ * config section, which the ever-growing Draw Log used to bury.
  *
  * Kept deliberately quiet - a plain tinted row, not a loud button - because setup is a once-per-game
  * action: it should stay out of the way yet remain discoverable (it sits in the content, where the
@@ -2220,20 +2244,25 @@ internal fun TokenPileId.displayName(): String = when (this) {
     TokenPileId.COUNCIL_OF_VOID_REWARDS -> "Council of the Void rewards"
 }
 
-/** Cap on the joined expansion names before the setup strip degrades to a count (issue #199). */
-private const val MAX_TOKEN_SET_SUMMARY_CHARS = 30
+/**
+ * Cap on the whole "Token sets: …" label before the setup strip degrades to a count (issue #199).
+ * Measured against the *full* rendered string (the "Token sets: " prefix included), so the number
+ * means what the strip actually shows; the Text's maxLines + ellipsis is the ultimate one-line floor.
+ */
+private const val MAX_TOKEN_SET_SUMMARY_CHARS = 40
 
 /**
  * The one-line label the setup summary strip shows (issue #199): the current [Token Set][Expansion]
- * as text. Names are shown while they fit; once the joined list would overflow one phone line it
- * falls back to "{count} selected", so the strip never wraps for any combination of sets. Iterates
+ * as text. Names are shown while the whole label fits; once it would overflow one phone line it falls
+ * back to "{count} selected", so the strip never wraps for any combination of sets. Iterates
  * [Expansion.entries] so the order is stable regardless of how the set was built. `internal` so its
  * one-line-guarantee contract can be unit-tested (see `TokenSetSummaryTest`).
  */
 internal fun tokenSetSummary(sets: Set<Expansion>): String {
     if (sets.isEmpty()) return "Token sets: none"
     val names = Expansion.entries.filter { it in sets }.joinToString(" · ") { it.displayName() }
-    return if (names.length <= MAX_TOKEN_SET_SUMMARY_CHARS) "Token sets: $names" else "Token sets: ${sets.size} selected"
+    val label = "Token sets: $names"
+    return if (label.length <= MAX_TOKEN_SET_SUMMARY_CHARS) label else "Token sets: ${sets.size} selected"
 }
 
 /** Player-facing expansion name for the Token Set checkboxes. */
