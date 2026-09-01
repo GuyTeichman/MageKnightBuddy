@@ -132,7 +132,7 @@
       },
       {
         "title": "Choosing your tokens",
-        "body": "The Setup section, near the bottom, is where you pick which expansions' tokens are in play and toggle Draw with replacement. Because changing them rebuilds the piles and clears the log, they only take effect when you tap Apply & Reset."
+        "body": "Setup lives in its own sheet. Tap the token-set summary strip at the very top of the tab — it shows which expansions are currently in play — to open it, pick your expansions, and toggle Draw with replacement. Because changing them rebuilds the piles and clears the log, they only take effect when you tap Apply & Reset."
       },
       {
         "title": "Surveying a pile",
