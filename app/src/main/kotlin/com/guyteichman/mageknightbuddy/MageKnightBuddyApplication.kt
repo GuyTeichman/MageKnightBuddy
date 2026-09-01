@@ -1,6 +1,7 @@
 package com.guyteichman.mageknightbuddy
 
 import android.app.Application
+import com.guyteichman.mageknightbuddy.data.AppReset
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.EnemyPickerSessionRepository
 import com.guyteichman.mageknightbuddy.data.FavoriteSitesRepository
@@ -39,4 +40,8 @@ class MageKnightBuddyApplication : Application() {
     // per file per process.
     val tutorials: Map<String, Tutorial> by lazy { loadTutorials(this) }
     val tutorialProgressRepository by lazy { TutorialProgressRepository(this) }
+
+    // The app-wide "reset to default" action (issue #304). Built here because it's the one place that
+    // legitimately spans every store at once - the whole Room database plus the tutorial-seen store.
+    val appReset by lazy { AppReset(database, tutorialProgressRepository) }
 }

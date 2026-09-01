@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.guyteichman.mageknightbuddy.data.AppReset
 import com.guyteichman.mageknightbuddy.data.BackupCodec
 import com.guyteichman.mageknightbuddy.data.BackupDecodeResult
 import com.guyteichman.mageknightbuddy.data.FavoriteSitesRepository
@@ -14,6 +15,7 @@ import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.domain.ScoringSession
 import java.io.IOException
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,6 +41,8 @@ data class RestorePrompt(val localCount: Int, val backupCount: Int)
 data class SettingsUiState(
     val message: SettingsMessage? = null,
     val restorePrompt: RestorePrompt? = null,
+    // True while the "reset app to default?" confirm dialog is open (issue #304).
+    val resetPrompt: Boolean = false,
 )
 
 /**
@@ -53,6 +57,7 @@ class SettingsViewModel(
     application: Application,
     private val repository: ScoringSessionRepository,
     private val favoritesRepository: FavoriteSitesRepository,
+    private val appReset: AppReset,
 ) : AndroidViewModel(application) {
 
     // Backing MutableStateFlow kept private so only this ViewModel mutates it; the screen observes
@@ -146,6 +151,41 @@ class SettingsViewModel(
         _uiState.update { it.copy(restorePrompt = null) }
     }
 
+    /** Opens the "reset app to default?" confirmation. Nothing is wiped until [confirmReset]. */
+    fun requestReset() {
+        _uiState.update { it.copy(resetPrompt = true) }
+    }
+
+    /** Dismisses the reset confirmation without wiping anything. */
+    fun cancelReset() {
+        _uiState.update { it.copy(resetPrompt = false) }
+    }
+
+    /**
+     * Wipes every saved game, in-progress session, favorite, and seen-tutorial flag via [AppReset],
+     * returning the app to a fresh-install state (issue #304), then reports it in a snackbar. The
+     * Scoreboard and Sites tabs update live (Room Flows re-emit empty); a game a screen is holding in
+     * memory right now isn't cleared and can even re-autosave itself until that screen is left and
+     * re-entered (see [AppReset]). Any failure still dismisses the dialog and reports it, rather than
+     * leaving the confirm dialog stuck open with no feedback.
+     */
+    fun confirmReset() {
+        viewModelScope.launch {
+            // CancellationException must propagate (it's how the coroutine is torn down), so it's
+            // rethrown; any real failure clears the prompt and surfaces a message instead of the
+            // dialog hanging open.
+            val message = try {
+                appReset.resetToDefault()
+                SettingsMessage("App reset to default")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                SettingsMessage("Reset failed — please try again")
+            }
+            _uiState.update { it.copy(resetPrompt = false, message = message) }
+        }
+    }
+
     /** Called by the screen once a [SettingsMessage] has been shown, so it isn't shown again. */
     fun messageShown() {
         _uiState.update { it.copy(message = null) }
@@ -193,12 +233,14 @@ class SettingsViewModel(
         fun factory(
             repository: ScoringSessionRepository,
             favoritesRepository: FavoriteSitesRepository,
+            appReset: AppReset,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 SettingsViewModel(
                     application = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]!!,
                     repository = repository,
                     favoritesRepository = favoritesRepository,
+                    appReset = appReset,
                 )
             }
         }

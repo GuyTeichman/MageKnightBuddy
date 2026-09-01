@@ -34,6 +34,12 @@ interface TutorialProgressRepository {
      * "seen" flag and re-auto-show the tutorial forever.
      */
     fun markSeenAsync(tutorialId: String)
+
+    /**
+     * Forgets every "seen" flag, so all per-screen tutorials auto-show again on their next visit.
+     * Part of the app-wide "reset to default" (issue #304), which returns the app to a first-launch state.
+     */
+    suspend fun clear()
 }
 
 /**
@@ -61,6 +67,12 @@ class DataStoreTutorialProgressRepository(
     // Launched on the repository's own scope, not the caller's, so a disposed screen can't cancel it.
     override fun markSeenAsync(tutorialId: String) {
         scope.launch { markSeen(tutorialId) }
+    }
+
+    // edit { it.clear() } atomically drops every key in the store, so hasSeen falls back to its
+    // "missing key -> false" default for all tutorials.
+    override suspend fun clear() {
+        dataStore.edit { preferences -> preferences.clear() }
     }
 }
 

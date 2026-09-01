@@ -18,10 +18,14 @@ class ScoringSessionRepository(private val dao: ScoringSessionDao) {
     }
 
     // Flow.map here transforms each emitted List<ScoringSessionEntity> into a
-    // List<ScoringSession> via toDomain(), without subscribing/collecting the flow itself -
-    // callers still get a live, auto-updating stream, just of domain objects instead of entities.
-    fun getAll(): Flow<List<ScoringSession>> =
-        dao.getAll().map { entities -> entities.map { it.toDomain() } }
+    // List<StoredScoringSession> via toStored(), without subscribing/collecting the flow itself -
+    // callers still get a live, auto-updating stream. Each item carries its Room id (unlike the pure
+    // domain ScoringSession), so the Scoreboard can delete an individual game by id (issue #304).
+    fun getAll(): Flow<List<StoredScoringSession>> =
+        dao.getAll().map { entities -> entities.map { it.toStored() } }
+
+    /** Deletes the single saved game with this Room [id] (see [StoredScoringSession.id]); a no-op if it's already gone. */
+    suspend fun delete(id: Long) = dao.deleteById(id)
 
     // One-shot snapshot of the whole history, for writing a backup file (see BackupCodec).
     suspend fun exportAll(): List<ScoringSession> =

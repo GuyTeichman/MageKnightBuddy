@@ -46,6 +46,19 @@ class TutorialProgressRepositoryTest {
         assertFalse(repo.hasSeen("volkare").first())
     }
 
+    @Test
+    fun `clear resets every seen flag back to false`() = runTest {
+        val repo = DataStoreTutorialProgressRepository(tempDataStore(backgroundScope), backgroundScope)
+        repo.markSeen("dummy")
+        repo.markSeen("volkare")
+
+        repo.clear()
+
+        // A cleared store behaves like a first launch: previously-seen tutorials auto-show again (issue #304).
+        assertFalse(repo.hasSeen("dummy").first())
+        assertFalse(repo.hasSeen("volkare").first())
+    }
+
     // markSeenAsync is intentionally not unit-tested: it's a thin `scope.launch { markSeen(id) }`
     // delegate whose only added behavior - surviving the caller being disposed mid-write - is a
     // scope-lifetime property, not something a virtual-time test meaningfully exercises. The

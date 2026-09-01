@@ -37,6 +37,11 @@ interface ScoringSessionDao {
     @Query("DELETE FROM scoring_sessions")
     suspend fun deleteAll()
 
+    // Deletes the single row with this primary-key id (used by the Scoreboard's swipe-to-delete,
+    // issue #304). No-op if no row has that id, so a stale id from an already-removed row is safe.
+    @Query("DELETE FROM scoring_sessions WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     /**
      * Replaces the entire table with [entities] (used by "restore from backup"). @Transaction makes
      * the wipe + re-insert atomic: if the insert fails, the delete rolls back too, so a failed
