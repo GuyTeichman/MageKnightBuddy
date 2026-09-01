@@ -132,10 +132,11 @@ fun ScoreboardTab(
             arguments = listOf(navArgument("index") { type = NavType.IntType }),
         ) { backStackEntry ->
             val index = backStackEntry.arguments?.getInt("index") ?: 0
-            // getOrNull returns null instead of throwing if the index is out of bounds (e.g. a stale
-            // index after the list changes - a delete included); ?.let only runs the block - i.e. only
-            // renders the details screen - when a game actually exists at that index. .session unwraps
-            // the StoredScoringSession to the domain object the breakdown screen renders.
+            // Navigation is by list position: getOrNull only guards an out-of-bounds index (returns
+            // null -> nothing rendered). It does not re-identify the game if positions shift, but that's
+            // unreachable here - the list can't be edited (a delete included) while this details screen
+            // sits on top of it. ?.let runs only when a game exists at that index; .session unwraps the
+            // StoredScoringSession to the domain object the breakdown screen renders.
             sessions.getOrNull(index)?.session?.let { session ->
                 ScoreboardDetailsScreen(session = session, onBack = { nestedNavController.popBackStack() })
             }

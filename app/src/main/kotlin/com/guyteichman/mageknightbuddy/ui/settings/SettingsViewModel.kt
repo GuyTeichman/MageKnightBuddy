@@ -15,6 +15,7 @@ import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.domain.ScoringSession
 import java.io.IOException
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -164,14 +165,24 @@ class SettingsViewModel(
      * Wipes every saved game, in-progress session, favorite, and seen-tutorial flag via [AppReset],
      * returning the app to a fresh-install state (issue #304), then reports it in a snackbar. The
      * Scoreboard and Sites tabs update live (Room Flows re-emit empty); a game a screen is holding in
-     * memory right now survives until that screen is re-entered (see [AppReset]).
+     * memory right now isn't cleared and can even re-autosave itself until that screen is left and
+     * re-entered (see [AppReset]). Any failure still dismisses the dialog and reports it, rather than
+     * leaving the confirm dialog stuck open with no feedback.
      */
     fun confirmReset() {
         viewModelScope.launch {
-            appReset.resetToDefault()
-            _uiState.update {
-                it.copy(resetPrompt = false, message = SettingsMessage("App reset to default"))
+            // CancellationException must propagate (it's how the coroutine is torn down), so it's
+            // rethrown; any real failure clears the prompt and surfaces a message instead of the
+            // dialog hanging open.
+            val message = try {
+                appReset.resetToDefault()
+                SettingsMessage("App reset to default")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                SettingsMessage("Reset failed — please try again")
             }
+            _uiState.update { it.copy(resetPrompt = false, message = message) }
         }
     }
 
