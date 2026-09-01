@@ -8,7 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -526,9 +530,18 @@ private fun EnemyPickerContent(
             // One card per pile that exists in this token set, in a stable enum order, two per row.
             val pileIds = TokenPileId.entries.filter { it in session.piles }
             items(pileIds.chunked(2), key = { row -> row.first().name }) { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // height(IntrinsicSize.Max) sizes the row to its tallest card, so the two cards below
+                // (each fillMaxHeight) become equal height even when one pile's count line wraps to two
+                // lines ("N to draw · X discarded · Y on board") and its neighbour's doesn't - without
+                // this the shorter card was left top-aligned and its stepper floated up out of line
+                // with the taller card's (issue #305).
+                Row(
+                    Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                     // Each card gets equal weight, so a full row (2 cards) splits evenly in half and
-                    // a trailing lone card (D14 - today, Ruin) fills the whole row's width instead.
+                    // a trailing lone card (D14 - today, Ruin) fills the whole row's width instead;
+                    // fillMaxHeight then stretches each to the shared row height set above.
                     row.forEach { pileId ->
                         val pile = session.piles.getValue(pileId)
                         // The POSSESSED pile is never drawn on its own (it's consumed by a possessed
@@ -536,7 +549,7 @@ private fun EnemyPickerContent(
                         // tap-to-draw-1.
                         val displayOnly = pileId == TokenPileId.POSSESSED
                         PileCard(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
                             pileId = pileId,
                             pile = pile,
                             // Tokens drawn from this pile that are still on the board (issue #251) -
@@ -689,9 +702,11 @@ private fun PileCard(
         Column(
             // fillMaxWidth so horizontalAlignment actually centers each child across the card's
             // full width - without it the Column shrink-wraps to its widest child and everything
-            // ends up flush-left instead of centered. Bottom padding trimmed below the stepper
-            // (the last child) - it doesn't need as much breathing room as the top/sides.
-            Modifier.fillMaxWidth().padding(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 6.dp),
+            // ends up flush-left instead of centered. fillMaxHeight so this Column fills the card,
+            // which the row stretched to the tallest card's height - that's what lets the weighted
+            // Spacer below push the control to the bottom edge (issue #305). Bottom padding trimmed
+            // below the stepper (the last child) - it doesn't need as much breathing room as the top.
+            Modifier.fillMaxWidth().fillMaxHeight().padding(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -723,6 +738,11 @@ private fun PileCard(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.clickable(onClick = onViewContents),
             )
+            // Flexible gap that eats the card's spare height, pinning the control below it to the
+            // bottom edge. Every card ends in exactly one control (stepper / "Tap to reveal" /
+            // "Drawn with enemies"), so this bottom-aligns them across a row no matter how many lines
+            // the count text above wrapped to (issue #305).
+            Spacer(Modifier.weight(1f))
             if (displayOnly) {
                 // POSSESSED: not drawn on its own, so a hint stands in for the missing control.
                 Text(
