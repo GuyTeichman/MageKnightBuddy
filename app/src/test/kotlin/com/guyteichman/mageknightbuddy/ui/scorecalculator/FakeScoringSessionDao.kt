@@ -23,4 +23,8 @@ class FakeScoringSessionDao : ScoringSessionDao {
     override suspend fun deleteAll() {
         inserted.clear()
     }
+
+    override suspend fun deleteById(id: Long) {
+        inserted.removeAll { it.id == id }
+    }
 }

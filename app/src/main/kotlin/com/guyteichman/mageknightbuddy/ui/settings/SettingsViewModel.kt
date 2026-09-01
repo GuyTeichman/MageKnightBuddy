@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.guyteichman.mageknightbuddy.data.AppReset
 import com.guyteichman.mageknightbuddy.data.BackupCodec
 import com.guyteichman.mageknightbuddy.data.BackupDecodeResult
 import com.guyteichman.mageknightbuddy.data.FavoriteSitesRepository
@@ -39,6 +40,8 @@ data class RestorePrompt(val localCount: Int, val backupCount: Int)
 data class SettingsUiState(
     val message: SettingsMessage? = null,
     val restorePrompt: RestorePrompt? = null,
+    // True while the "reset app to default?" confirm dialog is open (issue #304).
+    val resetPrompt: Boolean = false,
 )
 
 /**
@@ -53,6 +56,7 @@ class SettingsViewModel(
     application: Application,
     private val repository: ScoringSessionRepository,
     private val favoritesRepository: FavoriteSitesRepository,
+    private val appReset: AppReset,
 ) : AndroidViewModel(application) {
 
     // Backing MutableStateFlow kept private so only this ViewModel mutates it; the screen observes
@@ -146,6 +150,31 @@ class SettingsViewModel(
         _uiState.update { it.copy(restorePrompt = null) }
     }
 
+    /** Opens the "reset app to default?" confirmation. Nothing is wiped until [confirmReset]. */
+    fun requestReset() {
+        _uiState.update { it.copy(resetPrompt = true) }
+    }
+
+    /** Dismisses the reset confirmation without wiping anything. */
+    fun cancelReset() {
+        _uiState.update { it.copy(resetPrompt = false) }
+    }
+
+    /**
+     * Wipes every saved game, in-progress session, favorite, and seen-tutorial flag via [AppReset],
+     * returning the app to a fresh-install state (issue #304), then reports it in a snackbar. The
+     * Scoreboard and Sites tabs update live (Room Flows re-emit empty); a game a screen is holding in
+     * memory right now survives until that screen is re-entered (see [AppReset]).
+     */
+    fun confirmReset() {
+        viewModelScope.launch {
+            appReset.resetToDefault()
+            _uiState.update {
+                it.copy(resetPrompt = false, message = SettingsMessage("App reset to default"))
+            }
+        }
+    }
+
     /** Called by the screen once a [SettingsMessage] has been shown, so it isn't shown again. */
     fun messageShown() {
         _uiState.update { it.copy(message = null) }
@@ -193,12 +222,14 @@ class SettingsViewModel(
         fun factory(
             repository: ScoringSessionRepository,
             favoritesRepository: FavoriteSitesRepository,
+            appReset: AppReset,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 SettingsViewModel(
                     application = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]!!,
                     repository = repository,
                     favoritesRepository = favoritesRepository,
+                    appReset = appReset,
                 )
             }
         }

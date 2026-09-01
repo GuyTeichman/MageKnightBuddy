@@ -23,6 +23,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.guyteichman.mageknightbuddy.R
+import com.guyteichman.mageknightbuddy.data.AppReset
 import com.guyteichman.mageknightbuddy.data.DummyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.EnemyPickerSessionRepository
 import com.guyteichman.mageknightbuddy.data.FavoriteSitesRepository
@@ -79,6 +80,7 @@ fun MageKnightBuddyApp(
     fieldHelp: Map<String, FieldHelp>,
     tutorials: Map<String, Tutorial>,
     tutorialProgress: TutorialProgressRepository,
+    appReset: AppReset,
 ) {
     // rememberNavController creates the NavController once and keeps the same instance
     // across recompositions (Compose's "remember" idiom), so navigation state survives
@@ -178,6 +180,7 @@ fun MageKnightBuddyApp(
                 SettingsScreen(
                     repository = repository,
                     favoritesRepository = favoriteSitesRepository,
+                    appReset = appReset,
                     onBack = { navController.popBackStack() },
                 )
             }

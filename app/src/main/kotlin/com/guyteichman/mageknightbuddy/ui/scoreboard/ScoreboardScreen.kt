@@ -1,5 +1,6 @@
 package com.guyteichman.mageknightbuddy.ui.scoreboard
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +21,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -28,11 +31,18 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +60,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.guyteichman.mageknightbuddy.data.ScoreCalculatorDraftRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
+import com.guyteichman.mageknightbuddy.data.StoredScoringSession
 import com.guyteichman.mageknightbuddy.domain.Outcome
 import com.guyteichman.mageknightbuddy.domain.ScoringSession
 import com.guyteichman.mageknightbuddy.domain.breakdown
@@ -109,6 +120,7 @@ fun ScoreboardTab(
             ScoreboardListScreen(
                 sessions = sessions,
                 onRowClick = { index -> nestedNavController.navigate("scoreboard_details/$index") },
+                onDelete = { id -> viewModel.delete(id) },
                 onScoreNewScenario = { nestedNavController.navigate(SCOREBOARD_SCORE_ROUTE) },
                 onOpenSettings = onOpenSettings,
             )
@@ -120,10 +132,11 @@ fun ScoreboardTab(
             arguments = listOf(navArgument("index") { type = NavType.IntType }),
         ) { backStackEntry ->
             val index = backStackEntry.arguments?.getInt("index") ?: 0
-            // getOrNull returns null instead of throwing if the index is out of bounds (e.g.
-            // a stale index after the session list changes); ?.let only runs the block - i.e.
-            // only renders the details screen - when a session actually exists at that index.
-            sessions.getOrNull(index)?.let { session ->
+            // getOrNull returns null instead of throwing if the index is out of bounds (e.g. a stale
+            // index after the list changes - a delete included); ?.let only runs the block - i.e. only
+            // renders the details screen - when a game actually exists at that index. .session unwraps
+            // the StoredScoringSession to the domain object the breakdown screen renders.
+            sessions.getOrNull(index)?.session?.let { session ->
                 ScoreboardDetailsScreen(session = session, onBack = { nestedNavController.popBackStack() })
             }
         }
@@ -146,11 +159,16 @@ fun ScoreboardTab(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScoreboardListScreen(
-    sessions: List<ScoringSession>,
+    sessions: List<StoredScoringSession>,
     onRowClick: (Int) -> Unit,
+    onDelete: (Long) -> Unit,
     onScoreNewScenario: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
+    // The game a swipe has proposed for deletion, held until the user confirms or cancels the dialog
+    // below. remember + mutableStateOf survives recomposition; null means no confirm dialog is open.
+    var pendingDelete by remember { mutableStateOf<StoredScoringSession?>(null) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -182,16 +200,92 @@ private fun ScoreboardListScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // itemsIndexed hands back each item together with its position in the list,
-                // which is needed here to pass the right index on to onRowClick. key by each
-                // session's timestamp (its stable identity - ScoringSession has no id field) so
-                // prepending a new session doesn't re-key every card by position and force
-                // KnightFace/ScenarioArt to re-decode into shifted slots.
-                itemsIndexed(sessions, key = { _, session -> session.playedAt.toEpochMilli() }) { index, session ->
-                    ScoreboardCard(session = session, onClick = { onRowClick(index) })
+                // itemsIndexed hands back each item together with its position in the list, needed to
+                // pass the right index on to onRowClick. key by each game's stable Room id so
+                // prepending a new game (or deleting one) doesn't re-key every card by position and
+                // force KnightFace/ScenarioArt to re-decode into shifted slots - and so each card's
+                // swipe state stays attached to the right game.
+                itemsIndexed(sessions, key = { _, stored -> stored.id }) { index, stored ->
+                    SwipeToDeleteCard(onRequestDelete = { pendingDelete = stored }) {
+                        ScoreboardCard(session = stored.session, onClick = { onRowClick(index) })
+                    }
                 }
             }
         }
+    }
+
+    // Confirm before a swipe actually deletes: deletion is irreversible and a swipe is easy to
+    // trigger by accident, so mirror the app's other destructive actions (Restore, Discard entry)
+    // with an explicit confirm dialog. Shown only while a swipe has set pendingDelete.
+    pendingDelete?.let { stored ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("Delete this game?") },
+            text = {
+                Text(
+                    "This permanently deletes your ${stored.session.scenario.displayName} game " +
+                        "(${stored.session.knight.displayName}, ${stored.session.score} points). " +
+                        "This can't be undone.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDelete(stored.id)
+                    pendingDelete = null
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+/**
+ * Wraps a Scoreboard [content] card in a swipe-left-to-delete gesture (Material3 [SwipeToDismissBox]).
+ * Swiping the card far enough toward the start edge reveals the red [DeleteSwipeBackground] and calls
+ * [onRequestDelete]; the actual deletion is gated behind the caller's confirm dialog, so this never
+ * settles into the dismissed state itself (see the confirmValueChange comment) - the card only leaves
+ * the list once the underlying data actually changes.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeToDeleteCard(onRequestDelete: () -> Unit, content: @Composable () -> Unit) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) onRequestDelete()
+            // Returning false refuses the state change, so the box springs back to resting rather than
+            // animating the card away - deletion is the confirm dialog's job, not the swipe's.
+            false
+        },
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        // Only the swipe-left (end-to-start) delete gesture is enabled; swiping the other way does nothing.
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = true,
+        backgroundContent = { DeleteSwipeBackground() },
+        content = { content() },
+    )
+}
+
+/** The red delete affordance revealed behind a card as it's swiped left - a trash icon at the trailing edge. */
+@Composable
+private fun DeleteSwipeBackground() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            // Clip to the card's own rounded shape so the red never shows square corners behind it.
+            .clip(CARD_SHAPE)
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 24.dp),
+        contentAlignment = Alignment.CenterEnd,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Delete,
+            contentDescription = "Delete",
+            tint = MaterialTheme.colorScheme.onErrorContainer,
+        )
     }
 }
 

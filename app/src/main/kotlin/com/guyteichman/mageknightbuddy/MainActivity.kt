@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
                     fieldHelp = app.fieldHelp,
                     tutorials = app.tutorials,
                     tutorialProgress = app.tutorialProgressRepository,
+                    appReset = app.appReset,
                 )
             }
         }

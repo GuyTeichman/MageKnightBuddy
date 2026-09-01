@@ -14,11 +14,13 @@ import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Coffee
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.guyteichman.mageknightbuddy.data.AppReset
 import com.guyteichman.mageknightbuddy.data.FavoriteSitesRepository
 import com.guyteichman.mageknightbuddy.data.ScoringSessionRepository
 import com.guyteichman.mageknightbuddy.domain.Scenario
@@ -96,10 +99,11 @@ private const val SCENARIO_ART_SOURCES_URL =
 fun SettingsScreen(
     repository: ScoringSessionRepository,
     favoritesRepository: FavoriteSitesRepository,
+    appReset: AppReset,
     onBack: () -> Unit,
 ) {
     val viewModel: SettingsViewModel =
-        viewModel(factory = SettingsViewModel.factory(repository, favoritesRepository))
+        viewModel(factory = SettingsViewModel.factory(repository, favoritesRepository, appReset))
     // collectAsState turns the ViewModel's StateFlow into Compose state: `uiState` reads like a
     // plain value but recomposes this screen whenever a new state is emitted.
     val uiState by viewModel.uiState.collectAsState()
@@ -177,6 +181,26 @@ fun SettingsScreen(
             ) {
                 Icon(Icons.Filled.Restore, contentDescription = null)
                 Text("  Restore from a file")
+            }
+
+            // Reset lives here, grouped with the other data-management action (Backup & Restore) rather
+            // than off in About/Credits (issue #304). It's the screen's one destructive, irreversible
+            // action, so the button is error-coloured and the tap only opens a confirm dialog.
+            Text("Reset", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Delete everything and return the app to a fresh install: all scored and in-progress " +
+                    "games, your favorite sites, and the tutorials you've dismissed.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            OutlinedButton(
+                onClick = { viewModel.requestReset() },
+                modifier = Modifier.fillMaxWidth(),
+                // error content colour marks this apart from the neutral backup/link buttons above.
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                Icon(Icons.Filled.DeleteForever, contentDescription = null)
+                Text("  Reset app to default")
             }
 
             Text("About", style = MaterialTheme.typography.titleMedium)
@@ -335,6 +359,28 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.cancelRestore() }) { Text("Cancel") }
+            },
+        )
+    }
+
+    // Confirm before "reset app to default" wipes everything (issue #304) - the same explicit-confirm
+    // guard as restore, since this is irreversible and clears far more than a single delete.
+    if (uiState.resetPrompt) {
+        AlertDialog(
+            onDismissRequest = { viewModel.cancelReset() },
+            title = { Text("Reset app to default?") },
+            text = {
+                Text(
+                    "This permanently deletes all your scored games, in-progress games, and favorite " +
+                        "sites, and makes the tutorials show again - returning the app to a fresh " +
+                        "install. This can't be undone.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.confirmReset() }) { Text("Reset") }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.cancelReset() }) { Text("Cancel") }
             },
         )
     }
