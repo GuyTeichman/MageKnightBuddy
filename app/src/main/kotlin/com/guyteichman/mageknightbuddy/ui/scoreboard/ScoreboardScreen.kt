@@ -292,7 +292,7 @@ private fun DeleteSwipeBackground() {
 
 // Fixed hex colors, not MaterialTheme.colorScheme ones: Material3 has no built-in "success"/
 // "failure" semantic color slot, so win/loss can't be expressed in theme terms. These are the
-// same green/red hex values CardColor.swatch (DummyPlayerScreen.kt) uses, at full strength for
+// same green/red hex values CardColor.swatch (ui/components/CardColorIcons.kt) uses, at full strength for
 // the solid Won/Lost pill - the pill is now the sole win/loss marker (no art wash, issue #309).
 private val WON_COLOR = Color(0xFF3E7C4A)
 private val LOST_COLOR = Color(0xFFB5423A)
