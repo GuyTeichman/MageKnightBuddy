@@ -2,28 +2,25 @@ package com.guyteichman.mageknightbuddy.domain
 
 import kotlinx.serialization.json.Json
 
+// A supertype constructor call can't forward-reference a const declared inside the object body below
+// it, so the literal lives here at file scope and the object's own RESOURCE_PATH const mirrors it.
+private const val FACTION_REWARD_TOKENS_RESOURCE_PATH = "/faction-reward-tokens.json"
+
 /**
  * The full set of transcribed [FactionRewardToken]s, loaded once from `faction-reward-tokens.json`
  * in this module's resources - the same pattern [TokenCatalogue] / [RuinTokenCatalogue] use
  * (ADR-0007), kept as its own catalogue because a reward token's shape differs from an enemy's or a
- * ruin's (see [FactionRewardToken]'s doc comment).
+ * ruin's (see [FactionRewardToken]'s doc comment). Shares its load/index/lookup machinery with the
+ * other catalogue objects via [JsonCatalogue].
  */
-object FactionRewardTokenCatalogue {
+object FactionRewardTokenCatalogue : JsonCatalogue<FactionRewardToken>(FACTION_REWARD_TOKENS_RESOURCE_PATH) {
     /** Classpath location of the catalogue JSON, relative to this module's resources root. */
-    const val RESOURCE_PATH = "/faction-reward-tokens.json"
+    const val RESOURCE_PATH = FACTION_REWARD_TOKENS_RESOURCE_PATH
 
-    /** All tokens in the catalogue. `by lazy` parses the JSON on first access and caches it. */
-    val tokens: List<FactionRewardToken> by lazy { load() }
+    /** All tokens in the catalogue. Kept as the existing public name; delegates to [JsonCatalogue.all]. */
+    val tokens: List<FactionRewardToken> get() = all
 
-    /** Looks up a token by its [FactionRewardToken.id], or null if no such token exists. */
-    fun byId(id: String): FactionRewardToken? = tokensById[id]
+    override fun parse(text: String): List<FactionRewardToken> = Json.decodeFromString(text)
 
-    private val tokensById: Map<String, FactionRewardToken> by lazy { tokens.associateBy { it.id } }
-
-    private fun load(): List<FactionRewardToken> {
-        val stream = FactionRewardTokenCatalogue::class.java.getResourceAsStream(RESOURCE_PATH)
-            ?: error("Faction reward token catalogue resource not found at $RESOURCE_PATH")
-        val text = stream.bufferedReader().use { it.readText() }
-        return Json.decodeFromString<List<FactionRewardToken>>(text)
-    }
+    override fun idOf(item: FactionRewardToken): String = item.id
 }
