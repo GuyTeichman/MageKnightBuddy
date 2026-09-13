@@ -292,15 +292,10 @@ private fun DeleteSwipeBackground() {
 
 // Fixed hex colors, not MaterialTheme.colorScheme ones: Material3 has no built-in "success"/
 // "failure" semantic color slot, so win/loss can't be expressed in theme terms. These are the
-// same green/red hex values the old row tint (and CardColor.swatch in DummyPlayerScreen.kt) used,
-// here at full strength for the Won/Lost pill and as a low-alpha scrim over the art.
+// same green/red hex values CardColor.swatch (DummyPlayerScreen.kt) uses, at full strength for
+// the solid Won/Lost pill - the pill is now the sole win/loss marker (no art wash, issue #309).
 private val WON_COLOR = Color(0xFF3E7C4A)
 private val LOST_COLOR = Color(0xFFB5423A)
-
-/** The outcome wash laid over a card's art - green for a win, red for a loss, kept faint so the art
- *  still reads through it (the solid [OutcomePill] carries the unambiguous win/loss signal). */
-private fun outcomeTint(outcome: Outcome): Color =
-    (if (outcome == Outcome.WON) WON_COLOR else LOST_COLOR).copy(alpha = 0.28f)
 
 /** Cream ink for text/icons over the art, legible on any scenario's darkened background. */
 private val CARD_INK = Color(0xFFF6ECDC)
@@ -308,16 +303,14 @@ private val CARD_INK = Color(0xFFF6ECDC)
 private val CARD_SHAPE = RoundedCornerShape(14.dp)
 
 /**
- * One saved session as a full-width art card (issue #286): the scenario's background art with an
- * outcome wash, the knight's face as a circular avatar, the score, and a solid Won/Lost pill.
+ * One saved session as a full-width art card (issue #286): the scenario's background art with the
+ * knight's face as a circular avatar, the score, and a solid Won/Lost pill.
  * Tapping anywhere opens that session's breakdown (the caller wires [onClick] to navigation).
  */
 @Composable
 private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
     ScenarioArt(
         scenario = session.scenario,
-        // ScenarioArt layers this tint above the art + its own scrim but below the content below.
-        outcomeTint = outcomeTint(session.outcome),
         shape = CARD_SHAPE,
         // Thin dark outline so the card reads as a framed tile, matching the picker (issue #287).
         border = scenarioArtFrame(),
@@ -381,7 +374,7 @@ private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
     }
 }
 
-/** A solid Won/Lost chip in the outcome color - the unambiguous win/loss marker over the art wash. */
+/** A solid Won/Lost chip in the outcome color - the unambiguous win/loss marker over the art. */
 @Composable
 private fun OutcomePill(outcome: Outcome, modifier: Modifier = Modifier) {
     val won = outcome == Outcome.WON
@@ -459,7 +452,7 @@ private fun ScoreboardDetailsScreen(session: ScoringSession, onBack: () -> Unit)
 
 /**
  * The breakdown screen's header banner: a taller version of [ScoreboardCard]'s art treatment
- * (scenario art + outcome wash + knight avatar + scenario name + score + Won/Lost pill), full-bleed
+ * (scenario art + knight avatar + scenario name + score + Won/Lost pill), full-bleed
  * across the top of the screen (a rectangular clip, not the card's rounded one). The knight's name
  * isn't repeated here - it's already the top-bar title, plus the avatar.
  */
@@ -467,7 +460,6 @@ private fun ScoreboardDetailsScreen(session: ScoringSession, onBack: () -> Unit)
 private fun ScoreboardDetailHeader(session: ScoringSession) {
     ScenarioArt(
         scenario = session.scenario,
-        outcomeTint = outcomeTint(session.outcome),
         shape = RectangleShape,
         modifier = Modifier.fillMaxWidth().height(184.dp),
     ) {
