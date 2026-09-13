@@ -67,6 +67,7 @@ import com.guyteichman.mageknightbuddy.domain.breakdown
 import com.guyteichman.mageknightbuddy.ui.components.KnightFace
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.scenarioart.ART_FRAME_WIDTH
+import com.guyteichman.mageknightbuddy.ui.scenarioart.OnScenarioArtInk
 import com.guyteichman.mageknightbuddy.ui.scenarioart.ScenarioArt
 import com.guyteichman.mageknightbuddy.ui.scenarioart.artFrameColor
 import com.guyteichman.mageknightbuddy.ui.scenarioart.scenarioArtFrame
@@ -297,9 +298,6 @@ private fun DeleteSwipeBackground() {
 private val WON_COLOR = Color(0xFF3E7C4A)
 private val LOST_COLOR = Color(0xFFB5423A)
 
-/** Cream ink for text/icons over the art, legible on any scenario's darkened background. */
-private val CARD_INK = Color(0xFFF6ECDC)
-
 private val CARD_SHAPE = RoundedCornerShape(14.dp)
 
 /**
@@ -348,7 +346,7 @@ private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
         ) {
             Text(
                 session.scenario.displayName,
-                color = CARD_INK,
+                color = OnScenarioArtInk,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -356,7 +354,7 @@ private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
             )
             Text(
                 session.knight.displayName,
-                color = CARD_INK.copy(alpha = 0.85f),
+                color = OnScenarioArtInk.copy(alpha = 0.85f),
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -366,7 +364,7 @@ private fun ScoreboardCard(session: ScoringSession, onClick: () -> Unit) {
         // name block on the left rather than sitting small and low (author review of #286).
         Text(
             text = session.score.toString(),
-            color = CARD_INK,
+            color = OnScenarioArtInk,
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 10.dp, end = 16.dp),
@@ -481,7 +479,7 @@ private fun ScoreboardDetailHeader(session: ScoringSession) {
         )
         Text(
             text = session.scenario.displayName,
-            color = CARD_INK,
+            color = OnScenarioArtInk,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
@@ -492,7 +490,7 @@ private fun ScoreboardDetailHeader(session: ScoringSession) {
         )
         Text(
             text = session.score.toString(),
-            color = CARD_INK,
+            color = OnScenarioArtInk,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 16.dp, end = 20.dp),
