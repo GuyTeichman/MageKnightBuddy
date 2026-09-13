@@ -37,24 +37,13 @@ object HiddenValleyScoring {
      * Round bonus.
      */
     fun breakdown(input: HiddenValleyScoringInput): List<ScoreLineItem> {
-        val achievements = input.standardAchievements
         // if/else as an expression, assigned straight to the val.
         val defeatedBonus = if (input.highPriestessDefeated) HIGH_PRIESTESS_DEFEATED_BONUS else 0
-        // +5 if "End of the Round" was not yet announced in the last Round.
-        val endOfRoundBonus = if (!input.endOfRoundAnnounced) 5 else 0
-        return listOf(
-            ScoreLineItem("Fame", input.fame),
-            ScoreLineItem("Greatest Knowledge", achievements.greatestKnowledge()),
-            ScoreLineItem("Greatest Leader", achievements.greatestLeader()),
-            ScoreLineItem("Greatest Adventurer", achievements.greatestAdventurer()),
-            ScoreLineItem("Greatest Loot", achievements.greatestLoot()),
-            ScoreLineItem("Greatest Conqueror", achievements.greatestConqueror()),
-            ScoreLineItem("Greatest Beating", achievements.greatestBeating()),
-            ScoreLineItem("High Priestess Defeated", defeatedBonus),
-            ScoreLineItem("Rounds Finished Early", input.roundsFinishedEarly * 30),
-            ScoreLineItem("Dummy Player's Deck", input.cardsRemainingInDummyDeck),
-            ScoreLineItem("End of Round", endOfRoundBonus),
-        )
+        // `+` concatenates lists here: the shared Fame/Achievements block, this scenario's own
+        // bonus line, then the shared Rounds-Finished-Early/Dummy-Deck/End-of-Round trio.
+        return standardScoreLines(input.fame, input.standardAchievements) +
+            listOf(ScoreLineItem("High Priestess Defeated", defeatedBonus)) +
+            dummyEndgameLines(input.roundsFinishedEarly, input.cardsRemainingInDummyDeck, input.endOfRoundAnnounced)
     }
 
     /**

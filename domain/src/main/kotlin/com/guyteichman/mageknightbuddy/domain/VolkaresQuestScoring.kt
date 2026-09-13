@@ -54,20 +54,13 @@ object VolkaresQuestScoring {
      * docs/rules/volkares-quest.md's "Scoring" section: Fame, the six Standard Achievements,
      * cities conquered, and the Volkare combat bonus (zero if Volkare was not defeated).
      */
-    fun breakdown(input: VolkaresQuestScoringInput): List<ScoreLineItem> {
-        val achievements = input.standardAchievements
-        return listOf(
-            ScoreLineItem("Fame", input.fame),
-            ScoreLineItem("Greatest Knowledge", achievements.greatestKnowledge()),
-            ScoreLineItem("Greatest Leader", achievements.greatestLeader()),
-            ScoreLineItem("Greatest Adventurer", achievements.greatestAdventurer()),
-            ScoreLineItem("Greatest Loot", achievements.greatestLoot()),
-            ScoreLineItem("Greatest Conqueror", achievements.greatestConqueror()),
-            ScoreLineItem("Greatest Beating", achievements.greatestBeating()),
-            ScoreLineItem("Cities Conquered", input.citiesConquered * FAME_PER_CONQUERED_CITY),
-            ScoreLineItem("Volkare Combat Bonus", volkareCombatBonus(input)),
-        )
-    }
+    fun breakdown(input: VolkaresQuestScoringInput): List<ScoreLineItem> =
+        // `+` appends this scenario's own bonus lines onto the shared Fame/Achievements block.
+        standardScoreLines(input.fame, input.standardAchievements) +
+            listOf(
+                ScoreLineItem("Cities Conquered", input.citiesConquered * FAME_PER_CONQUERED_CITY),
+                ScoreLineItem("Volkare Combat Bonus", volkareCombatBonus(input)),
+            )
 
     /**
      * Win/Loss check (docs/rules/volkares-quest.md, "Outcome" section): Won iff Volkare's entire

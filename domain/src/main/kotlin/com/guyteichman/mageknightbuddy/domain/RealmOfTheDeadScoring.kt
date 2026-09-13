@@ -62,29 +62,20 @@ object RealmOfTheDeadScoring {
      * deck cards remaining, and the End of Round bonus.
      */
     fun breakdown(input: RealmOfTheDeadScoringInput): List<ScoreLineItem> {
-        val achievements = input.standardAchievements
         // if/else as an expression, assigned straight to the val.
         val necromancerBonus = if (input.necromancerDefeated) NECROMANCER_DEFEATED_BONUS else 0
         // Both conditions (all Graveyards sealed AND Necromancer defeated) must hold for the
         // combined bonus - this is on top of, not instead of, the two bonuses above.
         val bothBonus = if (input.allGraveyardsSealed && input.necromancerDefeated) BOTH_ACHIEVED_BONUS else 0
-        // +5 if "End of the Round" was not yet announced in the last Round.
-        val endOfRoundBonus = if (!input.endOfRoundAnnounced) 5 else 0
-        return listOf(
-            ScoreLineItem("Fame", input.fame),
-            ScoreLineItem("Greatest Knowledge", achievements.greatestKnowledge()),
-            ScoreLineItem("Greatest Leader", achievements.greatestLeader()),
-            ScoreLineItem("Greatest Adventurer", achievements.greatestAdventurer()),
-            ScoreLineItem("Greatest Loot", achievements.greatestLoot()),
-            ScoreLineItem("Greatest Conqueror", achievements.greatestConqueror()),
-            ScoreLineItem("Greatest Beating", achievements.greatestBeating()),
-            ScoreLineItem("Graveyards Sealed", input.graveyardsSealed * GRAVEYARD_SEALED_BONUS),
-            ScoreLineItem("Necromancer Defeated", necromancerBonus),
-            ScoreLineItem("Both Achieved", bothBonus),
-            ScoreLineItem("Rounds Finished Early", input.roundsFinishedEarly * 30),
-            ScoreLineItem("Dummy Player's Deck", input.cardsRemainingInDummyDeck),
-            ScoreLineItem("End of Round", endOfRoundBonus),
-        )
+        // `+` concatenates lists here: the shared Fame/Achievements block, this scenario's own
+        // bonus lines, then the shared Rounds-Finished-Early/Dummy-Deck/End-of-Round trio.
+        return standardScoreLines(input.fame, input.standardAchievements) +
+            listOf(
+                ScoreLineItem("Graveyards Sealed", input.graveyardsSealed * GRAVEYARD_SEALED_BONUS),
+                ScoreLineItem("Necromancer Defeated", necromancerBonus),
+                ScoreLineItem("Both Achieved", bothBonus),
+            ) +
+            dummyEndgameLines(input.roundsFinishedEarly, input.cardsRemainingInDummyDeck, input.endOfRoundAnnounced)
     }
 
     /**

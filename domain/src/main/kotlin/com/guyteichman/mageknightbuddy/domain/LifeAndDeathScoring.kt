@@ -42,29 +42,20 @@ object LifeAndDeathScoring {
      * cards remaining, and the End of Round bonus.
      */
     fun breakdown(input: LifeAndDeathScoringInput): List<ScoreLineItem> {
-        val achievements = input.standardAchievements
         // listOf(...).count { it } counts how many of the two Booleans are true, i.e. how many
         // Avatars were defeated (0, 1, or 2) - used to scale the flat per-Avatar bonus below.
         val avatarsDefeatedCount = listOf(input.tezlaSpiritDefeated, input.darkTezlaDefeated).count { it }
         // if/else as an expression, assigned straight to the val (Kotlin has no ternary operator).
         val bothAvatarsBonus =
             if (input.tezlaSpiritDefeated && input.darkTezlaDefeated) BOTH_AVATARS_DEFEATED_BONUS else 0
-        // +5 if "End of the Round" was not yet announced in the final Round.
-        val endOfRoundBonus = if (!input.endOfRoundAnnounced) 5 else 0
-        return listOf(
-            ScoreLineItem("Fame", input.fame),
-            ScoreLineItem("Greatest Knowledge", achievements.greatestKnowledge()),
-            ScoreLineItem("Greatest Leader", achievements.greatestLeader()),
-            ScoreLineItem("Greatest Adventurer", achievements.greatestAdventurer()),
-            ScoreLineItem("Greatest Loot", achievements.greatestLoot()),
-            ScoreLineItem("Greatest Conqueror", achievements.greatestConqueror()),
-            ScoreLineItem("Greatest Beating", achievements.greatestBeating()),
-            ScoreLineItem("Avatars Defeated", avatarsDefeatedCount * AVATAR_DEFEATED_BONUS),
-            ScoreLineItem("Both Avatars Defeated", bothAvatarsBonus),
-            ScoreLineItem("Rounds Finished Early", input.roundsFinishedEarly * 30),
-            ScoreLineItem("Dummy Player's Deck", input.cardsRemainingInDummyDeck),
-            ScoreLineItem("End of Round", endOfRoundBonus),
-        )
+        // `+` concatenates lists here: the shared Fame/Achievements block, this scenario's own
+        // bonus lines, then the shared Rounds-Finished-Early/Dummy-Deck/End-of-Round trio.
+        return standardScoreLines(input.fame, input.standardAchievements) +
+            listOf(
+                ScoreLineItem("Avatars Defeated", avatarsDefeatedCount * AVATAR_DEFEATED_BONUS),
+                ScoreLineItem("Both Avatars Defeated", bothAvatarsBonus),
+            ) +
+            dummyEndgameLines(input.roundsFinishedEarly, input.cardsRemainingInDummyDeck, input.endOfRoundAnnounced)
     }
 
     /**

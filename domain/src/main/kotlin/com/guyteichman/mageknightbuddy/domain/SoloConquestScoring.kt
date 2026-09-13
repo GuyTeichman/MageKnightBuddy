@@ -46,29 +46,18 @@ object SoloConquestScoring {
      * Rounds finished early, Dummy Player deck cards remaining, End of Round bonus).
      */
     fun breakdown(input: SoloConquestScoringInput): List<ScoreLineItem> {
-        val achievements = input.standardAchievements
         // if/else used as an expression (Kotlin has no separate ternary operator) - the result
         // is assigned straight to the val. +15 for conquering *all* cities (rule: "All Cities Conquered").
         val allCitiesBonus = if (input.citiesConquered == TOTAL_CITIES_IN_SOLO_CONQUEST) 15 else 0
-        // +5 if "End of the Round" had not yet been announced in the final Round.
-        val endOfRoundBonus = if (!input.endOfRoundAnnounced) 5 else 0
-        // listOf builds an immutable, ordered list in one expression; each entry below is a
-        // rulebook-mandated scoring category or bonus, in the order the rulebook lists them.
-        return listOf(
-            ScoreLineItem("Fame", input.fame),
-            ScoreLineItem("Greatest Knowledge", achievements.greatestKnowledge()),
-            ScoreLineItem("Greatest Leader", achievements.greatestLeader()),
-            ScoreLineItem("Greatest Adventurer", achievements.greatestAdventurer()),
-            ScoreLineItem("Greatest Loot", achievements.greatestLoot()),
-            ScoreLineItem("Greatest Conqueror", achievements.greatestConqueror()),
-            ScoreLineItem("Greatest Beating", achievements.greatestBeating()),
-            ScoreLineItem("Greatest Quester", input.questPoints),
-            ScoreLineItem("Cities Conquered", input.citiesConquered * 10),
-            ScoreLineItem("All Cities Conquered", allCitiesBonus),
-            ScoreLineItem("Rounds Finished Early", input.roundsFinishedEarly * 30),
-            ScoreLineItem("Dummy Player's Deck", input.cardsRemainingInDummyDeck),
-            ScoreLineItem("End of Round", endOfRoundBonus),
-        )
+        // `+` concatenates lists here: the shared Fame/Achievements block, this scenario's own
+        // bonus lines, then the shared Rounds-Finished-Early/Dummy-Deck/End-of-Round trio.
+        return standardScoreLines(input.fame, input.standardAchievements) +
+            listOf(
+                ScoreLineItem("Greatest Quester", input.questPoints),
+                ScoreLineItem("Cities Conquered", input.citiesConquered * 10),
+                ScoreLineItem("All Cities Conquered", allCitiesBonus),
+            ) +
+            dummyEndgameLines(input.roundsFinishedEarly, input.cardsRemainingInDummyDeck, input.endOfRoundAnnounced)
     }
 
     /**

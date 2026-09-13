@@ -23,8 +23,4 @@ enum class ReputationTrackSpace(val modifier: Int?) {
     PLUS_2(modifier = 2),
     PLUS_3(modifier = 3),
     PLUS_5(modifier = 5),
-    ;
-
-    /** Whether this is the track's one "X" space (no modifier - see rulebook p.7). */
-    val isXSpace: Boolean get() = modifier == null
 }
