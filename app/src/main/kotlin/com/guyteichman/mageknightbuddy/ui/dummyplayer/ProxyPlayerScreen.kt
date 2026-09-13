@@ -5,9 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -16,26 +14,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,12 +38,10 @@ import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.TutorialProgressRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.CardIdentity
-import com.guyteichman.mageknightbuddy.domain.PickOrder
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerCard
 import com.guyteichman.mageknightbuddy.domain.objectiveLabel
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
-import com.guyteichman.mageknightbuddy.domain.tacticPickOrder
 import com.guyteichman.mageknightbuddy.domain.turnsRemaining
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
@@ -64,7 +50,6 @@ import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.help.FieldHelp
 import com.guyteichman.mageknightbuddy.ui.help.HelpButton
 import com.guyteichman.mageknightbuddy.ui.tutorial.Tutorial
-import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialAction
 import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialDialog
 import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialKeys
 import com.guyteichman.mageknightbuddy.ui.tutorial.rememberScreenTutorialState
@@ -120,7 +105,7 @@ private fun ProxyPlayerCard.objectiveLabel(): String = when (this) {
  * Not `private`: called from `DummyPlayerScreen.kt`'s `DummyPlayerTab`, the same cross-file
  * relationship `VolkareScreen.kt`'s `VolkareAiScreen` has with it.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProxyPlayerAiScreen(
     repository: ProxyPlayerSessionRepository,
@@ -146,118 +131,86 @@ fun ProxyPlayerAiScreen(
     val needsTacticPick = tacticState != null && (tacticState.playerPick == null || tacticState.dummyPick == null)
 
     if (session != null) {
-        LaunchedEffect(session.tacticState) {
-            val pickOrder = tacticPickOrder(isVolkare = false, isSolo = session.isSolo)
-            val dummyShouldGoNow = when (pickOrder) {
-                PickOrder.DUMMY_FIRST -> true
-                PickOrder.PLAYER_FIRST -> session.tacticState.playerPick != null
-            }
-            if (session.tacticState.dummyPick == null && dummyShouldGoNow) {
-                viewModel.pickDummyTactic()
-            }
-        }
+        AutoPickDummyTactic(
+            tacticState = session.tacticState,
+            isVolkare = false,
+            isSolo = session.isSolo,
+            onPick = { scope.launch { viewModel.pickDummyTactic() } },
+        )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Proxy Player") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    if (session != null) {
-                        RoundChip(round = session.round, turn = session.turnInRound, isDay = session.isDay)
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    TutorialAction(onClick = tutorial::show)
-                },
-            )
-        },
-        // Bottom action row, mirroring DummyPlayerScreen.kt's DummyPlayerAiScreen - Play Turn and
-        // End Round are always available, unlike Explored/Completed below which only make sense
-        // once there's a current objective to resolve.
-        bottomBar = {
-            if (session != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Undo (issue #256): the mechanism is inherited from AutosaveSessionViewModel
-                    // (added for the Dummy Player screen in #62) - this just wires the same icon-only
-                    // button, disabled when there's nothing to revert or a mutation is in flight.
-                    IconButton(
-                        onClick = { scope.launch { viewModel.undo() } },
-                        enabled = viewModel.canUndo && !viewModel.isBusy,
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo")
-                    }
-                    Button(
-                        onClick = { scope.launch { viewModel.playTurn() } },
-                        enabled = !session.roundEnded && !viewModel.isBusy && !needsTacticPick,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text("Play Turn")
-                    }
-                    OutlinedButton(
-                        onClick = { showEndRoundDialog = true },
-                        enabled = !viewModel.isBusy && !needsTacticPick,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text("End Round")
-                    }
-                }
-            }
-        },
-    ) { padding ->
-        if (session == null) {
-            // Restoring from Room is asynchronous (see ProxyPlayerAiViewModel's init block); this
-            // only shows for the brief window before that first restore completes.
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+    // Log rows most-recent-first, matching DummyPlayerAiScreen (issue #35). Turn numbers (issue
+    // #270) are computed over the chronological log, then zipped on so each row keeps its own turn
+    // through the reverse. remember(session.log) keeps this off every recomposition - it only
+    // re-runs when the log itself changes. Computed here rather than inside AiTurnScaffold's
+    // trailing content lambda: that lambda's type is LazyListScope.() -> Unit, which is *not* a
+    // @Composable context (only the item {...}/items {...} blocks inside it are), so `remember`
+    // can't be called there directly.
+    val rows = session?.let { s -> remember(s.log) { s.log.zip(proxyTurnNumbers(s.log)).asReversed() } } ?: emptyList()
+
+    // AiTurnScaffold (issue #319) is the shared Scaffold shell all 3 AI screens use - see its own
+    // doc comment in AiTurnScaffold.kt. Play Turn/End Round are always available here, unlike
+    // Explored/Completed below which only make sense once there's a current objective to resolve.
+    AiTurnScaffold(
+        title = "Proxy Player",
+        onBack = onBack,
+        roundChip = if (session != null) {
+            { RoundChip(round = session.round, turn = session.turnInRound, isDay = session.isDay) }
         } else {
+            null
+        },
+        tutorial = tutorial,
+        isLoading = session == null,
+        canUndo = viewModel.canUndo,
+        isBusy = viewModel.isBusy,
+        onUndo = { scope.launch { viewModel.undo() } },
+        playTurnEnabled = session != null && !session.roundEnded && !needsTacticPick,
+        onPlayTurn = { scope.launch { viewModel.playTurn() } },
+        endRoundEnabled = !needsTacticPick,
+        onEndRound = { showEndRoundDialog = true },
+        // Held back while the tutorial is open (issue #161) so a first-time player can read it
+        // before being made to pick a Tactic - otherwise the picker stacks on top and blocks the
+        // tutorial.
+        tacticPicker = {
+            if (session != null && needsTacticPick && !tutorial.isVisible) {
+                TacticPickerDialog(
+                    isDay = session.isDay,
+                    tacticState = session.tacticState,
+                    aiLabel = "Proxy Player",
+                    enabled = !viewModel.isBusy && session.tacticState.playerPick == null,
+                    onPickPlayer = { card -> scope.launch { viewModel.pickPlayerTactic(card) } },
+                )
+            }
+        },
+    ) {
+        // This lambda body only ever runs while isLoading is false above (i.e. session != null),
+        // but Kotlin can't infer that across the two separate composable calls - the explicit
+        // null check keeps the compiler happy without an unsafe !! anywhere.
+        if (session != null) {
             // A local val, not repeated session.objectiveCard reads: ProxyPlayerCard is declared
             // in the domain module, so Kotlin can't smart-cast a nullable property read from a
             // different module across two statements - capturing it once here gives the compiler
             // (and this code) one non-null local to work with instead.
             val objectiveCard = session.objectiveCard
 
-            // Log rows most-recent-first, matching DummyPlayerAiScreen (issue #35). Turn numbers
-            // (issue #270) are computed over the chronological log, then zipped on so each row keeps
-            // its own turn through the reverse. remember(session.log) keeps this off every
-            // recomposition - it only re-runs when the log itself changes.
-            val rows = remember(session.log) { session.log.zip(proxyTurnNumbers(session.log)).asReversed() }
-
-            // LazyColumn, not a plain Column: the deck tableau, objective details, and event log
-            // together can easily outgrow one screen (mirrors DummyPlayerScreen.kt's
-            // DummyPlayerAiScreen, which has the same shape of content).
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                item { HeroRow(knight = session.knight, wasRandom = session.wasRandom) }
-                // The toggle button lives inside DeckPanel's own header instead of the top app
-                // bar, so it reads as attached to the panel it controls. The body still swaps
-                // mutually exclusively. DeckPanel/HeroRow/StatGridBody are shared directly with
-                // DummyPlayerScreen.kt's DummyPlayerAiScreen (issue #318) - only the tableau body
-                // stays a separate copy, since its layout/data source genuinely differ (see
-                // ProxyPlayerTableauBody's own doc comment).
-                item {
-                    DeckPanel(showSummary = showSummary, onToggleSummary = { showSummary = !showSummary }) {
-                        if (showSummary) {
-                            StatGridBody(remainingByColor = session.remainingByColor, crystals = session.crystals)
-                        } else {
-                            ProxyPlayerTableauBody(session = session, fieldHelp = fieldHelp)
-                        }
+            item { HeroRow(knight = session.knight, wasRandom = session.wasRandom) }
+            // The toggle button lives inside DeckPanel's own header instead of the top app
+            // bar, so it reads as attached to the panel it controls. The body still swaps
+            // mutually exclusively. DeckPanel/HeroRow/StatGridBody are shared directly with
+            // DummyPlayerScreen.kt's DummyPlayerAiScreen (issue #318) - only the tableau body
+            // stays a separate copy, since its layout/data source genuinely differ (see
+            // ProxyPlayerTableauBody's own doc comment).
+            item {
+                DeckPanel(showSummary = showSummary, onToggleSummary = { showSummary = !showSummary }) {
+                    if (showSummary) {
+                        StatGridBody(remainingByColor = session.remainingByColor, crystals = session.crystals)
+                    } else {
+                        ProxyPlayerTableauBody(session = session, fieldHelp = fieldHelp)
                     }
                 }
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (objectiveCard == null) {
                             Text("No current objective - tap Play Turn to draw one.")
                         } else {
@@ -369,16 +322,15 @@ fun ProxyPlayerAiScreen(
                         }
                     }
                 }
-                item {
-                    Text(
-                        "Log",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                items(rows) { (event, turnInRound) ->
-                    LogRow(entry = event.describe(turnInRound))
-                }
+            item {
+                Text(
+                    "Log",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            items(rows) { (event, turnInRound) ->
+                LogRow(entry = event.describe(turnInRound))
             }
         }
     }
@@ -396,18 +348,6 @@ fun ProxyPlayerAiScreen(
                     showEndRoundDialog = false
                 }
             },
-        )
-    }
-
-    // Held back while the tutorial is open (issue #161) so a first-time player can read it before
-    // being made to pick a Tactic - otherwise the picker stacks on top and blocks the tutorial.
-    if (session != null && needsTacticPick && !tutorial.isVisible) {
-        TacticPickerDialog(
-            isDay = session.isDay,
-            tacticState = session.tacticState,
-            aiLabel = "Proxy Player",
-            enabled = !viewModel.isBusy && session.tacticState.playerPick == null,
-            onPickPlayer = { card -> scope.launch { viewModel.pickPlayerTactic(card) } },
         )
     }
 }
