@@ -4,8 +4,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,6 +26,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -38,6 +41,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -167,21 +172,17 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodyMedium,
             )
 
-            OutlinedButton(
+            SettingsLinkButton(
+                icon = Icons.Filled.Save,
+                label = "Back up to a file",
                 onClick = { backupLauncher.launch("mageknightbuddy-backup-${LocalDate.now()}.json") },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Filled.Save, contentDescription = null)
-                Text("  Back up to a file")
-            }
+            )
 
-            OutlinedButton(
+            SettingsLinkButton(
+                icon = Icons.Filled.Restore,
+                label = "Restore from a file",
                 onClick = { restoreLauncher.launch(arrayOf("*/*")) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Filled.Restore, contentDescription = null)
-                Text("  Restore from a file")
-            }
+            )
 
             // Reset lives here, grouped with the other data-management action (Backup & Restore) rather
             // than off in About/Credits (issue #304). It's the screen's one destructive, irreversible
@@ -193,15 +194,13 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodyMedium,
             )
 
-            OutlinedButton(
+            SettingsLinkButton(
+                icon = Icons.Filled.DeleteForever,
+                label = "Reset app to default",
                 onClick = { viewModel.requestReset() },
-                modifier = Modifier.fillMaxWidth(),
                 // error content colour marks this apart from the neutral backup/link buttons above.
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            ) {
-                Icon(Icons.Filled.DeleteForever, contentDescription = null)
-                Text("  Reset app to default")
-            }
+                contentColor = MaterialTheme.colorScheme.error,
+            )
 
             Text("About", style = MaterialTheme.typography.titleMedium)
             Text(
@@ -209,21 +208,17 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodyMedium,
             )
 
-            OutlinedButton(
+            SettingsLinkButton(
+                icon = Icons.Filled.Code,
+                label = "View source on GitHub",
                 onClick = { uriHandler.openUri(GITHUB_URL) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Filled.Code, contentDescription = null)
-                Text("  View source on GitHub")
-            }
+            )
 
-            OutlinedButton(
+            SettingsLinkButton(
+                icon = Icons.Filled.Coffee,
+                label = "Buy me a coffee",
                 onClick = { uriHandler.openUri(BUY_ME_A_COFFEE_URL) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Filled.Coffee, contentDescription = null)
-                Text("  Buy me a coffee")
-            }
+            )
 
             Text("Credits", style = MaterialTheme.typography.titleMedium)
             Text(
@@ -252,21 +247,17 @@ fun SettingsScreen(
                 detail = "WizKids/NECA, LLC.",
             )
 
-            OutlinedButton(
+            SettingsLinkButton(
+                icon = Icons.Filled.Public,
+                label = "Mage Knight — official site (WizKids)",
                 onClick = { uriHandler.openUri(WIZKIDS_MAGE_KNIGHT_URL) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Filled.Public, contentDescription = null)
-                Text("  Mage Knight — official site (WizKids)")
-            }
+            )
 
-            OutlinedButton(
+            SettingsLinkButton(
+                icon = Icons.Filled.Casino,
+                label = "Mage Knight on BoardGameGeek",
                 onClick = { uriHandler.openUri(BGG_MAGE_KNIGHT_URL) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Filled.Casino, contentDescription = null)
-                Text("  Mage Knight on BoardGameGeek")
-            }
+            )
 
             // Non-affiliation disclaimer: the licensing outcome of issue #193 / ADR-0010. Rendered
             // as fine print (bodySmall + muted onSurfaceVariant colour) so it reads as a legal
@@ -286,21 +277,17 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodyMedium,
             )
 
-            OutlinedButton(
+            SettingsLinkButton(
+                icon = Icons.Filled.Brush,
+                label = "Dragon art — OpenClipart (FreeSVG)",
                 onClick = { uriHandler.openUri(ICON_DRAGON_URL) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Filled.Brush, contentDescription = null)
-                Text("  Dragon art — OpenClipart (FreeSVG)")
-            }
+            )
 
-            OutlinedButton(
+            SettingsLinkButton(
+                icon = Icons.Filled.Brush,
+                label = "Shield silhouette — svgsilh",
                 onClick = { uriHandler.openUri(ICON_SHIELD_URL) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Filled.Brush, contentDescription = null)
-                Text("  Shield silhouette — svgsilh")
-            }
+            )
 
             // Scenario background art credits (issue #288). Each scenario is illustrated with a
             // period painting behind its picker/scoreboard card; almost all are public-domain fine
@@ -331,13 +318,11 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            OutlinedButton(
+            SettingsLinkButton(
+                icon = Icons.Filled.Image,
+                label = "Scenario art sources & licences",
                 onClick = { uriHandler.openUri(SCENARIO_ART_SOURCES_URL) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Filled.Image, contentDescription = null)
-                Text("  Scenario art sources & licences")
-            }
+            )
         }
     }
 
@@ -383,6 +368,32 @@ fun SettingsScreen(
                 TextButton(onClick = { viewModel.cancelReset() }) { Text("Cancel") }
             },
         )
+    }
+}
+
+/**
+ * The full-width outlined icon+label button used for every link-style action on this screen
+ * (backup/restore, About links, Credits links). Centralizes that repeated layout so each call site
+ * only supplies what actually differs between buttons: the icon, the label, the click handler, and
+ * (for the destructive Reset button only) an override [contentColor].
+ */
+@Composable
+private fun SettingsLinkButton(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    contentColor: Color = LocalContentColor.current,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = contentColor),
+    ) {
+        Icon(icon, contentDescription = null)
+        // A real Spacer for the icon/label gap, replacing the old "  " (two-space) prefix that used
+        // to fake spacing inside the label string itself.
+        Spacer(Modifier.width(8.dp))
+        Text(label)
     }
 }
 
