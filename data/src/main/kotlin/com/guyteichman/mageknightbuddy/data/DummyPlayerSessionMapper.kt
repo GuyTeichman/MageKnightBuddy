@@ -12,28 +12,8 @@ import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.Scenario
-import com.guyteichman.mageknightbuddy.domain.TacticState
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-
-// Maps a domain CardIdentity to its DTO mirror.
-private fun CardIdentity.toDto(): CardIdentityDto = when (this) {
-    is CardIdentity.SingleColor -> CardIdentityDto.SingleColor(color.name)
-    is CardIdentity.DualColor -> CardIdentityDto.DualColor(colorA.name, colorB.name)
-}
-
-// The reverse of toDto() above.
-private fun CardIdentityDto.toDomain(): CardIdentity = when (this) {
-    is CardIdentityDto.SingleColor -> CardIdentity.SingleColor(CardColor.valueOf(color))
-    is CardIdentityDto.DualColor -> CardIdentity.DualColor(CardColor.valueOf(colorA), CardColor.valueOf(colorB))
-}
-
-// Maps the domain TacticState to its flat DTO mirror, field-for-field (both shapes are identical -
-// TacticStateDto exists purely so kotlinx.serialization has an @Serializable type to encode).
-private fun TacticState.toDto(): TacticStateDto = TacticStateDto(removedDayCards, removedNightCards, dummyPick, playerPick)
-
-// The reverse of toDto() above.
-private fun TacticStateDto.toDomain(): TacticState = TacticState(removedDayCards, removedNightCards, dummyPick, playerPick)
 
 // `private fun List<CardIdentity>.toJson()` is a Kotlin extension function: it adds a `toJson()`
 // method to the existing `List<CardIdentity>` type (usable as `someList.toJson()`) without

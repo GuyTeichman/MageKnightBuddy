@@ -7,30 +7,17 @@
 package com.guyteichman.mageknightbuddy.data
 
 import com.guyteichman.mageknightbuddy.domain.CardColor
-import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.Knight
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerCard
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.ProxyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Scenario
-import com.guyteichman.mageknightbuddy.domain.TacticState
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 // Maps each domain ProxyPlayerCard variant to its DTO counterpart. The AdvancedAction case reuses
-// CardIdentity's own toDto()/toDomain() shape (declared privately in DummyPlayerSessionMapper.kt
-// for that file's own use) - re-declared here as a local helper since Kotlin `private` top-level
-// functions aren't visible across files.
-private fun CardIdentity.toDto(): CardIdentityDto = when (this) {
-    is CardIdentity.SingleColor -> CardIdentityDto.SingleColor(color.name)
-    is CardIdentity.DualColor -> CardIdentityDto.DualColor(colorA.name, colorB.name)
-}
-
-private fun CardIdentityDto.toDomain(): CardIdentity = when (this) {
-    is CardIdentityDto.SingleColor -> CardIdentity.SingleColor(CardColor.valueOf(color))
-    is CardIdentityDto.DualColor -> CardIdentity.DualColor(CardColor.valueOf(colorA), CardColor.valueOf(colorB))
-}
-
+// CardIdentity's toDto()/toDomain() (declared `internal` in CardIdentityDto.kt, shared with
+// DummyPlayerSessionMapper).
 private fun ProxyPlayerCard.toDto(): ProxyPlayerCardDto = when (this) {
     is ProxyPlayerCard.BasicAction -> ProxyPlayerCardDto.BasicAction(color.name)
     is ProxyPlayerCard.UniqueAction -> ProxyPlayerCardDto.UniqueAction(color.name)
@@ -42,11 +29,6 @@ private fun ProxyPlayerCardDto.toDomain(): ProxyPlayerCard = when (this) {
     is ProxyPlayerCardDto.UniqueAction -> ProxyPlayerCard.UniqueAction(CardColor.valueOf(color))
     is ProxyPlayerCardDto.AdvancedAction -> ProxyPlayerCard.AdvancedAction(identity.toDomain())
 }
-
-// Maps the domain TacticState to its flat DTO mirror - see DummyPlayerSessionMapper's matching
-// functions (redeclared here since Kotlin `private` top-level functions aren't visible across files).
-private fun TacticState.toDto(): TacticStateDto = TacticStateDto(removedDayCards, removedNightCards, dummyPick, playerPick)
-private fun TacticStateDto.toDomain(): TacticState = TacticState(removedDayCards, removedNightCards, dummyPick, playerPick)
 
 private fun List<ProxyPlayerCard>.toJson(): String = Json.encodeToString(map { it.toDto() })
 private fun String.toProxyPlayerCardList(): List<ProxyPlayerCard> = Json.decodeFromString<List<ProxyPlayerCardDto>>(this).map { it.toDomain() }
