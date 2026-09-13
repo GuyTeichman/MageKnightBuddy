@@ -11,26 +11,12 @@ package com.guyteichman.mageknightbuddy.domain
 sealed interface ScoringInput
 
 /**
- * Total score for whichever scenario this input belongs to, delegating to that scenario's own
- * `*Scoring` object (e.g. [SoloConquestScoring]) rather than duplicating any scoring logic here.
+ * Total score for whichever scenario this input belongs to. Every scenario's own `*Scoring`
+ * object defines its `score(input)` as `breakdown(input).sumOf { it.value }` (summing that
+ * scenario's line items), so rather than re-dispatching per scenario here, this just sums the
+ * dispatcher-level [breakdown] directly - same result, one line instead of fifteen branches.
  */
-fun ScoringInput.score(): Int = when (this) {
-    is SoloConquestScoringInput -> SoloConquestScoring.score(this)
-    is FirstReconnaissanceScoringInput -> FirstReconnaissanceScoring.score(this)
-    is ForTheCouncilScoringInput -> ForTheCouncilScoring.score(this)
-    is HiddenValleyScoringInput -> HiddenValleyScoring.score(this)
-    is RealmOfTheDeadScoringInput -> RealmOfTheDeadScoring.score(this)
-    is AgainstTheDragonScoringInput -> AgainstTheDragonScoring.score(this)
-    is AgainstTheHorsemenScoringInput -> AgainstTheHorsemenScoring.score(this)
-    is ApocalypseIsHereScoringInput -> ApocalypseIsHereScoring.score(this)
-    is FracturedLandsScoringInput -> FracturedLandsScoring.score(this)
-    is LifeAndDeathScoringInput -> LifeAndDeathScoring.score(this)
-    is LostRelicScoringInput -> LostRelicScoring.score(this)
-    is AgainstTheApocalypseScoringInput -> AgainstTheApocalypseScoring.score(this)
-    is SoloConquestChallengeScoringInput -> SoloConquestChallengeScoring.score(this)
-    is VolkaresQuestScoringInput -> VolkaresQuestScoring.score(this)
-    is VolkaresReturnScoringInput -> VolkaresReturnScoring.score(this)
-}
+fun ScoringInput.score(): Int = breakdown().sumOf { it.value }
 
 /** Win/Loss check for whichever scenario this input belongs to; see [score] for the dispatch pattern. */
 fun ScoringInput.outcome(): Outcome = when (this) {
