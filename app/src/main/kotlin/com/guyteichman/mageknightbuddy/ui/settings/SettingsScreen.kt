@@ -26,7 +26,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -376,18 +375,27 @@ fun SettingsScreen(
  * (backup/restore, About links, Credits links). Centralizes that repeated layout so each call site
  * only supplies what actually differs between buttons: the icon, the label, the click handler, and
  * (for the destructive Reset button only) an override [contentColor].
+ *
+ * [contentColor] defaults to `null`, meaning "don't touch it" - in that case no `colors` argument is
+ * passed to [OutlinedButton] at all, so it falls back to its own built-in default (the theme's
+ * `primary` colour), exactly matching the 9 plain link buttons' look before this composable existed.
+ * Only the destructive Reset button passes a non-null override, to get its error-red tint.
  */
 @Composable
 private fun SettingsLinkButton(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
-    contentColor: Color = LocalContentColor.current,
+    contentColor: Color? = null,
 ) {
     OutlinedButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = contentColor),
+        // contentColor?.let { ... } ?: ButtonDefaults.outlinedButtonColors() : only build a custom
+        // ButtonColors when an override was actually requested, otherwise use OutlinedButton's own
+        // built-in default so unaffected buttons render identically to before.
+        colors = contentColor?.let { ButtonDefaults.outlinedButtonColors(contentColor = it) }
+            ?: ButtonDefaults.outlinedButtonColors(),
     ) {
         Icon(icon, contentDescription = null)
         // A real Spacer for the icon/label gap, replacing the old "  " (two-space) prefix that used
