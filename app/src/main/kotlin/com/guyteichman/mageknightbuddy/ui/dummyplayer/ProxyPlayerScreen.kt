@@ -23,11 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.UnfoldLess
-import androidx.compose.material.icons.filled.UnfoldMore
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -37,7 +33,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,7 +45,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.guyteichman.mageknightbuddy.data.ProxyPlayerSessionRepository
 import com.guyteichman.mageknightbuddy.data.TutorialProgressRepository
@@ -246,13 +240,20 @@ fun ProxyPlayerAiScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                item { ProxyPlayerHeroRow(session = session) }
-                // The toggle button lives inside ProxyPlayerDeckPanel's own header instead of the
-                // top app bar, so it reads as attached to the panel it controls - matches
-                // DummyPlayerScreen.kt's DeckPanel. The body still swaps mutually exclusively.
+                item { HeroRow(knight = session.knight, wasRandom = session.wasRandom) }
+                // The toggle button lives inside DeckPanel's own header instead of the top app
+                // bar, so it reads as attached to the panel it controls. The body still swaps
+                // mutually exclusively. DeckPanel/HeroRow/StatGridBody are shared directly with
+                // DummyPlayerScreen.kt's DummyPlayerAiScreen (issue #318) - only the tableau body
+                // stays a separate copy, since its layout/data source genuinely differ (see
+                // ProxyPlayerTableauBody's own doc comment).
                 item {
-                    ProxyPlayerDeckPanel(showSummary = showSummary, onToggleSummary = { showSummary = !showSummary }) {
-                        if (showSummary) ProxyPlayerStatGridBody(session = session) else ProxyPlayerTableauBody(session = session, fieldHelp = fieldHelp)
+                    DeckPanel(showSummary = showSummary, onToggleSummary = { showSummary = !showSummary }) {
+                        if (showSummary) {
+                            StatGridBody(remainingByColor = session.remainingByColor, crystals = session.crystals)
+                        } else {
+                            ProxyPlayerTableauBody(session = session, fieldHelp = fieldHelp)
+                        }
                     }
                 }
                 item {
@@ -383,7 +384,7 @@ fun ProxyPlayerAiScreen(
     }
 
     if (showEndRoundDialog && session != null) {
-        ProxyPlayerEndRoundDialog(
+        EndRoundDialog(
             fieldHelp = fieldHelp,
             // Dual-color cards already in the deck (or the current objective) are singletons - drop
             // them from the picker (issue #213).
@@ -408,28 +409,6 @@ fun ProxyPlayerAiScreen(
             enabled = !viewModel.isBusy && session.tacticState.playerPick == null,
             onPickPlayer = { card -> scope.launch { viewModel.pickPlayerTactic(card) } },
         )
-    }
-}
-
-/**
- * Knight shield icon, name, and a "Random" badge if the Knight was randomly rolled at setup - a
- * Proxy Player-mode copy of `DummyPlayerScreen.kt`'s file-private `HeroRow` (same duplication
- * rationale as [ProxyPlayerEndRoundDialog]'s doc comment).
- */
-@Composable
-private fun ProxyPlayerHeroRow(session: ProxyPlayerSession) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        KnightShieldIcon(knight = session.knight, size = 32.dp, tint = MaterialTheme.colorScheme.primary)
-        Text(session.knight.displayName, style = MaterialTheme.typography.titleMedium)
-        if (session.wasRandom) {
-            Surface(shape = RoundedCornerShape(percent = 50), color = MaterialTheme.colorScheme.primaryContainer) {
-                Text(
-                    "RANDOM",
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
-        }
     }
 }
 
@@ -482,47 +461,16 @@ private fun ProxyPlayerObjectiveCard(objectiveCard: ProxyPlayerCard, shields: In
 }
 
 /**
- * The deck panel's shared shell: a title, the Summary/Full View toggle button (styled and placed
- * so it reads as part of this panel rather than a stray top-bar label), and [content] (either
- * [ProxyPlayerTableauBody] or [ProxyPlayerStatGridBody]) below - a Proxy Player-mode copy of
- * `DummyPlayerScreen.kt`'s file-private `DeckPanel` (same duplication rationale as
- * [ProxyPlayerEndRoundDialog]'s doc comment).
- */
-@Composable
-private fun ProxyPlayerDeckPanel(showSummary: Boolean, onToggleSummary: () -> Unit, content: @Composable () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text("Deck", style = MaterialTheme.typography.titleMedium)
-                OutlinedButton(
-                    onClick = onToggleSummary,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Icon(
-                        if (showSummary) Icons.Filled.UnfoldMore else Icons.Filled.UnfoldLess,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(if (showSummary) "Full View" else "Summary")
-                }
-            }
-            content()
-        }
-    }
-}
-
-/**
  * The card-tableau body: how many cards are left in the deck, a pile of their colors ([MiniCard]
  * per card, via [ProxyPlayerCard.colors]), a per-color count breakdown
  * ([ProxyPlayerSession.remainingByColor]), and the crystal Inventory - a Proxy Player-mode copy of
- * `DummyPlayerScreen.kt`'s file-private `TableauBody` (same duplication rationale as
- * [ProxyPlayerEndRoundDialog]'s doc comment). Rendered inside [ProxyPlayerDeckPanel]'s Column - no
- * Card or padding of its own.
+ * `DummyPlayerScreen.kt`'s file-private `TableauBody`. Kept as its own composable (unlike
+ * `HeroRow`/`DeckPanel`/`StatGridBody`/`EndRoundDialog`, which this screen shares directly with
+ * `DummyPlayerScreen.kt` - issue #318) because its layout and data source genuinely differ: it
+ * reads [ProxyPlayerCard] (with its own [ProxyPlayerCard.isNonBasic] star-badge flag, which
+ * `MiniCard`'s Dummy-side callers don't need) rather than `CardIdentity`, and wraps its "cards left
+ * in deck" line in an extra `Column` the Dummy version doesn't have. Rendered inside [DeckPanel]'s
+ * Column - no Card or padding of its own.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -591,38 +539,6 @@ private fun ProxyPlayerTableauBody(session: ProxyPlayerSession, fieldHelp: Map<S
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 CardColor.entries.forEach { color ->
-                    repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
-                }
-            }
-        }
-    }
-}
-
-/**
- * The alternate, denser per-color tile grid, replacing [ProxyPlayerTableauBody] when "Summary" is
- * toggled on - a Proxy Player-mode copy of `DummyPlayerScreen.kt`'s file-private `StatGridBody`
- * (same duplication rationale as [ProxyPlayerEndRoundDialog]'s doc comment). Stays pure aggregate
- * counts, no non-basic (star badge) breakdown - that detail is only shown in the full expanded
- * view, where individual cards are drawn. Rendered inside [ProxyPlayerDeckPanel]'s Column - no Card
- * or padding of its own.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ProxyPlayerStatGridBody(session: ProxyPlayerSession) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-        CardColor.entries.forEach { color ->
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.widthIn(max = 56.dp),
-            ) {
-                CardColorDot(color = color)
-                Text(session.remainingByColor.getValue(color).toString(), style = MaterialTheme.typography.titleMedium)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                    modifier = Modifier.widthIn(max = 56.dp),
-                ) {
                     repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
                 }
             }
@@ -742,67 +658,5 @@ internal fun ProxyPlayerEvent.describe(turnInRound: Int?): LogEntryText = when (
                 "${if (pickedByPlayer) "You" else "The Proxy Player"} picked ${if (isDay) "Day" else "Night"} Tactic $card.",
             ),
         ),
-    )
-}
-
-/**
- * The End Round dialog: a Proxy Player-mode copy of `DummyPlayerScreen.kt`'s file-private
- * `EndRoundDialog` (same fields - an Advanced Action offer [CardIdentity] via [IdentityPickerRow],
- * and a Spell offer color - since [ProxyPlayerAiViewModel.endRound] takes the exact same
- * `(CardIdentity, CardColor)` shape as the standard Dummy Player's `endRound` does). Duplicated
- * rather than shared directly because the two AI screens' ViewModels are distinct types with their
- * own `onConfirm` call sites - matching how `VolkareScreen.kt` keeps its own copies of
- * `RoundChip`/`MiniCard`/`LogRow` instead of reaching into `DummyPlayerScreen.kt`'s private ones.
- */
-@Composable
-private fun ProxyPlayerEndRoundDialog(
-    fieldHelp: Map<String, FieldHelp>,
-    usedDualColorCards: Set<CardIdentity>,
-    onDismiss: () -> Unit,
-    onConfirm: (advancedActionOfferColor: CardIdentity, spellOfferColor: CardColor) -> Unit,
-) {
-    var advancedActionIdentity by remember { mutableStateOf<CardIdentity>(CardIdentity.SingleColor(CardColor.entries.first())) }
-    var spellColor by remember { mutableStateOf(CardColor.entries.first()) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        // usePlatformDefaultWidth = false + an explicit fillMaxWidth lets the dialog use most of
-        // the screen's width instead of Material's narrow default - same as the standard Dummy
-        // Player's End Round dialog.
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-        modifier = Modifier.fillMaxWidth(fraction = 0.94f),
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("End Round", modifier = Modifier.weight(1f))
-                HelpButton(keys = listOf("Round-Prep Offers"), fieldHelp = fieldHelp)
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    "Pick the color removed from each offer during round-prep.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                IdentityPickerRow(
-                    label = "Advanced Action offer",
-                    selected = advancedActionIdentity,
-                    onSelect = { advancedActionIdentity = it },
-                    unavailableCards = usedDualColorCards,
-                )
-                ColorPickerRow(
-                    label = "Spell offer",
-                    selected = spellColor,
-                    onSelect = { spellColor = it },
-                    // A crystal of this color is what's granted, not a card - CrystalIcon fits better.
-                    chipIcon = { color -> CrystalIcon(color = color, size = 12.dp) },
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(advancedActionIdentity, spellColor) }) { Text("Confirm") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
     )
 }
