@@ -369,49 +369,55 @@ fun ScoreCalculatorScreen(
     }
 
     if (showResetConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showResetConfirmation = false },
-            title = { Text("Discard this entry?") },
-            text = { Text("Any unsaved progress on this scoring session will be lost.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.reset()
-                    showResetConfirmation = false
-                }) {
-                    Text("Discard")
-                }
+        DiscardEntryDialog(
+            dismissLabel = "Cancel",
+            onConfirm = {
+                viewModel.reset()
+                showResetConfirmation = false
             },
-            dismissButton = {
-                TextButton(onClick = { showResetConfirmation = false }) {
-                    Text("Cancel")
-                }
-            },
+            onDismiss = { showResetConfirmation = false },
         )
     }
 
     if (showExitConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showExitConfirmation = false },
-            title = { Text("Discard this entry?") },
-            text = { Text("Any unsaved progress on this scoring session will be lost.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    // reset() also blanks the persisted draft, so the abandoned entry isn't
-                    // restored the next time the wizard is opened - keeping "will be lost" honest.
-                    viewModel.reset()
-                    showExitConfirmation = false
-                    onDone()
-                }) {
-                    Text("Discard")
-                }
+        DiscardEntryDialog(
+            dismissLabel = "Keep editing",
+            onConfirm = {
+                // reset() also blanks the persisted draft, so the abandoned entry isn't
+                // restored the next time the wizard is opened - keeping "will be lost" honest.
+                viewModel.reset()
+                showExitConfirmation = false
+                onDone()
             },
-            dismissButton = {
-                TextButton(onClick = { showExitConfirmation = false }) {
-                    Text("Keep editing")
-                }
-            },
+            onDismiss = { showExitConfirmation = false },
         )
     }
+}
+
+/**
+ * The "Discard this entry?" confirmation shared by the reset FAB and the top-bar exit (X) button -
+ * same title/body/confirm-button wording in both, differing only in what confirming actually does
+ * ([onConfirm]) and the dismiss button's label ([dismissLabel]: "Cancel" for reset, "Keep editing"
+ * for exit). [onDismiss] backs both the dismiss button and tapping outside the dialog
+ * (`onDismissRequest`), matching what each original call site did.
+ */
+@Composable
+private fun DiscardEntryDialog(dismissLabel: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Discard this entry?") },
+        text = { Text("Any unsaved progress on this scoring session will be lost.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Discard")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(dismissLabel)
+            }
+        },
+    )
 }
 
 /**
