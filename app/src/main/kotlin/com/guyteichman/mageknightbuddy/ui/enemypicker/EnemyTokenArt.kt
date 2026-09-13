@@ -1,7 +1,6 @@
 package com.guyteichman.mageknightbuddy.ui.enemypicker
 
 import android.content.Context
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -62,14 +60,8 @@ internal fun EnemyTokenFace(token: EnemyToken, size: Dp = 96.dp) {
 }
 
 /** Loads `enemy-tokens/<id>.jpg` from assets, or null if that token's art isn't bundled yet. */
-private fun loadTokenBitmap(context: Context, id: String): ImageBitmap? = try {
-    // assets.open throws if the file is absent - that's the "no art yet" signal, caught below.
-    context.assets.open("enemy-tokens/$id.jpg").use { stream ->
-        BitmapFactory.decodeStream(stream)?.asImageBitmap()
-    }
-} catch (_: Exception) {
-    null
-}
+private fun loadTokenBitmap(context: Context, id: String): ImageBitmap? =
+    loadAssetBitmap(context, "enemy-tokens/$id.jpg")
 
 /**
  * Renders a [TokenPileId]'s face-down back art at [size] (issue #198). Round enemy piles are clipped
@@ -132,13 +124,9 @@ internal fun PileBackFace(pileId: TokenPileId, size: Dp = 96.dp) {
  * bundled yet. The RUIN and POSSESSED backs are PNGs (baked shape alpha - hexagon / starfield
  * silhouette); the round enemy backs are JPG.
  */
-private fun loadPileBackBitmap(context: Context, pileId: TokenPileId): ImageBitmap? = try {
+private fun loadPileBackBitmap(context: Context, pileId: TokenPileId): ImageBitmap? {
     val ext = if (pileId == TokenPileId.RUIN || pileId == TokenPileId.POSSESSED) "png" else "jpg"
-    context.assets.open("enemy-tokens/backs/${pileId.name.lowercase()}.$ext").use { stream ->
-        BitmapFactory.decodeStream(stream)?.asImageBitmap()
-    }
-} catch (_: Exception) {
-    null
+    return loadAssetBitmap(context, "enemy-tokens/backs/${pileId.name.lowercase()}.$ext")
 }
 
 /** The stand-in shown until a token's real art exists: a colored disc with its name and stat line. */

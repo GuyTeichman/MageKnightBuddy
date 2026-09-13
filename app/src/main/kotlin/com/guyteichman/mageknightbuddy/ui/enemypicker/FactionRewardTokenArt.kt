@@ -1,7 +1,6 @@
 package com.guyteichman.mageknightbuddy.ui.enemypicker
 
 import android.content.Context
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,13 +55,8 @@ internal fun FactionRewardTokenFace(token: FactionRewardToken, size: Dp = 96.dp)
 }
 
 /** Loads `faction-reward-tokens/<id>.jpg` from assets, or null if that token's art isn't bundled yet. */
-private fun loadRewardBitmap(context: Context, id: String): ImageBitmap? = try {
-    context.assets.open("faction-reward-tokens/$id.jpg").use { stream ->
-        BitmapFactory.decodeStream(stream)?.asImageBitmap()
-    }
-} catch (_: Exception) {
-    null
-}
+private fun loadRewardBitmap(context: Context, id: String): ImageBitmap? =
+    loadAssetBitmap(context, "faction-reward-tokens/$id.jpg")
 
 /** The stand-in shown until a reward token's real art exists: a rounded tile with its name. */
 @Composable

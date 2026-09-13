@@ -1,7 +1,6 @@
 package com.guyteichman.mageknightbuddy.ui.enemypicker
 
 import android.content.Context
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -56,13 +54,8 @@ internal fun RuinTokenFace(ruin: RuinToken, size: Dp = 96.dp) {
 }
 
 /** Loads `enemy-tokens/<id>.png` for a ruin id (PNG for its baked hexagon alpha), or null if absent. */
-private fun loadRuinBitmap(context: Context, id: String): ImageBitmap? = try {
-    context.assets.open("enemy-tokens/$id.png").use { stream ->
-        BitmapFactory.decodeStream(stream)?.asImageBitmap()
-    }
-} catch (_: Exception) {
-    null
-}
+private fun loadRuinBitmap(context: Context, id: String): ImageBitmap? =
+    loadAssetBitmap(context, "enemy-tokens/$id.png")
 
 /** The stand-in shown until a ruin's real art exists: a rounded tile summarising what it is. */
 @Composable

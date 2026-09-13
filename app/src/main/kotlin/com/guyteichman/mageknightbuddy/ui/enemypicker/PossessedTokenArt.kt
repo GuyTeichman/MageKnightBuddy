@@ -1,7 +1,6 @@
 package com.guyteichman.mageknightbuddy.ui.enemypicker
 
 import android.content.Context
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -17,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -109,20 +107,11 @@ internal fun PossessedToken.summary(): String = buildList {
 }.joinToString(" · ")
 
 /** Loads `enemy-tokens/<id>.png` (then `.jpg`) from assets, or null if the possessed art isn't bundled yet. */
-private fun loadPossessedBitmap(context: Context, id: String): ImageBitmap? {
+private fun loadPossessedBitmap(context: Context, id: String): ImageBitmap? =
     // Possessed tiles are transparent PNGs (a starfield crescent silhouette), so PNG is tried first; a
-    // JPG crop still works as a fallback source. assets.open throws when absent - that's the "no art" signal.
-    for (ext in listOf("png", "jpg")) {
-        try {
-            context.assets.open("enemy-tokens/$id.$ext").use { stream ->
-                BitmapFactory.decodeStream(stream)?.asImageBitmap()?.let { return it }
-            }
-        } catch (_: Exception) {
-            // Try the next extension, then fall through to null (text fallback).
-        }
-    }
-    return null
-}
+    // JPG crop still works as a fallback source - loadAssetBitmap tries each path in turn and returns
+    // the first one that decodes.
+    loadAssetBitmap(context, "enemy-tokens/$id.png", "enemy-tokens/$id.jpg")
 
 /**
  * Composite geometry, all as fractions of the tile height [size], measured once from the possessed
