@@ -67,9 +67,8 @@ internal fun scenarioArtFrame(): BorderStroke = BorderStroke(ART_FRAME_WIDTH, ar
 /**
  * Draws a [Scenario]'s background art with render-time cohesion, so a set of images from different
  * sources reads as one coherent surface: [ContentScale.Crop] fills the caller's box (no
- * letterboxing), a darkening [ART_SCRIM] keeps overlaid text legible, and an optional [outcomeTint]
- * the caller layers on (e.g. the scoreboard's green/red win-loss colour) sits above the art but
- * below [content].
+ * letterboxing), and a darkening [ART_SCRIM] - laid above the art but below [content] - keeps
+ * overlaid text legible.
  *
  * Degrades to a bronze [ScenarioArtPlaceholder] naming the scenario for any scenario whose art
  * isn't sourced yet - which is *every* scenario at the issue #285 foundation stage, so the
@@ -81,7 +80,6 @@ internal fun scenarioArtFrame(): BorderStroke = BorderStroke(ART_FRAME_WIDTH, ar
  * that box. [content] is a [BoxScope] slot drawn on top, so callers position the score, name, and
  * W/L pill using `Modifier.align(...)`.
  *
- * @param outcomeTint an optional full-bleed colour wash over the art (e.g. win/loss tint); null for none.
  * @param shape the clip shape for the whole card (defaults to a rounded rectangle).
  * @param border an optional thin outline drawn at the [shape]'s edge (pass [scenarioArtFrame] for the
  *   standard framed-tile look); null for a frameless, full-bleed image (e.g. a full-width banner).
@@ -90,7 +88,6 @@ internal fun scenarioArtFrame(): BorderStroke = BorderStroke(ART_FRAME_WIDTH, ar
 fun ScenarioArt(
     scenario: Scenario,
     modifier: Modifier = Modifier,
-    outcomeTint: Color? = null,
     shape: Shape = DEFAULT_SHAPE,
     border: BorderStroke? = null,
     content: @Composable BoxScope.() -> Unit = {},
@@ -115,10 +112,6 @@ fun ScenarioArt(
             Box(Modifier.matchParentSize().background(ART_SCRIM))
         } else {
             ScenarioArtPlaceholder(scenario = scenario, modifier = Modifier.matchParentSize())
-        }
-        // Outcome tint over art + scrim but under content, so the caller's pill/text isn't tinted.
-        if (outcomeTint != null) {
-            Box(Modifier.matchParentSize().background(outcomeTint))
         }
         content()
     }
