@@ -29,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,12 +37,6 @@ import kotlinx.coroutines.launch
 
 /** The rounded shape shared by the collapsed field and the sheet rows, so they read as one family. */
 private val PICKER_SHAPE = RoundedCornerShape(12.dp)
-
-/**
- * Cream ink for text/icons laid over the art. ScenarioArt darkens the image with its own scrim, so a
- * light colour stays legible on any scenario's background (the same cream its placeholder uses).
- */
-private val OVERLAY_INK = Color(0xFFF3E7D3)
 
 /**
  * An art-forward Scenario picker (issue #287): a replacement for a plain
@@ -108,7 +101,7 @@ internal fun ScenarioPickerField(
         ) {
             Text(
                 text = selected.displayName,
-                color = OVERLAY_INK,
+                color = OnScenarioArtInk,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 // end padding leaves room for the chevron so a long name doesn't run under it.
@@ -117,7 +110,7 @@ internal fun ScenarioPickerField(
             Icon(
                 Icons.Filled.ArrowDropDown,
                 contentDescription = null,
-                tint = OVERLAY_INK,
+                tint = OnScenarioArtInk,
                 modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp),
             )
         }
@@ -180,7 +173,7 @@ private fun ScenarioSheetRow(scenario: Scenario, isSelected: Boolean, onClick: (
     ) {
         Text(
             text = scenario.displayName,
-            color = OVERLAY_INK,
+            color = OnScenarioArtInk,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.align(Alignment.CenterStart).padding(start = 16.dp, end = 48.dp),
@@ -189,7 +182,7 @@ private fun ScenarioSheetRow(scenario: Scenario, isSelected: Boolean, onClick: (
             Icon(
                 Icons.Filled.CheckCircle,
                 contentDescription = "Selected",
-                tint = OVERLAY_INK,
+                tint = OnScenarioArtInk,
                 modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp),
             )
         }

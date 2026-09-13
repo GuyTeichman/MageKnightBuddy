@@ -41,13 +41,20 @@ private val ART_SCRIM = Color.Black.copy(alpha = 0.35f)
 private val PLACEHOLDER_TOP = Color(0xFF7A5A34)
 private val PLACEHOLDER_BOTTOM = Color(0xFF43301C)
 
-/** Cream text on the bronze placeholder; light enough to stay readable over the darker bottom. */
-private val PLACEHOLDER_TEXT = Color(0xFFF3E7D3)
-
 private val DEFAULT_SHAPE = RoundedCornerShape(12.dp)
 
 /** Width of the thin frame drawn around scenario art and its sibling chrome. */
 internal val ART_FRAME_WIDTH = 1.dp
+
+/**
+ * Shared cream ink for text/icons drawn over scenario art (issue #323 - previously duplicated as
+ * three separately-declared constants, two of which had drifted to disagreeing hex values).
+ * [ScenarioArt] darkens the image with its own scrim, so this light colour stays legible on any
+ * scenario's background - the same cream the bronze [ScenarioArtPlaceholder] uses, and also drawn
+ * by [com.guyteichman.mageknightbuddy.ui.scenarioart.ScenarioPickerField] and the Scoreboard's
+ * session cards. `internal` so those other packages can import it.
+ */
+internal val OnScenarioArtInk = Color(0xFFF3E7D3)
 
 /**
  * The frame colour (issue #286/#287 review), resolved from the theme so it flips with dark/light:
@@ -133,7 +140,7 @@ internal fun ScenarioArtPlaceholder(scenario: Scenario, modifier: Modifier = Mod
     ) {
         Text(
             text = scenario.displayName,
-            color = PLACEHOLDER_TEXT,
+            color = OnScenarioArtInk,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
