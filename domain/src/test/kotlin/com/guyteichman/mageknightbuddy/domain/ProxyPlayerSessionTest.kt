@@ -539,6 +539,63 @@ class ProxyPlayerSessionTest {
     }
 
     @Test
+    fun `endRound folds a discard pile built via playTurn (plus a lingering objective) back into the reshuffled deck, and empties it`() {
+        // Regression test for issue #148, mirroring DummyPlayerSessionTest's equivalent: build the
+        // discard pile via real playTurn() calls instead of a restore(...) shortcut, so the merge
+        // is exercised against state this class's own methods actually produce.
+        // Coral's starting crystals are White x2, Red x1, Green/Blue x0 (see docs/rules/dummy-player.md).
+        val session = ProxyPlayerSession.start(
+            Knight.CORAL,
+            deckOrder = listOf(
+                CardColor.RED, CardColor.GREEN, CardColor.BLUE,
+                CardColor.WHITE, CardColor.RED, CardColor.GREEN,
+            ).map { ProxyPlayerCard.BasicAction(it) },
+        )
+            // Turn 1 (no objective yet): flips Red, Green, Blue - 3rd card Blue has 0 matching
+            // crystals, no chain. Red becomes the new objective; Green, Blue go to discard.
+            // deckOrder becomes [White, Red, Green].
+            .playTurn()
+            // Turn 2 (objective already set): flips White, Red, Green onto the discard pile - 3rd
+            // card Green has 0 matching crystals, no chain. deckOrder becomes empty; the objective
+            // (Red) is still lingering, with 1 Shield now.
+            .playTurn()
+
+        val next = session.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.BLUE),
+            spellOfferColor = CardColor.WHITE,
+        )
+
+        // The discard pile must be empty right after reshuffling - its cards (plus the lingering
+        // objective, discarded first) move into deckOrder.
+        assertEquals(emptyList(), next.discardPile)
+        assertEquals(null, next.objectiveCard)
+        assertEquals(0, next.objectiveShields)
+        // Reshuffled deck = discard pile (Green, Blue, White, Red, Green = Red x1, Green x2, Blue
+        // x1, White x1) + the discarded objective (Red) + the new Advanced Action offer (Blue) -
+        // Red x2, Green x2, Blue x2, White x1 - not just the offer card alone, which is the exact
+        // count the original #148 bug (deckOrder + offer only) would get wrong.
+        assertEquals(
+            mapOf(CardColor.RED to 2, CardColor.GREEN to 2, CardColor.BLUE to 2, CardColor.WHITE to 1),
+            next.remainingByColor,
+        )
+        assertEquals(7, next.deckOrder.size)
+        // The rest of the fields endRound()'s doc comment says it changes, asserted alongside
+        // discardPile rather than trusting a differently-scoped test to cover them.
+        assertEquals(startingCrystals(Knight.CORAL).getValue(CardColor.WHITE) + 1, next.crystals.getValue(CardColor.WHITE))
+        assertEquals(2, next.round)
+        assertEquals(false, next.roundEnded)
+        assertEquals(
+            ProxyPlayerEvent.RoundEnded(
+                round = 1,
+                advancedActionOfferColor = CardIdentity.SingleColor(CardColor.BLUE),
+                spellOfferColor = CardColor.WHITE,
+                discardedObjective = ProxyPlayerCard.BasicAction(CardColor.RED),
+            ),
+            next.log.last(),
+        )
+    }
+
+    @Test
     fun `endRound with no lingering objective logs a null discardedObjective`() {
         val session = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
 

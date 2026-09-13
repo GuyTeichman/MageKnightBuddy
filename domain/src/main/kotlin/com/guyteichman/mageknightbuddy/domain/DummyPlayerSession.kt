@@ -149,24 +149,25 @@ data class DummyPlayerSession private constructor(
      */
     fun endRound(advancedActionOfferColor: CardIdentity, spellOfferColor: CardColor): DummyPlayerSession = copy(
         // Reshuffle = undrawn deck + the ENTIRE discard pile + the newly-added offer card, all
-        // combined into one pile. discardPile resets to empty since every card it held just moved
+        // combined into one pile (reshuffleForNewRound, shared with ProxyPlayerSession.endRound -
+        // see RoundReshuffle.kt). discardPile resets to empty since every card it held just moved
         // into deckOrder.
-        deckOrder = (deckOrder + discardPile + advancedActionOfferColor).shuffled(),
+        deckOrder = reshuffleForNewRound(deckOrder, discardPile, advancedActionOfferColor),
         discardPile = emptyList(),
         // `map + Pair` builds a new Map with that one key's value replaced (or added) - the rest of
         // the entries are carried over unchanged, consistent with this class's immutable style.
         crystals = crystals + (spellOfferColor to crystals.getValue(spellOfferColor) + 1),
         round = round + 1,
         roundEnded = false,
-        // tacticRemovalRule/tacticRemovalTarget (TacticRules.kt) decide *whether* this Round's
-        // Tactic picks get permanently removed, based on this session's own isSolo/scenario and
-        // its round/startsAtNight/isDay - all read here on `this`, i.e. before round advances.
-        tacticState = tacticState.advanceRound(
-            remove = tacticRemovalTarget(
-                rule = tacticRemovalRule(isVolkare = false, isSolo = isSolo, scenario = scenario),
-                round = round,
-                startsAtNight = startsAtNight,
-            ),
+        // advanceForRound (TacticRules.kt) decides *whether* this Round's Tactic picks get
+        // permanently removed, based on this session's own isSolo/scenario and its
+        // round/startsAtNight/isDay - all read here on `this`, i.e. before round advances.
+        tacticState = tacticState.advanceForRound(
+            isVolkare = false,
+            isSolo = isSolo,
+            scenario = scenario,
+            round = round,
+            startsAtNight = startsAtNight,
             isDay = isDay,
         ),
         log = log + DummyPlayerEvent.RoundEnded(round, advancedActionOfferColor, spellOfferColor),
