@@ -37,24 +37,13 @@ object FirstReconnaissanceScoring {
      * Rounds finished early, Dummy Player deck cards remaining, and the End of Round bonus.
      */
     fun breakdown(input: FirstReconnaissanceScoringInput): List<ScoreLineItem> {
-        val achievements = input.standardAchievements
         // if/else as an expression, not a statement - its value is assigned directly to the val.
         val cityRevealedBonus = if (input.cityRevealed) CITY_REVEALED_BONUS else 0
-        // +5 if "End of the Round" was not yet announced in the last Round.
-        val endOfRoundBonus = if (!input.endOfRoundAnnounced) 5 else 0
-        return listOf(
-            ScoreLineItem("Fame", input.fame),
-            ScoreLineItem("Greatest Knowledge", achievements.greatestKnowledge()),
-            ScoreLineItem("Greatest Leader", achievements.greatestLeader()),
-            ScoreLineItem("Greatest Adventurer", achievements.greatestAdventurer()),
-            ScoreLineItem("Greatest Loot", achievements.greatestLoot()),
-            ScoreLineItem("Greatest Conqueror", achievements.greatestConqueror()),
-            ScoreLineItem("Greatest Beating", achievements.greatestBeating()),
-            ScoreLineItem("City Revealed", cityRevealedBonus),
-            ScoreLineItem("Rounds Finished Early", input.roundsFinishedEarly * 30),
-            ScoreLineItem("Dummy Player's Deck", input.cardsRemainingInDummyDeck),
-            ScoreLineItem("End of Round", endOfRoundBonus),
-        )
+        // `+` concatenates lists here: the shared Fame/Achievements block, this scenario's own
+        // bonus line, then the shared Rounds-Finished-Early/Dummy-Deck/End-of-Round trio.
+        return standardScoreLines(input.fame, input.standardAchievements) +
+            listOf(ScoreLineItem("City Revealed", cityRevealedBonus)) +
+            dummyEndgameLines(input.roundsFinishedEarly, input.cardsRemainingInDummyDeck, input.endOfRoundAnnounced)
     }
 
     /**

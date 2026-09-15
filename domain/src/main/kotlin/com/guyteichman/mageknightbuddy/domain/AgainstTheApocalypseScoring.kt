@@ -62,7 +62,6 @@ object AgainstTheApocalypseScoring {
      * Player deck cards remaining, and the End of Round bonus.
      */
     fun breakdown(input: AgainstTheApocalypseScoringInput): List<ScoreLineItem> {
-        val achievements = input.standardAchievements
         // Solo scoring is a flat 5 points per *site* you conquered a floor of (0, 1, or 2 sites
         // total - one ziggurat, one pyramid), not scaled by which floor number (1/2/3) was
         // reached - that tiered-by-floor-number formula is Competitive's rule, not Solo's.
@@ -70,25 +69,15 @@ object AgainstTheApocalypseScoring {
             listOf(input.zigguratFloorsConquered, input.pyramidFloorsConquered).count { it >= 1 }
         // +15 Fame if the scenario's Solo win condition was met (see isVictorious below).
         val victoryBonus = if (isVictorious(input)) 15 else 0
-        // +5 if "End of the Round" had not yet been announced in the final Round.
-        val endOfRoundBonus = if (!input.endOfRoundAnnounced) 5 else 0
-        // listOf builds an immutable, ordered list in one expression; each entry below is a
-        // rulebook-mandated scoring category or bonus, in the order the rulebook lists them.
-        return listOf(
-            ScoreLineItem("Fame", input.fame),
-            ScoreLineItem("Greatest Knowledge", achievements.greatestKnowledge()),
-            ScoreLineItem("Greatest Leader", achievements.greatestLeader()),
-            ScoreLineItem("Greatest Adventurer", achievements.greatestAdventurer()),
-            ScoreLineItem("Greatest Loot", achievements.greatestLoot()),
-            ScoreLineItem("Greatest Conqueror", achievements.greatestConqueror()),
-            ScoreLineItem("Greatest Beating", achievements.greatestBeating()),
-            ScoreLineItem("Destroyed Sites", input.destroyedSiteTokens * 3),
-            ScoreLineItem("Ziggurat/Pyramid Floors Conquered", sitesConquered * 5),
-            ScoreLineItem("Victorious", victoryBonus),
-            ScoreLineItem("Rounds Finished Early", input.roundsFinishedEarly * 30),
-            ScoreLineItem("Dummy Player's Deck", input.cardsRemainingInDummyDeck),
-            ScoreLineItem("End of Round", endOfRoundBonus),
-        )
+        // `+` concatenates lists here: the shared Fame/Achievements block, this scenario's own
+        // bonus lines, then the shared Rounds-Finished-Early/Dummy-Deck/End-of-Round trio.
+        return standardScoreLines(input.fame, input.standardAchievements) +
+            listOf(
+                ScoreLineItem("Destroyed Sites", input.destroyedSiteTokens * 3),
+                ScoreLineItem("Ziggurat/Pyramid Floors Conquered", sitesConquered * 5),
+                ScoreLineItem("Victorious", victoryBonus),
+            ) +
+            dummyEndgameLines(input.roundsFinishedEarly, input.cardsRemainingInDummyDeck, input.endOfRoundAnnounced)
     }
 
     /**

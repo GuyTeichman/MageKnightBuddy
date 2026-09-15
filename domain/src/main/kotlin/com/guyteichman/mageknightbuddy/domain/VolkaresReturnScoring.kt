@@ -41,20 +41,14 @@ object VolkaresReturnScoring {
      * Combat Bonus.
      */
     fun breakdown(input: VolkaresReturnScoringInput): List<ScoreLineItem> {
-        val achievements = input.standardAchievements
         // if/else as an expression, assigned straight to the val.
         val cityConqueredBonus = if (input.cityConquered) CITY_CONQUERED_BONUS else 0
-        return listOf(
-            ScoreLineItem("Fame", input.fame),
-            ScoreLineItem("Greatest Knowledge", achievements.greatestKnowledge()),
-            ScoreLineItem("Greatest Leader", achievements.greatestLeader()),
-            ScoreLineItem("Greatest Adventurer", achievements.greatestAdventurer()),
-            ScoreLineItem("Greatest Loot", achievements.greatestLoot()),
-            ScoreLineItem("Greatest Conqueror", achievements.greatestConqueror()),
-            ScoreLineItem("Greatest Beating", achievements.greatestBeating()),
-            ScoreLineItem("City Conquered", cityConqueredBonus),
-            ScoreLineItem("Volkare Combat Bonus", volkareCombatBonus(input)),
-        )
+        // `+` appends this scenario's own bonus lines onto the shared Fame/Achievements block.
+        return standardScoreLines(input.fame, input.standardAchievements) +
+            listOf(
+                ScoreLineItem("City Conquered", cityConqueredBonus),
+                ScoreLineItem("Volkare Combat Bonus", volkareCombatBonus(input)),
+            )
     }
 
     /**

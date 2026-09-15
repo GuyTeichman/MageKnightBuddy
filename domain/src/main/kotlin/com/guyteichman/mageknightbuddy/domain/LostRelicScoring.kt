@@ -45,26 +45,22 @@ object LostRelicScoring {
      * all-pieces-found bonus, Dummy Player deck cards remaining, and the End of Round bonus.
      */
     fun breakdown(input: LostRelicScoringInput): List<ScoreLineItem> {
-        val achievements = input.standardAchievements
         // if/else as an expression, assigned straight to the val - Kotlin has no ternary operator.
         // +10 for finding *every* relic piece (rule: "+10 points if all pieces of the relic were found").
         val allRelicPiecesBonus =
             if (input.relicPiecesFound == TOTAL_RELIC_PIECES_IN_SOLO_LOST_RELIC) 10 else 0
         // +5 if "End of the Round" had not yet been announced in the final Round.
         val endOfRoundBonus = if (!input.endOfRoundAnnounced) 5 else 0
-        return listOf(
-            ScoreLineItem("Fame", input.fame),
-            ScoreLineItem("Greatest Knowledge", achievements.greatestKnowledge()),
-            ScoreLineItem("Greatest Leader", achievements.greatestLeader()),
-            ScoreLineItem("Greatest Adventurer", achievements.greatestAdventurer()),
-            ScoreLineItem("Greatest Loot", achievements.greatestLoot()),
-            ScoreLineItem("Greatest Conqueror", achievements.greatestConqueror()),
-            ScoreLineItem("Greatest Beating", achievements.greatestBeating()),
-            ScoreLineItem("Relic Pieces Found", input.relicPiecesFound * 5),
-            ScoreLineItem("All Relic Pieces Found", allRelicPiecesBonus),
-            ScoreLineItem("Dummy Player's Deck", input.cardsRemainingInDummyDeck),
-            ScoreLineItem("End of Round", endOfRoundBonus),
-        )
+        // `+` appends this scenario's own bonus lines onto the shared Fame/Achievements block.
+        // Not using dummyEndgameLines here: unlike most scenarios, Lost Relic has no Rounds-
+        // Finished-Early field/line at all, only Dummy Player's Deck and End of Round.
+        return standardScoreLines(input.fame, input.standardAchievements) +
+            listOf(
+                ScoreLineItem("Relic Pieces Found", input.relicPiecesFound * 5),
+                ScoreLineItem("All Relic Pieces Found", allRelicPiecesBonus),
+                ScoreLineItem("Dummy Player's Deck", input.cardsRemainingInDummyDeck),
+                ScoreLineItem("End of Round", endOfRoundBonus),
+            )
     }
 
     /**

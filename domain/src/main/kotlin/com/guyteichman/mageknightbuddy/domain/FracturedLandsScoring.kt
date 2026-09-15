@@ -32,19 +32,10 @@ object FracturedLandsScoring {
      * Achievements, and Greatest Quester. Notably shorter than Solo Conquest/Hidden Valley's
      * breakdowns - this scenario's Solo scoring rule doesn't add any further bonuses.
      */
-    fun breakdown(input: FracturedLandsScoringInput): List<ScoreLineItem> {
-        val achievements = input.standardAchievements
-        return listOf(
-            ScoreLineItem("Fame", input.fame),
-            ScoreLineItem("Greatest Knowledge", achievements.greatestKnowledge()),
-            ScoreLineItem("Greatest Leader", achievements.greatestLeader()),
-            ScoreLineItem("Greatest Adventurer", achievements.greatestAdventurer()),
-            ScoreLineItem("Greatest Loot", achievements.greatestLoot()),
-            ScoreLineItem("Greatest Conqueror", achievements.greatestConqueror()),
-            ScoreLineItem("Greatest Beating", achievements.greatestBeating()),
-            ScoreLineItem("Greatest Quester", input.questPoints),
-        )
-    }
+    fun breakdown(input: FracturedLandsScoringInput): List<ScoreLineItem> =
+        // `+` appends this scenario's one extra line onto the shared Fame/Achievements block.
+        standardScoreLines(input.fame, input.standardAchievements) +
+            listOf(ScoreLineItem("Greatest Quester", input.questPoints))
 
     /**
      * The Fractured Lands has no lose condition (docs/rules/the-fractured-lands.md, "Outcome"
