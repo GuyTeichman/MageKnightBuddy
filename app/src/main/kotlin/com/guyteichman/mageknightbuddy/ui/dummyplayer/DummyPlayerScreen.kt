@@ -721,13 +721,17 @@ private fun DummyPlayerAiScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                item { HeroRow(session = session) }
+                item { HeroRow(knight = session.knight, wasRandom = session.wasRandom) }
                 // The toggle button now lives inside DeckPanel's own header instead of the top
                 // app bar, so it reads as attached to the panel it controls; the panel's body
                 // still swaps mutually exclusively rather than showing both at once.
                 item {
                     DeckPanel(showSummary = showSummary, onToggleSummary = { showSummary = !showSummary }) {
-                        if (showSummary) StatGridBody(session = session) else TableauBody(session = session, fieldHelp = fieldHelp)
+                        if (showSummary) {
+                            StatGridBody(remainingByColor = session.remainingByColor, crystals = session.crystals)
+                        } else {
+                            TableauBody(session = session, fieldHelp = fieldHelp)
+                        }
                     }
                 }
                 item {
@@ -810,13 +814,20 @@ internal fun RoundChip(round: Int, turn: Int, isDay: Boolean) {
     }
 }
 
-/** Knight shield icon, name, and a "Random" badge if the Knight was randomly rolled at setup. */
+/**
+ * Knight shield icon, name, and a "Random" badge if the Knight was randomly rolled at setup.
+ *
+ * `internal`, not `private`, and taking the plain [knight]/[wasRandom] values rather than a whole
+ * `DummyPlayerSession`: `ProxyPlayerScreen.kt`'s `ProxyPlayerAiScreen` reuses this directly (its
+ * `ProxyPlayerSession` carries the same 2 fields under the same names, so there's nothing
+ * Dummy-specific left to abstract over).
+ */
 @Composable
-private fun HeroRow(session: DummyPlayerSession) {
+internal fun HeroRow(knight: Knight, wasRandom: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        KnightShieldIcon(knight = session.knight, size = 32.dp, tint = MaterialTheme.colorScheme.primary)
-        Text(session.knight.displayName, style = MaterialTheme.typography.titleMedium)
-        if (session.wasRandom) {
+        KnightShieldIcon(knight = knight, size = 32.dp, tint = MaterialTheme.colorScheme.primary)
+        Text(knight.displayName, style = MaterialTheme.typography.titleMedium)
+        if (wasRandom) {
             Surface(shape = RoundedCornerShape(percent = 50), color = MaterialTheme.colorScheme.primaryContainer) {
                 Text(
                     "RANDOM",
@@ -832,12 +843,13 @@ private fun HeroRow(session: DummyPlayerSession) {
  * The deck panel's shared shell: a title, the Summary/Full View toggle button (styled and placed
  * so it reads as part of this panel rather than a stray top-bar label - issue feedback was that
  * the old top-app-bar TextButton looked detached from the thing it controlled), and [content]
- * (either [TableauBody] or [StatGridBody]) below. `internal`, not `private`: `ProxyPlayerScreen.kt`
- * has its own copy ([ProxyPlayerDeckPanel]) rather than sharing this one, matching this file's
- * existing duplication rationale for [MiniCard]/[TableauCard]-shaped composables.
+ * (either [TableauBody] or [StatGridBody] here, or `ProxyPlayerScreen.kt`'s own tableau/stat-grid
+ * bodies there) below. `internal`, not `private`: `ProxyPlayerScreen.kt`'s `ProxyPlayerAiScreen`
+ * reuses this directly rather than keeping its own copy, since this shell has no Dummy-specific
+ * state or params to begin with (issue #318).
  */
 @Composable
-private fun DeckPanel(showSummary: Boolean, onToggleSummary: () -> Unit, content: @Composable () -> Unit) {
+internal fun DeckPanel(showSummary: Boolean, onToggleSummary: () -> Unit, content: @Composable () -> Unit) {
     // fillMaxWidth on the Card itself - without it, a Card sizes to wrap its widest child, which
     // used to be the full-width mini-card row when the deck was full. As the deck (and that row)
     // shrinks, nothing else here forces full width, so the whole card would visibly narrow too.
@@ -999,10 +1011,15 @@ internal fun TurnsRemainingLine(
  * The alternate, denser per-color tile grid (Variant A of the prototype) body, replacing
  * [TableauBody] when "Summary" is toggled on. Rendered inside [DeckPanel]'s Column - no Card or
  * padding of its own.
+ *
+ * `internal`, not `private`, and taking the plain [remainingByColor]/[crystals] maps rather than a
+ * whole `DummyPlayerSession`: `ProxyPlayerScreen.kt`'s `ProxyPlayerAiScreen` reuses this directly
+ * (its `ProxyPlayerSession` carries the same 2 maps under the same names, so there's nothing
+ * Dummy-specific left to abstract over).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun StatGridBody(session: DummyPlayerSession) {
+internal fun StatGridBody(remainingByColor: Map<CardColor, Int>, crystals: Map<CardColor, Int>) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
         CardColor.entries.forEach { color ->
             Column(
@@ -1011,7 +1028,7 @@ private fun StatGridBody(session: DummyPlayerSession) {
                 modifier = Modifier.widthIn(max = 56.dp),
             ) {
                 CardColorDot(color = color)
-                Text(session.remainingByColor.getValue(color).toString(), style = MaterialTheme.typography.titleMedium)
+                Text(remainingByColor.getValue(color).toString(), style = MaterialTheme.typography.titleMedium)
                 // Crystal icons instead of a "N crystal(s)" caption - matches how TableauBody
                 // shows crystals, so the count is read the same way in both views.
                 FlowRow(
@@ -1019,7 +1036,7 @@ private fun StatGridBody(session: DummyPlayerSession) {
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                     modifier = Modifier.widthIn(max = 56.dp),
                 ) {
-                    repeat(session.crystals.getValue(color)) { CrystalIcon(color = color) }
+                    repeat(crystals.getValue(color)) { CrystalIcon(color = color) }
                 }
             }
         }
@@ -1340,9 +1357,14 @@ internal fun DummyPlayerEvent.describe(turnInRound: Int?): LogEntryText = when (
  * dialog instead of the raw `docs/rules/dummy-player.md` filename this used to print - that file
  * ships with the repo, not the installed app, so referencing it directly was a dead end for a
  * real player mid-game.
+ *
+ * `internal`, not `private`: `ProxyPlayerScreen.kt`'s `ProxyPlayerAiScreen` reuses this same
+ * dialog directly - `ProxyPlayerAiViewModel.endRound` takes the identical
+ * `(CardIdentity, CardColor)` shape as `DummyPlayerAiViewModel.endRound`, so both the standard
+ * Dummy Player and Proxy Player AI screens share one End Round prompt (issue #318).
  */
 @Composable
-private fun EndRoundDialog(
+internal fun EndRoundDialog(
     fieldHelp: Map<String, FieldHelp>,
     usedDualColorCards: Set<CardIdentity>,
     onDismiss: () -> Unit,
