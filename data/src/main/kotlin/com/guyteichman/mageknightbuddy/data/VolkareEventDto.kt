@@ -7,7 +7,9 @@ import kotlinx.serialization.Serializable
  * JSON-serializable mirror of [com.guyteichman.mageknightbuddy.domain.VolkareEvent], the
  * Volkare-mode counterpart to [DummyPlayerEventDto] - see that file's doc comment for why this
  * near-duplicate hierarchy exists in `data/` instead of putting `@Serializable` directly on the
- * domain sealed interface (docs/adr/0001-domain-logic-as-plain-kotlin-module.md).
+ * domain sealed interface: it decouples the persisted wire format from the domain shape, so
+ * [VolkareEvent] can be refactored freely without breaking already-stored rows or the backup
+ * format.
  */
 @Serializable
 sealed interface VolkareEventDto {

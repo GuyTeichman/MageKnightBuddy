@@ -6,9 +6,12 @@ import kotlinx.serialization.Serializable
  * JSON-serializable mirrors of the Enemy Picker's session-state pieces that Room stores as JSON
  * columns: one [TokenPile][com.guyteichman.mageknightbuddy.domain.TokenPile] and one
  * [DrawLogEntry][com.guyteichman.mageknightbuddy.domain.DrawLogEntry]. Same reason these live in
- * `data/` rather than annotating the domain types directly as everything else here does - keep the
- * domain module serialization-free per ADR-0001. (Note the *catalogue* types like `EnemyToken` are
- * the deliberate exception, serialized in `domain` itself - ADR-0007 - but session state is not.)
+ * `data/` rather than annotating the domain types directly as everything else here does: it
+ * decouples the persisted wire format from the domain shape, so the domain types can be
+ * refactored freely without breaking already-stored rows or the backup format. (Note the
+ * *catalogue* types like `EnemyToken` are a deliberate exception, serialized in `domain` itself -
+ * ADR-0007 - because that catalogue is bundled read-only data, not something persisted per-save
+ * that a wire-format change could break.)
  *
  * Enum-typed domain fields ([TokenPileId][com.guyteichman.mageknightbuddy.domain.TokenPileId]) are
  * stored as their plain `String` name, the same convention as [VolkareSessionEntity.raceLevel].

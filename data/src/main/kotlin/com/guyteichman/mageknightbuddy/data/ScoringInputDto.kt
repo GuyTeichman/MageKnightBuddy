@@ -5,8 +5,9 @@ import kotlinx.serialization.Serializable
 
 /**
  * JSON-serializable mirror of [com.guyteichman.mageknightbuddy.domain.UnitTally], nested inside
- * [StandardAchievementsDto]. Kept in `data/` so the domain module stays free of serialization
- * annotations/dependencies (see [DummyPlayerEventDto] for the same pattern applied elsewhere).
+ * [StandardAchievementsDto]. Kept in `data/` as a separate type, rather than annotating the domain
+ * class directly, so the persisted wire format is decoupled from the domain shape (see
+ * [DummyPlayerEventDto] for the same pattern applied elsewhere).
  */
 @Serializable
 data class UnitTallyDto(val level: Int, val healthyCount: Int, val woundedCount: Int)

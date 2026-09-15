@@ -5,9 +5,10 @@ import kotlinx.serialization.Serializable
 
 /**
  * JSON-serializable mirror of [com.guyteichman.mageknightbuddy.domain.ProxyPlayerCard], kept in
- * `data/` for the same reason [DummyPlayerEventDto] is (domain/ must stay free of serialization
- * annotations - see docs/adr/0001-domain-logic-as-plain-kotlin-module.md). [ProxyPlayerSessionMapper]
- * converts between the two.
+ * `data/` for the same reason [DummyPlayerEventDto] is: this near-duplicate hierarchy decouples
+ * the persisted wire format from the domain shape, so [ProxyPlayerCard] can be refactored freely
+ * without breaking already-stored rows or the backup format. [ProxyPlayerSessionMapper] converts
+ * between the two.
  */
 @Serializable
 sealed interface ProxyPlayerCardDto {

@@ -6,7 +6,9 @@ import kotlinx.serialization.Serializable
 /**
  * JSON-serializable mirror of [com.guyteichman.mageknightbuddy.domain.ProxyPlayerEvent], the
  * Proxy Player counterpart to [VolkareEventDto]/[DummyPlayerEventDto] - see either's doc comment
- * for why this near-duplicate hierarchy lives in `data/` instead of on the domain type directly.
+ * for why this near-duplicate hierarchy lives in `data/` instead of on the domain type directly:
+ * it decouples the persisted wire format from the domain shape, so [ProxyPlayerEvent] can be
+ * refactored freely without breaking already-stored rows or the backup format.
  */
 @Serializable
 sealed interface ProxyPlayerEventDto {

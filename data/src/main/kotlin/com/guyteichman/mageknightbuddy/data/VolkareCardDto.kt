@@ -5,10 +5,10 @@ import kotlinx.serialization.Serializable
 
 /**
  * JSON-serializable mirror of [com.guyteichman.mageknightbuddy.domain.VolkareCard], kept in
- * `data/` for the same reason [DummyPlayerEventDto] is: `domain/` must stay free of
- * kotlinx.serialization annotations/dependencies (see
- * docs/adr/0001-domain-logic-as-plain-kotlin-module.md), so this near-duplicate hierarchy lives
- * here instead, with [VolkareSessionMapper] converting between the two.
+ * `data/` for the same reason [DummyPlayerEventDto] is: keeping this near-duplicate hierarchy
+ * separate from the domain type decouples the persisted wire format from the domain shape, so
+ * [VolkareCard] can be refactored freely without breaking already-stored rows or the backup
+ * format. [VolkareSessionMapper] converts between the two.
  *
  * As with [DummyPlayerEventDto], `@SerialName` on each subtype below is the "type" discriminator
  * kotlinx.serialization writes into the JSON so it knows which subtype a given blob represents
