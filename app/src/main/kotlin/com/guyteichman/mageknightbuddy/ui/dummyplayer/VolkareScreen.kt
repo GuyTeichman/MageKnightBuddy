@@ -7,38 +7,23 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -56,13 +41,11 @@ import com.guyteichman.mageknightbuddy.data.TutorialProgressRepository
 import com.guyteichman.mageknightbuddy.data.VolkareSessionRepository
 import com.guyteichman.mageknightbuddy.domain.CardColor
 import com.guyteichman.mageknightbuddy.domain.ManaColor
-import com.guyteichman.mageknightbuddy.domain.PickOrder
 import com.guyteichman.mageknightbuddy.domain.RaceLevel
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.domain.VolkareCard
 import com.guyteichman.mageknightbuddy.domain.VolkareEvent
 import com.guyteichman.mageknightbuddy.domain.VolkareSession
-import com.guyteichman.mageknightbuddy.domain.tacticPickOrder
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.LabelPillPicker
 import com.guyteichman.mageknightbuddy.ui.components.LabeledSwitch
@@ -73,7 +56,6 @@ import com.guyteichman.mageknightbuddy.ui.components.label
 import com.guyteichman.mageknightbuddy.ui.components.swatch
 import com.guyteichman.mageknightbuddy.ui.scenarioart.ScenarioPickerField
 import com.guyteichman.mageknightbuddy.ui.tutorial.Tutorial
-import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialAction
 import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialDialog
 import com.guyteichman.mageknightbuddy.ui.tutorial.TutorialKeys
 import com.guyteichman.mageknightbuddy.ui.tutorial.rememberScreenTutorialState
@@ -132,7 +114,7 @@ fun VolkareSetupFields(
  * offer input to collect - see `CONTEXT.md`'s "Volkare Session" entry, "ending round is purely a
  * player convenience for tracking, not a game mechanic").
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun VolkareAiScreen(
     repository: VolkareSessionRepository,
@@ -157,135 +139,98 @@ fun VolkareAiScreen(
     val needsTacticPick = tacticState != null && (tacticState.playerPick == null || tacticState.dummyPick == null)
 
     if (session != null) {
-        LaunchedEffect(session.tacticState) {
-            val pickOrder = tacticPickOrder(isVolkare = true, isSolo = session.isSolo)
-            val dummyShouldGoNow = when (pickOrder) {
-                PickOrder.DUMMY_FIRST -> true
-                PickOrder.PLAYER_FIRST -> session.tacticState.playerPick != null
-            }
-            if (session.tacticState.dummyPick == null && dummyShouldGoNow) {
-                viewModel.pickDummyTactic()
-            }
-        }
+        AutoPickDummyTactic(
+            tacticState = session.tacticState,
+            isVolkare = true,
+            isSolo = session.isSolo,
+            onPick = { scope.launch { viewModel.pickDummyTactic() } },
+        )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Volkare") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    if (session != null) {
-                        // Shares `DummyPlayerScreen.kt`'s `RoundChip` (issue #180) instead of the
-                        // Volkare-local copy this used to have, so all 3 modes' chips - including
-                        // their day/night indicator - stay identical by construction.
-                        RoundChip(round = session.round, turn = session.turnInRound, isDay = session.isDay)
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    TutorialAction(onClick = tutorial::show)
-                },
-            )
+    // Log rows most-recent-first, matching DummyPlayerAiScreen. Turn numbers (issue #270) are
+    // computed over the chronological log, then zipped on so each row keeps its own turn through
+    // the reverse. remember(session.log) keeps this off every recomposition - it only re-runs when
+    // the log itself changes. Computed here rather than inside AiTurnScaffold's trailing content
+    // lambda: that lambda's type is LazyListScope.() -> Unit, which is *not* a @Composable context
+    // (only the item {...}/items {...} blocks inside it are), so `remember` can't be called there
+    // directly.
+    val rows = session?.let { s -> remember(s.log) { s.log.zip(volkareTurnNumbers(s.log)).asReversed() } } ?: emptyList()
+
+    // AiTurnScaffold (issue #319) is the shared Scaffold shell all 3 AI screens use - see its own
+    // doc comment in AiTurnScaffold.kt. Volkare's End Round applies immediately (onEndRound calls
+    // viewModel.endRound() directly) rather than opening a dialog like Dummy/Proxy Player's, since
+    // there's no round-prep offer input to collect here (see this function's own doc comment).
+    AiTurnScaffold(
+        title = "Volkare",
+        onBack = onBack,
+        roundChip = if (session != null) {
+            // Shares `DummyPlayerScreen.kt`'s `RoundChip` (issue #180) instead of the
+            // Volkare-local copy this used to have, so all 3 modes' chips - including their
+            // day/night indicator - stay identical by construction.
+            { RoundChip(round = session.round, turn = session.turnInRound, isDay = session.isDay) }
+        } else {
+            null
         },
-        bottomBar = {
-            if (session != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Undo (issue #255): the mechanism is inherited from AutosaveSessionViewModel
-                    // (added for the Dummy Player screen in #62) - this just wires the same icon-only
-                    // button, disabled when there's nothing to revert or a mutation is in flight.
-                    IconButton(
-                        onClick = { scope.launch { viewModel.undo() } },
-                        enabled = viewModel.canUndo && !viewModel.isBusy,
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo")
-                    }
-                    Button(
-                        onClick = { scope.launch { viewModel.playTurn() } },
-                        // Volkare's Return has no equivalent guard - Frenzy keeps him playable
-                        // forever once his deck is empty; only Volkare's Quest can set `lost`.
-                        enabled = !session.lost && !viewModel.isBusy && !needsTacticPick,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text("Play Turn")
-                    }
-                    OutlinedButton(
-                        onClick = { scope.launch { viewModel.endRound() } },
-                        enabled = !viewModel.isBusy && !needsTacticPick,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text("End Round")
-                    }
+        tutorial = tutorial,
+        isLoading = session == null,
+        canUndo = viewModel.canUndo,
+        isBusy = viewModel.isBusy,
+        onUndo = { scope.launch { viewModel.undo() } },
+        // Volkare's Return has no equivalent guard - Frenzy keeps him playable forever once his
+        // deck is empty; only Volkare's Quest can set `lost`.
+        playTurnEnabled = session != null && !session.lost && !needsTacticPick,
+        onPlayTurn = { scope.launch { viewModel.playTurn() } },
+        endRoundEnabled = !needsTacticPick,
+        onEndRound = { scope.launch { viewModel.endRound() } },
+        // Held back while the tutorial is open (issue #161) so a first-time player can read it
+        // before being made to pick a Tactic - otherwise the picker stacks on top and blocks the
+        // tutorial.
+        tacticPicker = {
+            if (session != null && needsTacticPick && !tutorial.isVisible) {
+                TacticPickerDialog(
+                    isDay = session.isDay,
+                    tacticState = session.tacticState,
+                    aiLabel = "Volkare",
+                    enabled = !viewModel.isBusy && session.tacticState.playerPick == null,
+                    onPickPlayer = { card -> scope.launch { viewModel.pickPlayerTactic(card) } },
+                )
+            }
+        },
+    ) {
+        // This lambda body only ever runs while isLoading is false above (i.e. session != null),
+        // but Kotlin can't infer that across the two separate composable calls - the explicit
+        // null check keeps the compiler happy without an unsafe !! anywhere.
+        if (session != null) {
+            item { VolkareHeaderRow(session = session) }
+            // Only Volkare's Return ever reads cityRevealed - see CONTEXT.md's "City Revealed" entry.
+            if (session.scenario == Scenario.VolkaresReturn) {
+                item {
+                    LabeledSwitch(
+                        label = "City Revealed",
+                        checked = session.cityRevealed,
+                        onCheckedChange = { scope.launch { viewModel.toggleCityRevealed() } },
+                    )
                 }
             }
-        },
-    ) { padding ->
-        if (session == null) {
-            // Restoring from Room is asynchronous (see VolkareAiViewModel's init block); this only
-            // shows for the brief window before that first restore completes.
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            // Log rows most-recent-first, matching DummyPlayerAiScreen. Turn numbers (issue #270)
-            // are computed over the chronological log, then zipped on so each row keeps its own turn
-            // through the reverse. remember(session.log) keeps this off every recomposition - it only
-            // re-runs when the log itself changes.
-            val rows = remember(session.log) { session.log.zip(volkareTurnNumbers(session.log)).asReversed() }
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                item { VolkareHeaderRow(session = session) }
-                // Only Volkare's Return ever reads cityRevealed - see CONTEXT.md's "City Revealed" entry.
-                if (session.scenario == Scenario.VolkaresReturn) {
-                    item {
-                        LabeledSwitch(
-                            label = "City Revealed",
-                            checked = session.cityRevealed,
-                            onCheckedChange = { scope.launch { viewModel.toggleCityRevealed() } },
+            if (session.lost) {
+                item {
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                        Text(
+                            "Volkare reached the portal - you lost this scenario.",
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.onErrorContainer,
                         )
                     }
                 }
-                if (session.lost) {
-                    item {
-                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                            Text(
-                                "Volkare reached the portal - you lost this scenario.",
-                                modifier = Modifier.padding(16.dp),
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                            )
-                        }
-                    }
-                }
-                item { VolkareTableauCard(session = session) }
-                item {
-                    Text("Log", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                items(rows) { (event, turnInRound) ->
-                    VolkareLogRow(event = event, scenario = session.scenario, turnInRound = turnInRound)
-                }
+            }
+            item { VolkareTableauCard(session = session) }
+            item {
+                Text("Log", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            items(rows) { (event, turnInRound) ->
+                VolkareLogRow(event = event, scenario = session.scenario, turnInRound = turnInRound)
             }
         }
-    }
-
-    // Held back while the tutorial is open (issue #161) so a first-time player can read it before
-    // being made to pick a Tactic - otherwise the picker stacks on top and blocks the tutorial.
-    if (session != null && needsTacticPick && !tutorial.isVisible) {
-        TacticPickerDialog(
-            isDay = session.isDay,
-            tacticState = session.tacticState,
-            aiLabel = "Volkare",
-            enabled = !viewModel.isBusy && session.tacticState.playerPick == null,
-            onPickPlayer = { card -> scope.launch { viewModel.pickPlayerTactic(card) } },
-        )
     }
 }
 

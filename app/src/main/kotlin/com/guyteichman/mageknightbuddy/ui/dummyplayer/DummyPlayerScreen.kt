@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -28,8 +27,6 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
@@ -39,14 +36,12 @@ import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
@@ -91,11 +86,9 @@ import com.guyteichman.mageknightbuddy.domain.CardIdentity
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerEvent
 import com.guyteichman.mageknightbuddy.domain.DummyPlayerSession
 import com.guyteichman.mageknightbuddy.domain.Knight
-import com.guyteichman.mageknightbuddy.domain.PickOrder
 import com.guyteichman.mageknightbuddy.domain.Scenario
 import com.guyteichman.mageknightbuddy.domain.TurnEstimate
 import com.guyteichman.mageknightbuddy.domain.coopTacticScenarios
-import com.guyteichman.mageknightbuddy.domain.tacticPickOrder
 import com.guyteichman.mageknightbuddy.domain.turnsRemaining
 import com.guyteichman.mageknightbuddy.ui.components.CardColorDot
 import com.guyteichman.mageknightbuddy.ui.components.CrystalIcon
@@ -602,7 +595,6 @@ internal fun VolkareShieldIcon(size: Dp = 24.dp) {
  * `docs/rules/dummy-player.md`. Follows the same repository-backed ViewModel pattern as the setup
  * screen, autosaving after every mutation (issue #35).
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DummyPlayerAiScreen(
     repository: DummyPlayerSessionRepository,
@@ -629,117 +621,87 @@ private fun DummyPlayerAiScreen(
     val tacticState = session?.tacticState
     val needsTacticPick = tacticState != null && (tacticState.playerPick == null || tacticState.dummyPick == null)
 
+    // isVolkare = false: this screen only ever runs Standard Dummy Player sessions - Volkare has
+    // its own screen/pick order (issue #222). See AiTurnScaffold.kt's AutoPickDummyTactic doc
+    // comment for what this effect actually does.
     if (session != null) {
-        // isVolkare = false: this screen only ever runs Standard Dummy Player sessions - Volkare
-        // has its own screen/pick order (issue #222). Keyed on session.tacticState (a data class,
-        // compared structurally) so this restarts exactly when a pick changes or a new Round
-        // clears both - DUMMY_FIRST draws as soon as it's null, PLAYER_FIRST waits for the
-        // player's pick to land first (see TacticRules.kt's tacticPickOrder doc comment).
-        LaunchedEffect(session.tacticState) {
-            val pickOrder = tacticPickOrder(isVolkare = false, isSolo = session.isSolo)
-            val dummyShouldGoNow = when (pickOrder) {
-                PickOrder.DUMMY_FIRST -> true
-                PickOrder.PLAYER_FIRST -> session.tacticState.playerPick != null
-            }
-            if (session.tacticState.dummyPick == null && dummyShouldGoNow) {
-                viewModel.pickDummyTactic()
-            }
-        }
+        AutoPickDummyTactic(
+            tacticState = session.tacticState,
+            isVolkare = false,
+            isSolo = session.isSolo,
+            onPick = { scope.launch { viewModel.pickDummyTactic() } },
+        )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Dummy Player") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    if (session != null) {
-                        RoundChip(round = session.round, turn = session.turnInRound, isDay = session.isDay)
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    TutorialAction(onClick = tutorial::show)
-                },
-            )
-        },
-        bottomBar = {
-            // Bottom action row instead of a Scaffold-managed bottomBar surface, since only these
-            // controls need it and Row + padding is simpler than a full BottomAppBar here.
-            if (session != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Undo (issue #62): icon-only so the two primary verbs keep their width - it's a
-                    // misclick-recovery utility, not a peer game action. Disabled when there's
-                    // nothing to revert (right after entering the screen) or a mutation is in flight.
-                    // No confirmation: undo restores the exact prior snapshot, so there's no data
-                    // loss to warn about.
-                    IconButton(
-                        onClick = { scope.launch { viewModel.undo() } },
-                        enabled = viewModel.canUndo && !viewModel.isBusy,
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo")
-                    }
-                    Button(
-                        onClick = { scope.launch { viewModel.playTurn() } },
-                        enabled = !session.roundEnded && !viewModel.isBusy && !needsTacticPick,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text("Play Turn")
-                    }
-                    OutlinedButton(
-                        onClick = { showEndRoundDialog = true },
-                        enabled = !viewModel.isBusy && !needsTacticPick,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text("End Round")
-                    }
-                }
-            }
-        },
-    ) { padding ->
-        if (session == null) {
-            // Restoring from Room is asynchronous (see DummyPlayerAiViewModel's init block); this
-            // only shows for the brief window before that first restore completes.
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+    // Log rows most-recent-first (issue #35): the domain log is append-only/chronological, so this
+    // screen reverses it for display. Turn numbers (issue #270) are computed over the chronological
+    // log, then zipped onto it so each row keeps its own turn through the reverse. remember(session.log)
+    // keeps this off every recomposition (e.g. toggling the deck summary) - it only re-runs when the
+    // log itself changes. Computed here rather than inside AiTurnScaffold's trailing content lambda:
+    // that lambda's type is LazyListScope.() -> Unit, which is *not* a @Composable context (only the
+    // item {...}/items {...} blocks inside it are), so `remember` can't be called there directly.
+    val rows = session?.let { s -> remember(s.log) { s.log.zip(dummyTurnNumbers(s.log)).asReversed() } } ?: emptyList()
+
+    // AiTurnScaffold (issue #319) is the shared Scaffold shell all 3 AI screens use - see its own
+    // doc comment in AiTurnScaffold.kt. Only what's genuinely Dummy Player-specific lives here: the
+    // title, the enabled predicates, End Round opening a dialog (rather than applying immediately,
+    // like Volkare's), and this screen's own log/deck content.
+    AiTurnScaffold(
+        title = "Dummy Player",
+        onBack = onBack,
+        roundChip = if (session != null) {
+            { RoundChip(round = session.round, turn = session.turnInRound, isDay = session.isDay) }
         } else {
-            // Log rows most-recent-first (issue #35): the domain log is append-only/chronological,
-            // so this screen reverses it for display. Turn numbers (issue #270) are computed over
-            // the chronological log, then zipped onto it so each row keeps its own turn through the
-            // reverse. remember(session.log) keeps this off every recomposition (e.g. toggling the
-            // deck summary) - it only re-runs when the log itself changes.
-            val rows = remember(session.log) { session.log.zip(dummyTurnNumbers(session.log)).asReversed() }
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                item { HeroRow(knight = session.knight, wasRandom = session.wasRandom) }
-                // The toggle button now lives inside DeckPanel's own header instead of the top
-                // app bar, so it reads as attached to the panel it controls; the panel's body
-                // still swaps mutually exclusively rather than showing both at once.
-                item {
-                    DeckPanel(showSummary = showSummary, onToggleSummary = { showSummary = !showSummary }) {
-                        if (showSummary) {
-                            StatGridBody(remainingByColor = session.remainingByColor, crystals = session.crystals)
-                        } else {
-                            TableauBody(session = session, fieldHelp = fieldHelp)
-                        }
+            null
+        },
+        tutorial = tutorial,
+        isLoading = session == null,
+        canUndo = viewModel.canUndo,
+        isBusy = viewModel.isBusy,
+        onUndo = { scope.launch { viewModel.undo() } },
+        playTurnEnabled = session != null && !session.roundEnded && !needsTacticPick,
+        onPlayTurn = { scope.launch { viewModel.playTurn() } },
+        endRoundEnabled = !needsTacticPick,
+        onEndRound = { showEndRoundDialog = true },
+        // No visibility toggle like showEndRoundDialog - this dialog's visibility is entirely
+        // derived from needsTacticPick, so it appears/disappears with the session state itself.
+        // Held back while the tutorial is open (issue #161) so a first-time player can actually
+        // read it before being made to pick a Tactic - otherwise the picker stacks on top and
+        // blocks the tutorial.
+        tacticPicker = {
+            if (session != null && needsTacticPick && !tutorial.isVisible) {
+                TacticPickerDialog(
+                    isDay = session.isDay,
+                    tacticState = session.tacticState,
+                    aiLabel = "Dummy",
+                    enabled = !viewModel.isBusy && session.tacticState.playerPick == null,
+                    onPickPlayer = { card -> scope.launch { viewModel.pickPlayerTactic(card) } },
+                )
+            }
+        },
+    ) {
+        // This lambda body only ever runs while isLoading is false above (i.e. session != null),
+        // but Kotlin can't infer that across the two separate composable calls - the explicit
+        // null check keeps the compiler happy without an unsafe !! anywhere.
+        if (session != null) {
+            item { HeroRow(knight = session.knight, wasRandom = session.wasRandom) }
+            // The toggle button now lives inside DeckPanel's own header instead of the top
+            // app bar, so it reads as attached to the panel it controls; the panel's body
+            // still swaps mutually exclusively rather than showing both at once.
+            item {
+                DeckPanel(showSummary = showSummary, onToggleSummary = { showSummary = !showSummary }) {
+                    if (showSummary) {
+                        StatGridBody(remainingByColor = session.remainingByColor, crystals = session.crystals)
+                    } else {
+                        TableauBody(session = session, fieldHelp = fieldHelp)
                     }
                 }
-                item {
-                    Text("Log", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                items(rows) { (event, turnInRound) ->
-                    LogRow(entry = event.describe(turnInRound))
-                }
+            }
+            item {
+                Text("Log", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            items(rows) { (event, turnInRound) ->
+                LogRow(entry = event.describe(turnInRound))
             }
         }
     }
@@ -754,20 +716,6 @@ private fun DummyPlayerAiScreen(
                 scope.launch { viewModel.endRound(advancedActionOfferColor, spellColor) }
                 showEndRoundDialog = false
             },
-        )
-    }
-
-    // No visibility toggle like showEndRoundDialog - this dialog's visibility is entirely derived
-    // from needsTacticPick, so it appears/disappears with the session state itself. Held back while
-    // the tutorial is open (issue #161) so a first-time player can actually read it before being made
-    // to pick a Tactic - otherwise the picker stacks on top and blocks the tutorial.
-    if (session != null && needsTacticPick && !tutorial.isVisible) {
-        TacticPickerDialog(
-            isDay = session.isDay,
-            tacticState = session.tacticState,
-            aiLabel = "Dummy",
-            enabled = !viewModel.isBusy && session.tacticState.playerPick == null,
-            onPickPlayer = { card -> scope.launch { viewModel.pickPlayerTactic(card) } },
         )
     }
 }
