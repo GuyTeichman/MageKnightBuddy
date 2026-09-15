@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -690,29 +689,29 @@ private fun WizardContent(
                 )
                 WizardPage.GOLDYX_CHALLENGE -> {
                     Text("Crystal colors in Inventory", style = MaterialTheme.typography.labelLarge)
-                    ColorCheckbox(
-                        icon = { CrystalIcon(CardColor.RED) },
+                    LabeledCheckbox(
                         label = "${CardColor.RED.label} crystal",
                         checked = viewModel.goldyxRedCrystal,
                         onCheckedChange = { viewModel.goldyxRedCrystal = it },
+                        leadingIcon = { CrystalIcon(CardColor.RED) },
                     )
-                    ColorCheckbox(
-                        icon = { CrystalIcon(CardColor.GREEN) },
+                    LabeledCheckbox(
                         label = "${CardColor.GREEN.label} crystal",
                         checked = viewModel.goldyxGreenCrystal,
                         onCheckedChange = { viewModel.goldyxGreenCrystal = it },
+                        leadingIcon = { CrystalIcon(CardColor.GREEN) },
                     )
-                    ColorCheckbox(
-                        icon = { CrystalIcon(CardColor.BLUE) },
+                    LabeledCheckbox(
                         label = "${CardColor.BLUE.label} crystal",
                         checked = viewModel.goldyxBlueCrystal,
                         onCheckedChange = { viewModel.goldyxBlueCrystal = it },
+                        leadingIcon = { CrystalIcon(CardColor.BLUE) },
                     )
-                    ColorCheckbox(
-                        icon = { CrystalIcon(CardColor.WHITE) },
+                    LabeledCheckbox(
                         label = "${CardColor.WHITE.label} crystal",
                         checked = viewModel.goldyxWhiteCrystal,
                         onCheckedChange = { viewModel.goldyxWhiteCrystal = it },
+                        leadingIcon = { CrystalIcon(CardColor.WHITE) },
                     )
                 }
                 WizardPage.KRANG_CHALLENGE -> {
@@ -735,29 +734,29 @@ private fun WizardContent(
                         onCheckedChange = { viewModel.allBasicActionsInDeck = it },
                     )
                     Text("Advanced Action colors in deck", style = MaterialTheme.typography.labelLarge)
-                    ColorCheckbox(
-                        icon = { CardColorDot(CardColor.RED) },
+                    LabeledCheckbox(
                         label = "${CardColor.RED.label} Advanced Action",
                         checked = viewModel.braevalarRedAdvancedAction,
                         onCheckedChange = { viewModel.braevalarRedAdvancedAction = it },
+                        leadingIcon = { CardColorDot(CardColor.RED) },
                     )
-                    ColorCheckbox(
-                        icon = { CardColorDot(CardColor.GREEN) },
+                    LabeledCheckbox(
                         label = "${CardColor.GREEN.label} Advanced Action",
                         checked = viewModel.braevalarGreenAdvancedAction,
                         onCheckedChange = { viewModel.braevalarGreenAdvancedAction = it },
+                        leadingIcon = { CardColorDot(CardColor.GREEN) },
                     )
-                    ColorCheckbox(
-                        icon = { CardColorDot(CardColor.BLUE) },
+                    LabeledCheckbox(
                         label = "${CardColor.BLUE.label} Advanced Action",
                         checked = viewModel.braevalarBlueAdvancedAction,
                         onCheckedChange = { viewModel.braevalarBlueAdvancedAction = it },
+                        leadingIcon = { CardColorDot(CardColor.BLUE) },
                     )
-                    ColorCheckbox(
-                        icon = { CardColorDot(CardColor.WHITE) },
+                    LabeledCheckbox(
                         label = "${CardColor.WHITE.label} Advanced Action",
                         checked = viewModel.braevalarWhiteAdvancedAction,
                         onCheckedChange = { viewModel.braevalarWhiteAdvancedAction = it },
+                        leadingIcon = { CardColorDot(CardColor.WHITE) },
                     )
                     NumberPillPicker(
                         label = "Final space's normal Move cost at Night",
@@ -850,21 +849,6 @@ private fun WizardContent(
                 Text(if (isLastPage) "Done" else "Next")
             }
         }
-    }
-}
-
-/**
- * A checkbox with a colored crystal/card-color icon and label, used by Goldyx's and Braevalar's
- * "which colors do you have at least one of" fields - one row per [CardColor], with the
- * ViewModel deriving the actual `distinctXColors` Int count from however many are checked
- * (same pattern Solo Conquest's two named-city checkboxes already use for `citiesConquered`).
- */
-@Composable
-private fun ColorCheckbox(icon: @Composable () -> Unit, label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
-        icon()
-        Text(label)
     }
 }
 
