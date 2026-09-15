@@ -174,19 +174,26 @@ data class ProxyPlayerSession private constructor(
         return copy(
             objectiveCard = null,
             objectiveShields = 0,
-            deckOrder = (deckOrder + discardAfterObjective + ProxyPlayerCard.AdvancedAction(advancedActionOfferColor)).shuffled(),
+            // reshuffleForNewRound (RoundReshuffle.kt) is the same merge DummyPlayerSession.endRound
+            // uses - see its own comment - just with the lingering objective already folded into
+            // discardAfterObjective above.
+            deckOrder = reshuffleForNewRound(
+                deckOrder,
+                discardAfterObjective,
+                ProxyPlayerCard.AdvancedAction(advancedActionOfferColor),
+            ),
             discardPile = emptyList(),
             crystals = crystals + (spellOfferColor to crystals.getValue(spellOfferColor) + 1),
             round = round + 1,
             roundEnded = false,
             // See DummyPlayerSession.endRound's matching comment: fields here are all read on
             // `this`, i.e. before round advances.
-            tacticState = tacticState.advanceRound(
-                remove = tacticRemovalTarget(
-                    rule = tacticRemovalRule(isVolkare = false, isSolo = isSolo, scenario = scenario),
-                    round = round,
-                    startsAtNight = startsAtNight,
-                ),
+            tacticState = tacticState.advanceForRound(
+                isVolkare = false,
+                isSolo = isSolo,
+                scenario = scenario,
+                round = round,
+                startsAtNight = startsAtNight,
                 isDay = isDay,
             ),
             log = log + ProxyPlayerEvent.RoundEnded(round, advancedActionOfferColor, spellOfferColor, discardedObjective),

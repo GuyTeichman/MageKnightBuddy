@@ -146,12 +146,12 @@ data class VolkareSession private constructor(
         // See DummyPlayerSession.endRound's matching comment: fields here are all read on `this`,
         // i.e. before round advances. isVolkare = true always here, so [scenario] (Return/Quest)
         // is ignored by tacticRemovalRule's Volkare branch - only [isSolo] matters.
-        tacticState = tacticState.advanceRound(
-            remove = tacticRemovalTarget(
-                rule = tacticRemovalRule(isVolkare = true, isSolo = isSolo, scenario = scenario),
-                round = round,
-                startsAtNight = startsAtNight,
-            ),
+        tacticState = tacticState.advanceForRound(
+            isVolkare = true,
+            isSolo = isSolo,
+            scenario = scenario,
+            round = round,
+            startsAtNight = startsAtNight,
             isDay = isDay,
         ),
         log = log + VolkareEvent.RoundEnded(round),

@@ -171,4 +171,78 @@ class TacticRulesTest {
         assertEquals(PickOrder.PLAYER_FIRST, tacticPickOrder(isVolkare = true, isSolo = true))
         assertEquals(PickOrder.PLAYER_FIRST, tacticPickOrder(isVolkare = true, isSolo = false))
     }
+
+    @Test
+    fun `advanceForRound matches manually composing tacticRemovalRule, tacticRemovalTarget, and advanceRound`() {
+        // Solo: EveryRound(BOTH) fires every round, so both picks should land in removedDayCards
+        // and both picks clear - built by hand here rather than reusing advanceForRound's own
+        // composition, so this can't pass merely by echoing a shared bug.
+        val state = TacticState(playerPick = 2, dummyPick = 5)
+
+        val next = state.advanceForRound(
+            isVolkare = false,
+            isSolo = true,
+            scenario = Scenario.SoloConquest,
+            round = 1,
+            startsAtNight = false,
+            isDay = true,
+        )
+
+        assertEquals(setOf(2, 5), next.removedDayCards)
+        assertEquals(emptySet(), next.removedNightCards)
+        assertEquals(null, next.playerPick)
+        assertEquals(null, next.dummyPick)
+    }
+
+    @Test
+    fun `advanceForRound with a coop FirstDayOnly scenario removes only the player's pick, and only on the first Day round`() {
+        val state = TacticState(playerPick = 3, dummyPick = 1)
+
+        // Round 1 = first Day (startsAtNight = false) for ForTheCouncil (FirstDayOnly): fires.
+        val fired = state.advanceForRound(
+            isVolkare = false,
+            isSolo = false,
+            scenario = Scenario.ForTheCouncil,
+            round = 1,
+            startsAtNight = false,
+            isDay = true,
+        )
+        assertEquals(setOf(3), fired.removedDayCards)
+        assertEquals(null, fired.playerPick)
+        assertEquals(null, fired.dummyPick)
+
+        // Round 2 is no longer the first Day: doesn't fire, picks still clear either way.
+        val notFired = state.advanceForRound(
+            isVolkare = false,
+            isSolo = false,
+            scenario = Scenario.ForTheCouncil,
+            round = 2,
+            startsAtNight = false,
+            isDay = true,
+        )
+        assertEquals(emptySet(), notFired.removedDayCards)
+        assertEquals(null, notFired.playerPick)
+        assertEquals(null, notFired.dummyPick)
+    }
+
+    @Test
+    fun `advanceForRound for solo Volkare removes only the player's pick, keeping Volkare's own available`() {
+        val state = TacticState(playerPick = 4, dummyPick = 6)
+
+        val next = state.advanceForRound(
+            isVolkare = true,
+            isSolo = true,
+            // scenario is ignored by the Volkare branch of tacticRemovalRule - passed here as the
+            // kind of value a real VolkareSession would actually hold, not a placeholder.
+            scenario = Scenario.VolkaresReturn,
+            round = 1,
+            startsAtNight = false,
+            isDay = false,
+        )
+
+        assertEquals(setOf(4), next.removedNightCards)
+        assertEquals(emptySet(), next.removedDayCards)
+        assertEquals(null, next.playerPick)
+        assertEquals(null, next.dummyPick)
+    }
 }

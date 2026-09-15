@@ -97,3 +97,32 @@ enum class PickOrder { PLAYER_FIRST, DUMMY_FIRST }
  */
 fun tacticPickOrder(isVolkare: Boolean, isSolo: Boolean): PickOrder =
     if (isVolkare || isSolo) PickOrder.PLAYER_FIRST else PickOrder.DUMMY_FIRST
+
+/**
+ * One-call version of this Round's whole Tactic-removal decision - all three sessions'
+ * `endRound` used to repeat the same inline composition of [tacticRemovalRule] (which rule
+ * applies, from [isVolkare]/[isSolo]/[scenario]), [tacticRemovalTarget] (whether that rule
+ * actually fires this [round], given [startsAtNight]), and [TacticState.advanceRound] (applying
+ * the result to the active [isDay] pile). This extension collapses that into one call so each
+ * `endRound` no longer has to spell out the two-function lookup itself.
+ *
+ * Deliberately kept here in TacticRules.kt rather than as a method on [TacticState] itself:
+ * [TacticState]'s own doc comment says it's kept "dumb" about Scenario/solo-coop on purpose, and
+ * this extension is exactly the scenario-aware glue that would break that if it lived there
+ * instead - the callers just don't see the lookup at their call site any more.
+ */
+fun TacticState.advanceForRound(
+    isVolkare: Boolean,
+    isSolo: Boolean,
+    scenario: Scenario,
+    round: Int,
+    startsAtNight: Boolean,
+    isDay: Boolean,
+): TacticState = advanceRound(
+    remove = tacticRemovalTarget(
+        rule = tacticRemovalRule(isVolkare = isVolkare, isSolo = isSolo, scenario = scenario),
+        round = round,
+        startsAtNight = startsAtNight,
+    ),
+    isDay = isDay,
+)
