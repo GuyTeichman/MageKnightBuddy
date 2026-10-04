@@ -320,6 +320,69 @@ class DummyPlayerAiViewModelTest {
     }
 
     @Test
+    fun `undo after the dummy's automatic Tactic pick reverts the player's pick too (issue 340)`() = runTest {
+        // Solo is PLAYER_FIRST: the screen's auto-pick effect fires pickDummyTactic() right after the
+        // player's pick lands. If that auto-pick were its own undo step, undo would land back on
+        // "player picked, dummy not yet" - exactly the state that re-fires the auto-pick, so the
+        // player could never get back to choosing their own Tactic.
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        val entry = DummyPlayerSession.start(Knight.GOLDYX, deckOrder = emptyList())
+        repository.save(entry)
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.pickPlayerTactic(3)
+        viewModel.pickDummyTactic(Random(0))
+        // Sanity-check both picks actually landed before undoing.
+        assertEquals(3, viewModel.session?.tacticState?.playerPick)
+        assertTrue(viewModel.session?.tacticState?.dummyPick in 1..6)
+
+        viewModel.undo()
+
+        // Both picks are gone (and their log entries with them) - the player is back to choosing.
+        assertNull(viewModel.session?.tacticState?.playerPick)
+        assertNull(viewModel.session?.tacticState?.dummyPick)
+        assertEquals(entry, viewModel.session)
+        assertEquals(entry, repository.restore())
+        assertFalse(viewModel.canUndo)
+    }
+
+    @Test
+    fun `the dummy's automatic Tactic pick is undone together with the endRound that triggered it`() = runTest {
+        // Coop is DUMMY_FIRST: endRound() clears both picks and the auto-pick effect immediately
+        // draws the dummy's. One undo must revert to before endRound, not to the cleared-picks state
+        // in between (which would just re-fire the auto-pick again).
+        val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
+        repository.save(DummyPlayerSession.start(Knight.GOLDYX, deckOrder = emptyList(), isSolo = false))
+        val viewModel = DummyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        // Build round 1's completed draft via the VM's own methods: dummy auto-picks at session
+        // start (no prior action, so nothing to undo), then the player picks.
+        viewModel.pickDummyTactic(Random(0))
+        assertFalse(viewModel.canUndo)
+        // Any card the dummy didn't just take - the player can't pick the same one.
+        val playerCard = (1..6).first { it != viewModel.session?.tacticState?.dummyPick }
+        viewModel.pickPlayerTactic(playerCard)
+        val beforeEndRound = viewModel.session
+
+        viewModel.endRound(
+            advancedActionOfferColor = CardIdentity.SingleColor(CardColor.WHITE),
+            spellOfferColor = CardColor.BLUE,
+        )
+        viewModel.pickDummyTactic(Random(1))
+        assertEquals(2, viewModel.session?.round)
+        assertTrue(viewModel.session?.tacticState?.dummyPick != null)
+
+        viewModel.undo()
+
+        assertEquals(beforeEndRound, viewModel.session)
+        assertEquals(1, viewModel.session?.round)
+        assertEquals(playerCard, viewModel.session?.tacticState?.playerPick)
+        assertEquals(beforeEndRound, repository.restore())
+    }
+
+    @Test
     fun `undo does nothing when there is no prior action to revert`() = runTest {
         val repository = DummyPlayerSessionRepository(FakeDummyPlayerSessionDao())
         val entry = DummyPlayerSession.start(Knight.GOLDYX, deckOrder = listOf(CardIdentity.SingleColor(CardColor.RED)))
