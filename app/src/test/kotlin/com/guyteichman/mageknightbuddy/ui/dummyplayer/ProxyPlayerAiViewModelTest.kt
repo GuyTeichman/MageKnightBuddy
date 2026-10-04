@@ -11,6 +11,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
@@ -133,5 +134,29 @@ class ProxyPlayerAiViewModelTest {
         assertTrue(viewModel.session?.tacticState?.dummyPick in 1..6)
         assertNull(viewModel.session?.tacticState?.playerPick)
         assertEquals(viewModel.session, repository.restore())
+    }
+
+    @Test
+    fun `undo after the dummy's automatic Tactic pick reverts the player's pick too (issue 340)`() = runTest {
+        // Solo is PLAYER_FIRST, so the screen auto-fires pickDummyTactic() right after the player's
+        // pick - see DummyPlayerAiViewModelTest's twin test for why that must not be its own undo step.
+        val repository = ProxyPlayerSessionRepository(FakeProxyPlayerSessionDao())
+        val entry = ProxyPlayerSession.start(Knight.CORAL, deckOrder = emptyList())
+        repository.save(entry)
+        val viewModel = ProxyPlayerAiViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.pickPlayerTactic(3)
+        viewModel.pickDummyTactic(Random(0))
+        assertEquals(3, viewModel.session?.tacticState?.playerPick)
+        assertTrue(viewModel.session?.tacticState?.dummyPick in 1..6)
+
+        viewModel.undo()
+
+        assertNull(viewModel.session?.tacticState?.playerPick)
+        assertNull(viewModel.session?.tacticState?.dummyPick)
+        assertEquals(entry, viewModel.session)
+        assertEquals(entry, repository.restore())
+        assertFalse(viewModel.canUndo)
     }
 }

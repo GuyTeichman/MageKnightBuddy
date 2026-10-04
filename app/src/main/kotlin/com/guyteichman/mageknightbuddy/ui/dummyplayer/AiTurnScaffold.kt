@@ -161,6 +161,11 @@ internal fun AiTurnScaffold(
  * [isVolkare] selects which of the two pick-order rules applies: Volkare's is always PLAYER_FIRST
  * regardless of [isSolo], while Standard Dummy Player/Proxy Player's depends on it (DUMMY_FIRST in
  * coop, PLAYER_FIRST in solo).
+ *
+ * Because this re-fires whenever [tacticState] lands on a "dummy still owes a pick" state, [onPick]
+ * must not record its own undo entry - otherwise Undo would restore exactly that state and this
+ * effect would immediately redo the pick (issue #340). Every ViewModel's `pickDummyTactic` uses
+ * `mutate(recordUndo = false)` for this reason.
  */
 @Composable
 internal fun AutoPickDummyTactic(tacticState: TacticState, isVolkare: Boolean, isSolo: Boolean, onPick: () -> Unit) {

@@ -67,8 +67,14 @@ abstract class AutosaveSessionViewModel<T>(
      * and autosaves it through [repository]. A no-op if there's no session yet (nothing restored,
      * or restore is still in flight) or if a mutation is already in progress. Every mutating
      * method on a concrete subclass is exactly one call to this: `mutate { it.playTurn() }`.
+     *
+     * [recordUndo] = false is for *automatic* follow-up mutations the screen fires on its own in
+     * reaction to the previous one (the AI's Tactic auto-pick - see AutoPickDummyTactic): they get
+     * no undo entry of their own, so Undo reverts them together with the action that triggered
+     * them. Giving them their own entry would let Undo land back on exactly the state that
+     * re-triggers them, so the player could never undo past them (issue #340).
      */
-    protected suspend fun mutate(transform: (T) -> T) {
+    protected suspend fun mutate(recordUndo: Boolean = true, transform: (T) -> T) {
         if (isBusy) return
         isBusy = true
         try {
@@ -76,7 +82,7 @@ abstract class AutosaveSessionViewModel<T>(
             val next = transform(current)
             // Push the pre-mutation snapshot before publishing the new one, so Undo can restore
             // exactly what was on screen before this action (issue #62).
-            undoStack.add(current)
+            if (recordUndo) undoStack.add(current)
             session = next
             repository.save(next)
         } finally {
